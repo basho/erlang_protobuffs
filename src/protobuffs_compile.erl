@@ -62,7 +62,7 @@ write_encode_message(FileRef, [{Name, Fields} |Tail]) ->
     EncodeElements = lists:foldl(
         fun(Field, Acc) ->
             {Position, _, FieldType, FieldName, _, _} = Field,
-            [io_lib:format("{~p, Rec#~s.~s, ~p}", [Position, string:to_lower(Name), FieldName, list_to_existing_atom(FieldType)]) | Acc]
+            [io_lib:format("{~p, Rec#~s.~s, ~p}", [Position, string:to_lower(Name), FieldName, list_to_atom(FieldType)]) | Acc]
         end,
         [],
         lists:keysort(1, Fields)

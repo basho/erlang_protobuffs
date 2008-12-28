@@ -2,7 +2,7 @@
 -module(protobuffs_compile).
 -export([scan_file/1]).
 
-%% @spec san_file(string()) -> ok
+%% @spec scan_file(string()) -> ok
 %% @doc Scan a .proto file and try to create a module for it. This process
 %% creates a number of encoding, decoding and validation functions for each
 %% message contained.

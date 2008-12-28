@@ -12,4 +12,4 @@ clean:
 	rm -rf erl_crash.dump 
 
 dist-src: clean
-	tar zcvf erlang_protobuffs-0.1_alpha1.tgz src/ support/ Makefile
+	tar zcvf erlang_protobuffs-0.1.tgz src/ support/ Makefile

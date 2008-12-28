@@ -1,6 +1,11 @@
+%% @doc Create modules for decoding and encoding protocolo buffers messages out of .proto files.
 -module(protobuffs_compile).
--export([scan_file/1, scan/1, parse/1]).
+-export([scan_file/1]).
 
+%% @spec san_file(string()) -> ok
+%% @doc Scan a .proto file and try to create a module for it. This process
+%% creates a number of encoding, decoding and validation functions for each
+%% message contained.
 scan_file(Filename) ->
     {ok, Data} = file:read_file(Filename),
     Raw = scan(binary_to_list(Data)),
@@ -9,8 +14,10 @@ scan_file(Filename) ->
     true = write_module(Parsed, filename:basename(Filename, ".proto") ++ "_pb.erl"),
     ok.
 
+%% @hidden
 parse(Data) -> parse(Data, []).
 
+%% @hidden
 parse([], Acc) -> lists:reverse(Acc);
 parse([{'}', _Line} | Tail], Acc) -> {Acc, Tail};
 parse([{enum, _Line}, {bareword, _Line, MessageName}, {'{', _Line} | Tail], Acc) ->
@@ -30,6 +37,7 @@ parse([{'$end', _} | Tail], Acc) ->
 parse([Head | Tail], Acc) ->
     parse(Tail, [Head | Acc]).
 
+%% @hidden
 write_header(Data, Filename) ->
     Messages = collect_messages(Data, []),
     {ok, FileRef} = file:open(Filename, [write]),
@@ -43,6 +51,7 @@ write_header(Data, Filename) ->
     ),
     ok == file:close(FileRef).
 
+%% @hidden
 write_module(Data, Filename) ->
     Messages = collect_messages(Data, []),
     {ok, FileRef} = file:open(Filename, [write]),
@@ -57,6 +66,7 @@ write_module(Data, Filename) ->
     write_encode_message(FileRef, collect_full_messages(Data, [])),
     ok == file:close(FileRef).
 
+%% @hidden
 write_encode_message(_, []) -> ok;
 write_encode_message(FileRef, [{Name, Fields} |Tail]) ->
     EncodeElements = lists:foldl(
@@ -79,6 +89,7 @@ write_encode_message(FileRef, [{Name, Fields} |Tail]) ->
     ),
     write_encode_message(FileRef, Tail).
 
+%% @hidden
 write_decode_message(_, []) -> ok;
 write_decode_message(FileRef, [{Name, Fields} | Tail]) ->
     io:format(
@@ -114,6 +125,7 @@ write_decode_message(FileRef, [{Name, Fields} | Tail]) ->
     ),
     write_decode_message(FileRef, Tail).
 
+%% @hidden
 collect_messages([], Acc) -> Acc;
 collect_messages([{message, Name, Fields} | Tail], Acc) ->
     FieldsOut = lists:foldl(
@@ -133,6 +145,7 @@ collect_messages([{message, Name, Fields} | Tail], Acc) ->
     ),
     collect_messages(Tail ++ SubMessages, [{Name, FieldsOut} | Acc]).
 
+%% @hidden
 collect_full_messages([], Acc) -> Acc;
 collect_full_messages([{message, Name, Fields} | Tail], Acc) ->
     FieldsOut = lists:foldl(
@@ -154,9 +167,11 @@ collect_full_messages([{message, Name, Fields} | Tail], Acc) ->
     ),
     collect_full_messages(Tail ++ SubMessages, [{Name, FieldsOut} | Acc]).
 
+%% @hidden
 scan(String) ->
     scan(String, [], 1).
- 
+
+%% @hidden
 scan([${|Rest], Accum, Line) ->
     scan(Rest, [{'{', Line}|Accum], Line);
 scan([$}|Rest], Accum, Line) ->
@@ -212,10 +227,12 @@ scan([], Accum, Line) ->
     lists:reverse([{'$end', Line}|Accum]);
 scan([C|_], _Accum, Line) ->
     erlang:error({invalid_character, [C], Line}).
- 
+
+%% @hidden
 scan_identifier(String) ->
     scan_identifier(String, "").
- 
+
+%% @hidden
 scan_identifier([C|Rest], Accum)
   when C >= $A, C =< $Z;
        C >= $a, C =< $z;
@@ -225,7 +242,8 @@ scan_identifier([C|Rest], Accum)
     scan_identifier(Rest, [C|Accum]);
 scan_identifier(Rest, Accum) ->
     {lists:reverse(Accum), Rest}.
- 
+
+%% @hidden
 scan_number(String) ->
     {A, Rest1} = scan_integer(String),
     case Rest1 of
@@ -241,19 +259,23 @@ scan_number(String) ->
         _ ->
             {A, Rest1}
     end.
- 
+
+%% @hidden
 scan_integer(String) ->
     scan_integer(String, 0).
- 
+
+%% @hidden
 scan_integer([D|Rest], Accum)
   when D >= $0, D =< $9 ->
     scan_integer(Rest, Accum * 10 + (D - $0));
 scan_integer(Rest, Accum) ->
     {Accum, Rest}.
- 
+
+%% @hidden
 scan_string([$"|String], Line) ->
     scan_string(String, "", Line).
- 
+
+%% @hidden
 scan_string([$"|Rest], Accum, Line) ->
     {lists:reverse(Accum), Rest, Line};
 scan_string([$\\, $a|Rest], Accum, Line) ->
@@ -281,21 +303,24 @@ scan_string([$\n|Rest], Accum, Line) ->
     scan_string(Rest, [$\n|Accum], Line + 1);
 scan_string([Char|Rest], Accum, Line) ->
     scan_string(Rest, [Char|Accum], Line).
- 
+
+%% @hidden
 skip_to_newline([$\n|Rest]) ->
     Rest;
 skip_to_newline([]) ->
     [];
 skip_to_newline([_|Rest]) ->
     skip_to_newline(Rest).
- 
+
+%% @hidden
 skip_comment([$*, $/|Rest], Line) ->
     {Rest, Line};
 skip_comment([$\n|Rest], Line) ->
     skip_comment(Rest, Line + 1);
 skip_comment([_|Rest], Line) ->
     skip_comment(Rest, Line).
- 
+
+%% @hidden
 get_keyword("import") ->
     import;
 get_keyword("package") ->

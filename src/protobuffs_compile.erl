@@ -72,7 +72,7 @@ write_encode_message(FileRef, [{Name, Fields} |Tail]) ->
     EncodeElements = lists:foldl(
         fun(Field, Acc) ->
             {Position, _, FieldType, FieldName, _, _} = Field,
-            [io_lib:format("{~p, Rec#~s.~s, ~p}", [Position, string:to_lower(Name), FieldName, list_to_atom(FieldType)]) | Acc]
+            [io_lib:format("{~p, Rec#~s.~s, ~p}", [Position, string:to_lower(Name), FieldName, list_to_atom(string:to_lower(FieldType))]) | Acc]
         end,
         [],
         lists:keysort(1, Fields)
@@ -82,9 +82,18 @@ write_encode_message(FileRef, [{Name, Fields} |Tail]) ->
         FileRef,
         "encode_~s(Rec) -> ~n"
         "   EncodeData = [~s], ~n"
-        "   erlang:iolist_to_binary([ ~n"
-        "       protobuffs:encode(Pos, Data, Type) ~n"
-        "   || {Pos, Data, Type} <- EncodeData]). ~n~n",
+        "   erlang:iolist_to_binary(lists:reverse(lists:foldl(fun({Pos, Data, Type}, Acc) -> 
+                case [Data, Type] of 
+                    [undefined, _] -> Acc; 
+                    [Data, Type] when is_binary(Data), Type =/= bytes ->
+                        [protobuffs:encode(Pos, Data, bytes) | Acc];
+                    [Data, Type] when is_tuple(Data) ->
+                        [RecName | _] = erlang:tuple_to_list(Data),
+                        ToEncode = apply(?MODULE, list_to_atom(\"encode_\" ++ atom_to_list(RecName)), [Data]),
+                        [protobuffs:encode(Pos, ToEncode, bytes) | Acc];
+                    _ -> [protobuffs:encode(Pos, Data, Type) | Acc] 
+                end 
+            end,[], EncodeData))). ~n~n",
         [string:to_lower(Name), EncodeString]
     ),
     write_encode_message(FileRef, Tail).

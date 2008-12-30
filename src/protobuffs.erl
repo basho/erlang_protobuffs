@@ -57,6 +57,10 @@ encode(FieldID, Float, float) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<Float:32/little-float>>];
 encode(FieldID, Float, double) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_64BIT), <<Float:64/little-float>>].
+%% encode(FieldID, Value, _) when is_binary(Value) ->
+%%     encode(FieldID, Value, bytes);
+%% encode(FieldID, Value, _) when is_atom(Value) ->
+%%     encode(FieldID, erlang:atom_to_list(Value), string).
 
 %% @spec decode(Bytes, ExpectedType) -> Result
 %%       Bytes = binary()

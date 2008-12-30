@@ -1,7 +1,7 @@
 -module(protobuffs_t_005).
 -export([start/0]).
 
--record(person, {name, address, phone_number, age}).
+-record(person, {name, address, phone_number, age, location}).
 
 start() ->
     etap:plan(1),

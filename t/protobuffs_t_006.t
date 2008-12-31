@@ -1,12 +1,13 @@
--module(protobuffs_t_006).
--export([start/0]).
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -pa ./ebin -sasl errlog_type error -boot start_sasl -noshell
 
 -record(location, {region, country}).
 -record(person, {name, address, phone_number, age, location}).
 
-start() ->
+main(_) ->
     etap:plan(1),
-    etap:is(protobuffs_compile:scan_file("simple.proto"), ok, "simple.proto compiled"),
+    etap:is(protobuffs_compile:scan_file("t/simple.proto"), ok, "simple.proto compiled"),
     compile:file("simple_pb.erl"),
 
     LocationBinData = erlang:iolist_to_binary([begin

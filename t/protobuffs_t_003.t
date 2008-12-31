@@ -1,7 +1,8 @@
--module(protobuffs_t_003).
--export([start/0]).
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -pa ./ebin -sasl errlog_type error -boot start_sasl -noshell
 
-start() ->
+main(_) ->
     etap:plan(3),
     etap:is(protobuffs:decode(<<8, 1>>, uint32), {{1, 1}, <<>>}, "1 - 1"),
     etap:is(protobuffs:decode(<<16, 1>>, uint32), {{2, 1}, <<>>}, "2 - 1"),

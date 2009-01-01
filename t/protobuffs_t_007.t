@@ -7,7 +7,7 @@
 
 main(_) ->
     etap:plan(1),
-    etap:is(protobuffs_compile:scan_file("repeater.proto"), ok, "repeater.proto compiled"),
+    etap:is(protobuffs_compile:scan_file("t/repeater.proto"), ok, "repeater.proto compiled"),
     compile:file("repeater_pb.erl", [{outdir,"./ebin"}]),
 
 	Location1 = #location{region = <<"Lyon">>, country = <<"France">>},

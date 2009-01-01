@@ -1,10 +1,11 @@
--module(protobuffs_t_007).
--export([start/0]).
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -pa ./ebin -sasl errlog_type error -boot start_sasl -noshell
 
 -record(location, {region, country}).
 -record(person, {name, address, phone_number, age, hobbies, locations}).
 
-start() ->
+main(_) ->
     etap:plan(1),
     etap:is(protobuffs_compile:scan_file("repeater.proto"), ok, "repeater.proto compiled"),
     compile:file("repeater_pb.erl", [{outdir,"./ebin"}]),

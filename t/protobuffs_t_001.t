@@ -1,7 +1,8 @@
--module(protobuffs_t_001).
--export([start/0]).
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -pa ./ebin -sasl errlog_type error -boot start_sasl -noshell
 
-start() ->
+main(_) ->
     etap:plan(8),
     etap_can:loaded_ok(protobuffs, "module 'protobuffs' loaded"),
     etap_can:can_ok(protobuffs, encode),

@@ -8,11 +8,13 @@
 main(_) ->
     etap:plan(1),
     etap:is(protobuffs_compile:scan_file("t/simple.proto"), ok, "simple.proto compiled"),
-    compile:file("simple_pb.erl"),
+	compile:file("simple_pb.erl", [{outdir,"./ebin"}]),
 
+	Region = <<"California">>,
+	Country = <<"USA">>,
     LocationBinData = erlang:iolist_to_binary([begin
         protobuffs:encode(Pos, Value, Type)
-    end || {Pos, Value, Type} <- [{1, <<"California">>, string}, {2, <<"USA">>, string}]]),
+    end || {Pos, Value, Type} <- [{1, Region, string}, {2, Country, string}]]),
 
     Data = [
         {1, <<"Nick">>, string},
@@ -22,25 +24,20 @@ main(_) ->
         {5, LocationBinData, bytes}
     ],
     BinData = erlang:iolist_to_binary([protobuffs:encode(Pos, Value, Type) || {Pos, Value, Type} <- Data]),
-    #person{
+
+    Person = #person{
         name = <<"Nick">>,
         address = <<"Mountain View">>,
         phone_number = <<"+1 (000) 555-1234">>,
         age = 25,
-        location = LocationBinData
-    } = simple_pb:decode_person(BinData),
-    BinData = simple_pb:encode_person(#person{
-        name = <<"Nick">>,
-        address = <<"Mountain View">>,
-        phone_number = <<"+1 (000) 555-1234">>,
-        age = 25,
-        location = #location{ region = <<"California">>, country = <<"USA">>}
-    }),
-    BinData = simple_pb:encode_person(#person{
-        name = <<"Nick">>,
-        address = <<"Mountain View">>,
-        phone_number = <<"+1 (000) 555-1234">>,
-        age = 25,
-        location = LocationBinData
-    }),
+        location = #location{region=Region, country=Country}
+    },
+
+ 	Person = simple_pb:decode_person(BinData),
+
+    BinData = simple_pb:encode_person(Person),
+
+	ok = file:delete("simple_pb.erl"),
+	ok = file:delete("simple_pb.hrl"),
+
     etap:end_tests().

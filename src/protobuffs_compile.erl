@@ -9,7 +9,7 @@
 scan_file(Filename) ->
     {ok, Data} = file:read_file(Filename),
     Raw = scan(binary_to_list(Data)),
-    Parsed = parse(Raw, []),
+    Parsed = parse(Raw),
     true = write_header(Parsed, filename:basename(Filename, ".proto") ++ "_pb.hrl"),
     true = write_module(Parsed, filename:basename(Filename, ".proto") ++ "_pb.erl"),
     ok.
@@ -53,7 +53,7 @@ write_header(Data, Filename) ->
 
 %% @hidden
 write_module(Data, Filename) ->
-    Messages = collect_messages(Data, []),
+	Messages = collect_full_messages(Data, []),
     {ok, FileRef} = file:open(Filename, [write]),
     io:format(FileRef, "-module(~s).~n", [filename:basename(Filename, ".erl")]),
     DecodeString = string:join(
@@ -63,7 +63,7 @@ write_module(Data, Filename) ->
     io:format(FileRef, "-export([~s]).~n", [DecodeString]),
     io:format(FileRef, "-include(\"~s\").~n~n", [filename:basename(Filename, ".erl") ++ ".hrl"]),
     write_decode_message(FileRef, Messages),
-    write_encode_message(FileRef, collect_full_messages(Data, [])),
+	write_encode_message(FileRef, Messages),
     ok == file:close(FileRef).
 
 %% @hidden
@@ -71,8 +71,8 @@ write_encode_message(_, []) -> ok;
 write_encode_message(FileRef, [{Name, Fields} |Tail]) ->
     EncodeElements = lists:foldl(
         fun(Field, Acc) ->
-            {Position, _, FieldType, FieldName, _, _} = Field,
-            [io_lib:format("{~p, Rec#~s.~s, ~p}", [Position, string:to_lower(Name), FieldName, list_to_atom(string:to_lower(FieldType))]) | Acc]
+            {Position, Rule, FieldType, FieldName, _, _} = Field,
+            [io_lib:format("{~p, ~p, Rec#~s.~s, ~p}", [Position, Rule, string:to_lower(Name), FieldName, list_to_atom(string:to_lower(FieldType))]) | Acc]
         end,
         [],
         lists:keysort(1, Fields)
@@ -82,15 +82,27 @@ write_encode_message(FileRef, [{Name, Fields} |Tail]) ->
         FileRef,
         "encode_~s(Rec) -> ~n"
         "   EncodeData = [~s], ~n"
-        "   erlang:iolist_to_binary(lists:reverse(lists:foldl(fun({Pos, Data, Type}, Acc) -> 
-                case [Data, Type] of 
-                    [undefined, _] -> Acc; 
-                    [Data, Type] when is_binary(Data), Type =/= bytes ->
+        "   erlang:iolist_to_binary(lists:reverse(lists:foldl(fun({Pos, Rule, Data, Type}, Acc) -> 
+                case [Rule, Data, Type] of 
+                    [_, undefined, _] -> Acc; 
+                    [_, Data, Type] when is_binary(Data), Type =/= bytes ->
                         [protobuffs:encode(Pos, Data, bytes) | Acc];
-                    [Data, Type] when is_tuple(Data) ->
+                    [_, Data, Type] when is_tuple(Data) ->
                         [RecName | _] = erlang:tuple_to_list(Data),
                         ToEncode = apply(?MODULE, list_to_atom(\"encode_\" ++ atom_to_list(RecName)), [Data]),
                         [protobuffs:encode(Pos, ToEncode, bytes) | Acc];
+					[repeated, [Head|_]=List, Type] when is_tuple(Head) ->
+                        [RecName | _] = erlang:tuple_to_list(Head),
+						Encoded = 
+							list_to_binary([begin
+								Method = list_to_atom(\"encode_\" ++ atom_to_list(RecName)),
+								ToEncode = apply(?MODULE, Method, [Record]),
+								protobuffs:encode(Pos, ToEncode, bytes)
+							end || Record <- List]),
+						[Encoded | Acc];
+					[repeated, List, Type] ->
+						Encoded = [protobuffs:encode(Pos, Item, Type) || Item <- List],
+						[Encoded | Acc];
                     _ -> [protobuffs:encode(Pos, Data, Type) | Acc] 
                 end 
             end,[], EncodeData))). ~n~n",
@@ -109,12 +121,37 @@ write_decode_message(FileRef, [{Name, Fields} | Tail]) ->
         [string:to_lower(Name), string:to_lower(Name)]
     ),
     CasePosString = lists:foldl(
-        fun({FPos, FName}, Acc) ->
-            io_lib:format("     {~p, Data} -> Rec#~s{ ~s = Data};~n", [FPos, string:to_lower(Name), FName]) ++ Acc
-        end,
-        "",
-        Fields
-    ),
+		fun(Field, Acc) ->			
+			case Field of
+				{FPos, repeated, [C|_]=RecName, FName, _, _} 
+			 	  when C >= $A, C =< $Z ->
+					io_lib:format("     {~p, Data} -> ~n"
+								  "			Data1 = apply(?MODULE, decode_~s, [Data]),~n"
+								  "			case Rec#~s.~s of~n"
+								  "				undefined -> ~n"
+								  "					Rec#~s{ ~s = [Data1]};~n"
+								  "				List -> ~n"
+								  "					Rec#~s{ ~s = [Data1|List] }~n"
+								  "			end;~n", 
+						[FPos, string:to_lower(RecName), string:to_lower(Name), FName, string:to_lower(Name), FName, string:to_lower(Name), FName]) ++ Acc;
+				{FPos, repeated, _, FName, _, _} ->
+					io_lib:format("     {~p, Data} -> ~n"
+								  "			case Rec#~s.~s of~n"
+								  "				undefined -> ~n"
+								  "					Rec#~s{ ~s = [Data]};~n"
+								  "				List -> ~n"
+								  "					Rec#~s{ ~s = [Data|List] }~n"
+								  "			end;~n", 
+						[FPos, string:to_lower(Name), FName, string:to_lower(Name), FName, string:to_lower(Name), FName]) ++ Acc;
+				{FPos, _, [C|_]=RecName, FName, _, _} 
+				  when C >= $A, C =< $Z->
+					io_lib:format("     {~p, Data} -> ~n"
+								  "			Data1 = apply(?MODULE, decode_~s, [Data]),~n"
+								  "			Rec#~s{ ~s = Data1};~n", [FPos, string:to_lower(RecName), string:to_lower(Name), FName]) ++ Acc;
+				{FPos, _, _, FName, _, _} ->
+					io_lib:format("     {~p, Data} -> Rec#~s{ ~s = Data};~n", [FPos, string:to_lower(Name), FName]) ++ Acc
+			end
+		end, "", Fields),
     io:format(
         FileRef,
         "~s_to_record(DecodedData) -> ~n"
@@ -176,7 +213,6 @@ collect_full_messages([{message, Name, Fields} | Tail], Acc) ->
     ),
     collect_full_messages(Tail ++ SubMessages, [{Name, FieldsOut} | Acc]).
 
-%% @hidden
 scan(String) ->
     scan(String, [], 1).
 

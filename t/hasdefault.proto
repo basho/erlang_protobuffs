@@ -1,14 +1,13 @@
 
-message Persona {
+message Personb {
 	required string name = 1;
 	required string address = 2;
 	required string phone_number = 3;
-	required int32 age = 4;
-	repeated string hobbies = 5;
-	repeated Locationa locations = 6;
+	required int32 age = 4 [default = 25];
+	optional Location location = 5;
 }
 
-message Locationa {
+message Locationb {
     required string region = 1;
     required string country = 2;
 }

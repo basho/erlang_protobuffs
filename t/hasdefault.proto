@@ -4,7 +4,7 @@ message Personb {
 	required string address = 2;
 	required string phone_number = 3;
 	required int32 age = 4 [default = 25];
-	optional Location location = 5;
+	optional Locationb location = 5;
 }
 
 message Locationb {

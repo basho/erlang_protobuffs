@@ -32,13 +32,13 @@ main(_) ->
         location = #locationb{region = Region, country = Country}
     },
 
- 	#person{
+ 	#personb{
         age = 25
     } = hasdefault_pb:decode_personb(BinData),
  
     %% BinData = simple_pb:encode_person(Person),
 
-	ok = file:delete("simple_pb.erl"),
-	ok = file:delete("simple_pb.hrl"),
+	ok = file:delete("hasdefault_pb.erl"),
+	ok = file:delete("hasdefault_pb.hrl"),
 
     etap:end_tests().

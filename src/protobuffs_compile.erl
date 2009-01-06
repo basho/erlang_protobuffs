@@ -108,7 +108,13 @@ write_encode_message(FileRef, [{Name, Fields} |Tail]) ->
 					[repeated, List, Type] ->
 						Encoded = [protobuffs:encode(Pos, Item, Type) || Item <- List],
 						[Encoded | Acc];
-                    _ -> [protobuffs:encode(Pos, Data, Type) | Acc] 
+					[_, Data, Type] ->
+						case atom_to_list(Type) of
+							\"int\" ++ _ when is_list(Data) ->
+								[protobuffs:encode(Pos, list_to_integer(Data), Type) | Acc];
+							_ ->
+								[protobuffs:encode(Pos, Data, Type) | Acc]
+						end
                 end 
             end,[], EncodeData))). ~n~n",
         [string:to_lower(Name), EncodeString]
@@ -151,25 +157,37 @@ write_decode_message(FileRef, [{Name, Fields} | Tail]) ->
 								  "					Rec#~s{ ~s = [DecodedData | List] }~n"
 								  "			end;~n", 
 						[FPos, string:to_lower(RecName), string:to_lower(Name), FName, string:to_lower(Name), FName, string:to_lower(Name), FName]) ++ Acc;
-				{FPos, repeated, _, FName, _, _} ->
+				{FPos, repeated, FType, FName, _, _} ->
+					DecodedData =
+						case FType of
+							"string" -> "binary_to_list(Data)";
+							_ -> "Data"
+						end,
 					io_lib:format("     {~p, Data} -> ~n"
+								  "			DecodedData = ~s,~n"
 								  "			case Rec#~s.~s of~n"
 								  "				undefined -> ~n"
-								  "					Rec#~s{ ~s = [Data]};~n"
+								  "					Rec#~s{ ~s = [DecodedData]};~n"
 								  "				List -> ~n"
-								  "					Rec#~s{ ~s = [Data | List] }~n"
+								  "					Rec#~s{ ~s = [DecodedData | List] }~n"
 								  "			end;~n", 
-						[FPos, string:to_lower(Name), FName, string:to_lower(Name), FName, string:to_lower(Name), FName]) ++ Acc;
+						[FPos, DecodedData, string:to_lower(Name), FName, string:to_lower(Name), FName, string:to_lower(Name), FName]) ++ Acc;
 				{FPos, _, [C|_]=RecName, FName, _, _} 
 				  when C >= $A, C =< $Z->
 					io_lib:format("     {~p, Data} -> ~n"
 								  "			Data1 = apply(?MODULE, decode_~s, [Data]),~n"
 								  "			Rec#~s{ ~s = Data1};~n", [FPos, string:to_lower(RecName), string:to_lower(Name), FName]) ++ Acc;
-				{FPos, _, _, FName, _, Default} ->
+				{FPos, _, FType, FName, _, Default} ->
+					DecodedData =
+						case FType of
+							"string" -> "binary_to_list(Data)";
+							_ -> "Data"
+						end,
 					io_lib:format(
 					"   {~p, Data} -> ~n"
-					"       Rec#~s{ ~s = Data};~n",
-					[FPos, string:to_lower(Name), FName]
+					" 		DecodedData = ~s,~n"
+					"       Rec#~s{ ~s = DecodedData};~n",
+					[FPos, DecodedData, string:to_lower(Name), FName]
 					) ++ Acc
 			end
 		end, "", Fields),

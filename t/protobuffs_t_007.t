@@ -10,15 +10,15 @@ main(_) ->
     etap:is(protobuffs_compile:scan_file("t/repeater.proto"), ok, "repeater.proto compiled"),
     compile:file("repeater_pb.erl", [{outdir,"./ebin"}]),
 
-	Location1 = #locationa{region = <<"Lyon">>, country = <<"France">>},
-	Location2 = #locationa{region = <<"Reykjavik">>, country = <<"Iceland">>},
+	Location1 = #locationa{region = "Lyon", country = "France"},
+	Location2 = #locationa{region = "Reykjavik", country = "Iceland"},
 
     Person = #persona{
-        name = <<"Jake">>,
-        address = <<"San Francisco">>,
-        phone_number = <<"+1 (000) 555-1234">>,
+        name = "Jake",
+        address = "San Francisco",
+        phone_number = "+1 (000) 555-1234",
         age = 25,
-		hobbies = [<<"water colors">>, <<"cooking">>],
+		hobbies = ["water colors", "cooking"],
         locations = [Location1, Location2]
     },
 

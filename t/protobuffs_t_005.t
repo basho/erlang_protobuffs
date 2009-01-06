@@ -11,15 +11,15 @@ main(_) ->
     Data = [{1, <<"Nick">>, string}, {2, <<"Mountain View">>, string}, {3, <<"+1 (000) 555-1234">>, string}, {4, 25, int32}],
     BinData = erlang:iolist_to_binary([protobuffs:encode(Pos, Value, Type) || {Pos, Value, Type} <- Data]),
     #person{
-        name = <<"Nick">>,
-        address = <<"Mountain View">>,
-        phone_number = <<"+1 (000) 555-1234">>,
+        name = "Nick",
+        address = "Mountain View",
+        phone_number = "+1 (000) 555-1234",
         age = 25
     } = simple_pb:decode_person(BinData),
     BinData = simple_pb:encode_person(#person{
-        name = <<"Nick">>,
-        address = <<"Mountain View">>,
-        phone_number = <<"+1 (000) 555-1234">>,
+        name = "Nick",
+        address = "Mountain View",
+        phone_number = "+1 (000) 555-1234",
         age = 25
     }),
     etap:end_tests().

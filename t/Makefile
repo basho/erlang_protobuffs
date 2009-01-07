@@ -3,7 +3,7 @@ include ../support/include.mk
 all: $(EBIN_FILES)
 
 clean:
-	rm -rf $(EBIN_FILES) erl_crash.dump simple_pb.*
+	rm -rf $(EBIN_FILES) erl_crash.dump
 
 test: $(MODULES)
 

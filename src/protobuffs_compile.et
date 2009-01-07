@@ -1,0 +1,129 @@
+<%?
+	Parsed = protobuffs_parser:parse_file(Data),
+	Messages = protobuffs_utils:collect_full_messages(Parsed),
+	Include = filename:basename(Data, ".proto") ++ "_pb.hrl",
+	protobuffs_utils:write_header(Messages, Include)
+%>
+-module(<% filename:basename(Data, ".proto") %>_pb).
+-export([<% protobuffs_utils:function_exports(Messages) %>]).
+-include("<% Include %>").
+
+<% [write_encode(Name, Fields) || {Name, Fields} <- Messages] %>
+
+<% [write_decode(Name, Fields) || {Name, Fields} <- Messages] %>
+
+<%!	====================
+	WRITE_DECODE
+	==================== %>
+<%@ write_encode(Name, Record_Fields) %>
+encode_<% string:to_lower(Name) %>(Rec) ->
+	EncodeData = [<% protobuffs_utils:record_data(Name, Record_Fields) %>],
+	erlang:iolist_to_binary(lists:reverse(
+		lists:foldl(
+			fun({Pos, Rule, Data, Type, Default}, Acc) -> 
+	            case [Rule, Data, Type] of 
+	                [_, undefined, _] ->
+	                    case Default of
+	                        none -> Acc;
+	                        _ ->
+	                            [protobuffs:encode(Pos, Data, Type) | Acc]
+	                    end; 
+	                [_, Data, Type] when is_binary(Data), Type =/= bytes ->
+	                    [protobuffs:encode(Pos, Data, bytes) | Acc];
+	                [_, Data, Type] when is_tuple(Data) ->
+	                    [RecName | _] = erlang:tuple_to_list(Data),
+	                    ToEncode = apply(?MODULE, list_to_atom("encode_" ++ atom_to_list(RecName)), [Data]),
+	                    [protobuffs:encode(Pos, ToEncode, bytes) | Acc];
+					[repeated, [Head|_]=List, Type] when is_tuple(Head) ->
+	                    [RecName | _] = erlang:tuple_to_list(Head),
+						Encoded = 
+							list_to_binary([begin
+								Method = list_to_atom("encode_" ++ atom_to_list(RecName)),
+								ToEncode = apply(?MODULE, Method, [Record]),
+								protobuffs:encode(Pos, ToEncode, bytes)
+							end || Record <- List]),
+						[Encoded | Acc];
+					[repeated, List, Type] ->
+						Encoded = [protobuffs:encode(Pos, Item, Type) || Item <- List],
+						[Encoded | Acc];
+					[_, Data, Type] ->
+						case atom_to_list(Type) of
+							"int" ++ _ when is_list(Data) ->
+								[protobuffs:encode(Pos, list_to_integer(Data), Type) | Acc];
+							_ ->
+								[protobuffs:encode(Pos, Data, Type) | Acc]
+						end
+	            end 
+       		end, [], EncodeData))).
+<%!	====================
+	GET RECORD ENCODE DATA
+	==================== %>		
+<%@ encoded_data(Name, {Position, Rule, FieldType, FieldName, _, Default}) %>
+{<% Position %>, <% atom_to_list(Rule) %>, <% string:to_lower(Name) %>, <% FieldName %>, <% string:to_lower(FieldType) %>, <% atom_to_list(Default) %>}
+<%!	====================
+	WRITE_DECODE
+	==================== %>
+<%@ write_decode(Name, Record_Fields) %>
+decode_<% string:to_lower(Name) %>(Data) when is_binary(Data) ->
+	DecodedData = protobuffs:decode_many(Data),
+	<% string:to_lower(Name) %>_to_record(DecodedData ++ [<% protobuffs_utils:default_values(Record_Fields) %>]).
+<%!	====================
+	DATA TO RECORD
+	==================== %>	
+<% string:to_lower(Name) %>_to_record(DecodedData) ->
+	<% string:to_lower(Name) %>_to_record(DecodedData, #<% string:to_lower(Name) %>{}).
+<% string:to_lower(Name) %>_to_record([], Acc) -> Acc;
+<% string:to_lower(Name) %>_to_record([Head | Tail], Rec) ->
+	NewRec = 
+		case Head of 
+<% [record_case(Name, Field) || Field <- lists:reverse(Record_Fields)] %>						
+			_ -> Rec %% Ruh-roh
+		end,
+	<% string:to_lower(Name) %>_to_record(Tail, NewRec).
+
+<%!	====================
+	DECODE CASE STATEMENTS
+	==================== %>
+<%@ record_case(Name, {FPos, repeated, [C|_]=RecName, FName, _, _}) when C >= $A, C =< $Z %>
+			{<% integer_to_list(FPos) %>, Data} -> 
+				DecodedData = apply(?MODULE, decode_<% string:to_lower(RecName) %>, [Data]), 
+				case Rec#<% string:to_lower(Name) %>.<% FName %> of
+					undefined -> 
+						Rec#<% string:to_lower(Name) %>{ <% FName %> = [DecodedData]};
+					List -> 
+						Rec#<% string:to_lower(Name) %>{ <% FName %> = [DecodedData | List] }
+				end;
+				
+<%@ record_case(Name, {FPos, repeated, FType, FName, _, _}) %>
+<%?
+	DecodedData =
+		case FType of
+			"string" -> "binary_to_list(Data)";
+			_ -> "Data"
+		end
+%>
+			{<% integer_to_list(FPos) %>, Data} -> 
+				DecodedData = <% DecodedData %>,
+				case Rec#<% string:to_lower(Name) %>.<% FName %> of
+					undefined -> 
+						Rec#<% string:to_lower(Name) %>{ <% FName %> = [DecodedData]};
+					List -> 
+						Rec#<% string:to_lower(Name) %>{ <% FName %> = [DecodedData | List] }
+				end; 
+
+<%@ record_case(Name, {FPos, _, [C|_]=RecName, FName, _, _}) when C >= $A, C =< $Z %>
+			{<% integer_to_list(FPos) %>, Data} -> 
+				Data1 = apply(?MODULE, decode_<% string:to_lower(RecName) %>, [Data]),
+				Rec#<% string:to_lower(Name) %>{ <% FName %> = Data1};
+
+<%@ record_case(Name, {FPos, _, FType, FName, _, Default}) %>
+<%?
+	DecodedData =
+		case FType of
+			"string" -> "binary_to_list(Data)";
+			_ -> "Data"
+		end
+%>
+			{<% integer_to_list(FPos) %>, Data} -> 
+				DecodedData = <% DecodedData %>,
+				Rec#<% string:to_lower(Name) %>{ <% FName %> = DecodedData};

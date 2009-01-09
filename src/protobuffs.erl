@@ -58,6 +58,8 @@ encode(FieldID, String, string) when is_binary(String) ->
     encode(FieldID, String, bytes);
 encode(FieldID, Bytes, bytes) when is_binary(Bytes) ->
     [encode_field_tag(FieldID, ?TYPE_STRING), encode_varint(size(Bytes)), Bytes];
+encode(FieldID, String, bytes) when is_list(String) ->
+	encode(FieldID, list_to_binary(String), bytes);
 encode(FieldID, Float, float) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<Float:32/little-float>>];
 encode(FieldID, Float, double) when is_float(Float) ->

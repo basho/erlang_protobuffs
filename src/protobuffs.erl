@@ -1,6 +1,6 @@
 %% @doc A protcol buffers encoding and decoding module.
 -module(protobuffs).
--export([encode/3, decode/2, decode_many/1, generate/1]).
+-export([encode/3, decode/2, decode_many/1]).
 
 -define(TYPE_VARINT, 0).
 -define(TYPE_64BIT, 1).
@@ -9,11 +9,6 @@
 -define(TYPE_END_GROUP, 4).
 -define(TYPE_32BIT, 5).
 
-generate(Input_Path) ->
-	IOList = protobuffs_compile:render(Input_Path),
-	ok = file:write_file(filename:basename(Input_Path, ".proto") ++ "_pb.erl", iolist_to_binary(IOList)),
-	ok.
-	
 %% @spec encode(FieldID, Value, Type) -> Result
 %%       FieldID = integer()
 %%       Value = any()
@@ -56,6 +51,8 @@ encode(FieldID, String, string) when is_list(String) ->
     encode(FieldID, list_to_binary(String), string);
 encode(FieldID, String, string) when is_binary(String) ->
     encode(FieldID, String, bytes);
+encode(FieldID, String, bytes) when is_list(String) ->
+    encode(FieldID, list_to_binary(String), bytes);
 encode(FieldID, Bytes, bytes) when is_binary(Bytes) ->
     [encode_field_tag(FieldID, ?TYPE_STRING), encode_varint(size(Bytes)), Bytes];
 encode(FieldID, Float, float) when is_float(Float) ->

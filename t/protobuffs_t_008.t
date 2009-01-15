@@ -7,7 +7,7 @@
 
 main(_) ->
     etap:plan(2),
-    etap:is(protobuffs:generate("t/hasdefault.proto"), ok, "hasdefault.proto created"),
+    etap:is(protobuffs_compile:scan_file("t/hasdefault.proto"), ok, "hasdefault.proto created"),
 	etap:is(compile:file("hasdefault_pb.erl", [{outdir,"./ebin"}]), {ok, hasdefault_pb}, "hasdefault_pb.erl compiled"),
 
 	Region = <<"California">>,

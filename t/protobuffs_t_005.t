@@ -6,8 +6,8 @@
 
 main(_) ->
     etap:plan(1),
-    etap:is(protobuffs:generate("t/simple.proto"), ok, "simple.proto compiled"),
-    compile:file("simple_pb.erl", [{outdir,"./ebin"}]),
+    etap:is(protobuffs_compile:scan_file("t/simple.proto"), ok, "simple.proto compiled"),
+    compile:file("simple_pb.erl"),
     Data = [{1, <<"Nick">>, string}, {2, <<"Mountain View">>, string}, {3, <<"+1 (000) 555-1234">>, string}, {4, 25, int32}],
     BinData = erlang:iolist_to_binary([protobuffs:encode(Pos, Value, Type) || {Pos, Value, Type} <- Data]),
     #person{

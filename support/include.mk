@@ -36,7 +36,7 @@ $(EBIN_DIR)/%.$(EMULATOR): %.erl
 	$(ERLC) $(ERLC_FLAGS) -o $(EBIN_DIR) $<
 
 $(EBIN_DIR)/%.$(EMULATOR): %.et
-	$(ERL) -noshell -eval "erltl:compile($<, [{outdir, \"../ebin\"}, report_errors, report_warnings, nowarn_unused_vars])." -s init stop
+	$(ERL) -noshell -pa ../../elib/erltl/ebin/ -eval "erltl:compile(atom_to_list('$<'), [{outdir, \"../ebin\"}, report_errors, report_warnings, nowarn_unused_vars])." -s init stop
 
 ./%.$(EMULATOR): %.erl
 	$(ERLC) $(ERLC_FLAGS) -o . $<

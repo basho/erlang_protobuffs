@@ -16,9 +16,9 @@
 %%       Result = list()
 %% @doc Encode an Erlang data structure into a Protocol Buffers value.
 encode(FieldID, false, bool) ->
-    encode(FieldID, 0, bool);
+    encode(FieldID, 0, int32);
 encode(FieldID, true, bool) ->
-    encode(FieldID, 1, bool);
+    encode(FieldID, 1, int32);
 encode(FieldID, Integer, enum) ->
     encode(FieldID, Integer, uint32);
 encode(FieldID, Integer, IntType) when IntType =:= int32,  Integer >= -16#80000000, Integer =< 16#7fffffff ->

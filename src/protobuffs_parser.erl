@@ -1,6 +1,6 @@
 -module(protobuffs_parser).
 
--export([parse_file/1, collect_full_messages/1]).
+-export([parse_file/1]).
 
 parse_file(Filename) ->
     {ok, Data} = file:read_file(Filename),
@@ -29,30 +29,6 @@ parse([{'$end', _} | Tail], Acc) ->
     parse(Tail, Acc);
 parse([Head | Tail], Acc) ->
     parse(Tail, [Head | Acc]).
-
-collect_full_messages(Data) -> collect_full_messages(Data, []).
-
-%% @hidden
-collect_full_messages([], Acc) -> Acc;
-collect_full_messages([{message, Name, Fields} | Tail], Acc) ->
-    FieldsOut = lists:foldl(
-        fun (Input, TmpAcc) ->
-            case Input of
-                {_, _, _, _, _, _} ->  [Input | TmpAcc];
-                _ -> TmpAcc
-            end
-        end,
-        [],
-        Fields
-    ),
-    SubMessages = lists:foldl(
-        fun ({message, C, D}, TmpAcc) -> [{message, C, D} | TmpAcc];
-            (_, TmpAcc) -> TmpAcc
-        end,
-        [],
-        Fields
-    ),
-    collect_full_messages(Tail ++ SubMessages, [{Name, FieldsOut} | Acc]).
 
 scan(String) ->
     scan(String, [], 1).

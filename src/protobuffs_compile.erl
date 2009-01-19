@@ -1,15 +1,99 @@
+%%%%	== SAMPLE PROTO RECORDS ==
+%%%%
+%%%%    message Person {
+%%%%   	required string name = 1;
+%%%%   	required string address = 2;
+%%%%   	required string phone_number = 3 [default = "+1 (000) 000-0000"];
+%%%%   	required int32 age = 4 [default = 25];
+%%%%   	repeated string hobbies = 5;
+%%%%   	repeated Location locations = 6;
+%%%%   	required Title title = 7;
+%%%%    }
+%%%%   
+%%%%    message Location {
+%%%%     required string region = 1;
+%%%%     required string country = 2
+%%%%    }
+%%%%   
+%%%%    message Title {
+%%%%     required string employer;
+%%%%     required string position
+%%%%    }
+%%
+%%		== CODE EQUIVALENT TO FORMS GENERATED FROM SAMPLE PROTO MESSAGES
+%%
+%%		-module(encode).
+%%		-export([encode_person/1]).
+%%		
+%%		-record(person, {name, address, phone_number, age, hobbies, locations, title}).
+%%		-record(location, {region, country}).
+%%		-record(title, {employer, position}).
+%%		
+%%		encode_person(Rec) ->
+%%			iolist_to_binary([
+%%				pack_person(1, required, with_default(Rec#person.name, none), atomize_type("string"), []),
+%%				pack_person(2, required, with_default(Rec#person.address, none), atomize_type("string"), []),
+%%				pack_person(3, required, with_default(Rec#person.phone_number, "+1 (000) 000-0000"), atomize_type("string"), []),
+%%				pack_person(4, required, with_default(Rec#person.age, 25), atomize_type("int32"), []),
+%%				pack_person(5, repeated, with_default(Rec#person.hobbies, none), atomize_type("string"), []),
+%%				pack_person(6, repeated, with_default(Rec#person.locations, none), atomize_type("Location"), []),
+%%				pack_person(7, required, with_default(Rec#person.title, none), atomize_type("Title"), [])
+%%			]).
+%%				
+%%		with_default(undefined, none) -> undefined;
+%%		with_default(undefined, Default) -> Default;
+%%		with_default(Val, _) -> Val.
+%%		
+%%		atomize_type(Type) -> list_to_atom(string:to_lower(Type)).
+%%		
+%%		pack_person(_, optional, undefined, _, _) -> [];
+%%		
+%%		pack_person(_, required, undefined, _, _) ->
+%%			exit(required_field_is_undefined);
+%%			
+%%		pack_person(1, required, Data, string, _) when is_list(Data) ->
+%%			protobuffs:encode(1, Data, string);
+%%		
+%%		pack_person(2, required, Data, string, _) when is_list(Data) ->
+%%			protobuffs:encode(1, Data, string);
+%%				
+%%		pack_person(3, required, Data, string, _) when is_list(Data) ->
+%%			protobuffs:encode(1, Data, string);
+%%			
+%%		pack_person(4, required, Data, int32, _) when is_integer(Data) ->
+%%			protobuffs:encode(2, Data, int32);
+%%		
+%%		pack_person(5, repeated, [], string, Acc) -> lists:reverse(Acc);
+%%		pack_person(5, repeated, [Head|Tail], string, Acc) when is_list(Head) ->
+%%			Acc1 = [protobuffs:encode(5, Head, string) | Acc],
+%%			pack_person(5, repeated, Tail, string, Acc1);
+%%					
+%%		pack_person(6, repeated, [], location, Acc) -> lists:reverse(Acc);
+%%		pack_person(6, repeated, [Head|Tail], location, Acc) when is_record(Head, location) ->
+%%			Acc1 = [protobuffs:encode(6, encode_location(Head), bytes) | Acc],
+%%			pack_person(6, repeated, Tail, location, Acc1);
+%%			
+%%		pack_person(7, required, Data, title, _) when is_record(Data, title) ->
+%%			protobuffs:encode(7, encode_title(Data), bytes).
+%%			
+%%		encode_location(_Data) ->
+%%			[]. % ...
+%%			
+%%		encode_title(_Data) ->
+%%			[]. % ...
+%%	
 -module(protobuffs_compile).
+-author('jacob.vorreuter@gmail.com').
 -export([scan_file/1]).
 
--import(forms_helper, [init_state/0,new_line/0,line/0,append/1,fetch/0]).
+-import(forms_helper, [init_state/0,new_line/0,line/0,append/1,fetch/0,a/1]).
 
-%% Field_Tuple = {Pos::integer(), Tag::atom(), Type::string(), Name::string(), number, Default::any()|none}
-	
+%% @spec scan_file(File_Path) -> ok | {'EXIT', atom()}	
+%%		File_Path = string()
 scan_file(File_Path) ->
 	Basename = filename:basename(File_Path, ".proto") ++ "_pb",
     Parsed = protobuffs_parser:parse_file(File_Path),
-	Messages = protobuffs_parser:collect_full_messages(Parsed),
-	io:format("messages: ~p~n", [Messages]),
+	Messages = collect_full_messages(Parsed),
 
 	ok = init_state(),
 		
@@ -21,17 +105,18 @@ scan_file(File_Path) ->
 	
 	Forms = fetch(),
 	
-	io:format("forms: ~p~n", [Forms]),
+	%error_logger:info_msg("forms: ~p~n", [Forms]),
 	
 	case compile:forms(Forms) of
 		{ok, _, Bytes} ->
 			ok = file:write_file(Basename ++ ".beam", Bytes);
 		Error ->
-			io:format("compilation failed: ~p~n", [Error])
+			error_logger:error_msg("compilation failed: ~p~n", [Error])
 	end,
 	
 	ok.
 
+%% @hidden
 write_headers(Basename, Messages) ->
 	append({attribute,1,file,{"./" ++ Basename ++ ".hrl",1}}),
 	
@@ -51,12 +136,14 @@ write_headers(Basename, Messages) ->
 	
 	ok.	
 	
+%% @hidden
 write_module_declarations(Basename, Messages) ->
 	append({attribute,line(),file,{Basename ++ ".erl",line()}}),
 	append({attribute,line(),module,list_to_atom(Basename)}),
 	append({attribute,new_line(),export, exports(Messages)}),
 	ok.
-	
+
+%% @hidden	
 exports(Messages) ->
 	lists:foldl(
 		fun({RecName, _}, Acc) ->
@@ -66,212 +153,206 @@ exports(Messages) ->
 			[{EAtom,1}, {DAtom,1}|Acc]
 		end,
 	[], Messages).		
-			
+		
+%% @hidden	
 %% @spec write_message_functions([{RecName, Fields}|Last]) -> ok
 %%		RecName = string()
 %%		Fields = [Field_Tuple|_]
+%% 		Field_Tuple = {Pos::integer(), Tag::atom(), Type::string(), Name::string(), number, Default::any()|none}
 write_message_functions(Basename, [{RecName, Fields}|Last]) ->
-	io:format("fields: ~p~n", [Fields]),
+	%error_logger:info_msg("fields: ~p~n", [Fields]),
 	write_encode(Basename, RecName, Fields),
 	write_decode(Basename, RecName, Fields),
 	write_message_functions(Basename, Last);
 write_message_functions(_, []) -> ok.
-	
+
+%% @hidden
+%% @spec write_encode(Basename, RecName, Fields) -> ok
+%%		Basename = string()
+%%		RecName = string()
+%%		Fields = [Field_Tuple|_]
+%% 		Field_Tuple = {Pos::integer(), Tag::atom(), Type::string(), Name::string(), number, Default::any()|none}	
 write_encode(Basename, RecName, Fields) ->
-	ModNameAtom = list_to_atom(string:to_lower(Basename)),
-	FunctionName = list_to_atom("encode_" ++ string:to_lower(RecName)),
-	append({function,new_line(),FunctionName,1,
+	LRecName = string:to_lower(RecName),
+	append({function,new_line(),list_to_atom("encode_" ++ LRecName),1,
               [{clause,line(),
                        [{var,line(),'Rec'}],
-                       [],
-                       [{match,new_line(),
-							 {var,line(),'Data_Tuples'},
-							  	lists:foldl(
-							  		fun({Pos,Tag,Type,Name,_,Default}, Acc) ->
-							  			T = {cons,line(),
-										 	 {tuple,line(),
-										      [{integer,line(),Pos},
-										       {atom,line(),Tag},
-										       {'case',new_line(),
-										         {cons,line(),
-													{record_field,line(),{var,line(),'Rec'},list_to_atom(string:to_lower(RecName)),{atom,line(),list_to_atom(Name)}},
-													{cons,line(),value_to_tuple(Default),{nil,line()}}},
-												       [{clause,new_line(),
-												         [{cons,line(),{atom,line(),undefined},{cons,line(),{atom,line(),none},{nil,line()}}}],
-												         [],
-												         [{atom,line(),undefined}]},
-												        {clause,new_line(),
-												         [{cons,line(),{atom,line(),undefined},{cons,line(),{var,line(),'_'},{nil,line()}}}],
-												         [],
-												         [value_to_tuple(Default)]},
-												        {clause,new_line(),
-												         [{cons,line(),{var,line(),'_'},{cons,line(),{var,line(),'_'},{nil,line()}}}],
-												         [],
-												         [{record_field,line(),{var,line(),'Rec'},list_to_atom(string:to_lower(RecName)),{atom,line(),list_to_atom(Name)}}]}]
-												},
-										       {atom,line(),list_to_atom(string:to_lower(Type))}
-											  ]}},
-							  			erlang:append_element(T, Acc)
-							  		end,
-							  	{nil,line()}, lists:reverse(Fields))},
-						 {call,new_line(),{atom,line(),iolist_to_binary},[
-							{call,new_line(),
-						      {remote,line(),{atom,line(),lists},{atom,line(),foldl}},
-						      [{'fun',new_line(),
-						        {clauses,
-						         [{clause,line(),
-						           [{tuple,line(),
-						             [{var,line(),'Pos'},{var,line(),'_Tag'},{var,line(),'Data'},{var,line(),'Type'}]},
-						            {var,line(),'Acc'}],
-						           [[{call,line(),{atom,line(),is_binary},[{var,line(),'Data'}]},
-						             {op,line(),'=/=',{var,line(),'Type'},{atom,line(),bytes}}]],
-						           [{cons,new_line(),
-						             {call,line(),
-						              {remote,line(),{atom,line(),protobuffs},{atom,line(),encode}},
-						              [{var,line(),'Pos'},{var,line(),'Data'},{atom,line(),bytes}]},
-						             {var,line(),'Acc'}}]},
-						          {clause,new_line(),
-						           [{tuple,line(),
-						             [{var,line(),'Pos'},
-						              {var,line(),'_Tag'},
-						              {var,line(),'Data'},
-						              {var,line(),'_Type'}]},
-						            {var,line(),'Acc'}],
-						           [[{call,line(),{atom,line(),is_tuple},[{var,line(),'Data'}]}]],
-						           [{match,new_line(),
-						             {var,line(),'RecName'},
-						             {call,line(),
-						              {remote,line(),{atom,line(),erlang},{atom,line(),element}},
-						              [{integer,line(),1},{var,line(),'Data'}]}},
-						            {match,new_line(),
-						             {var,line(),'Method'},
-						             {call,line(),
-						              {atom,line(),list_to_atom},
-						              [{op,line(),'++',
-						                {string,line(),"encode_"},
-						                {call,line(),{atom,line(),atom_to_list},[{var,line(),'RecName'}]}}]}},
-						            {match,new_line(),
-						             {var,line(),'EncodedRec'},
-						             {call,line(),
-						              {atom,line(),apply},
-						              [{atom,line(),ModNameAtom},
-						               {var,line(),'Method'},
-						               {cons,line(),{var,line(),'Data'},{nil,line()}}]}},
-						            {cons,new_line(),
-						             {call,line(),
-						              {remote,line(),{atom,line(),protobuffs},{atom,line(),encode}},
-						              [{var,line(),'Pos'},{var,line(),'EncodedRec'},{atom,line(),bytes}]},
-						             {var,line(),'Acc'}}]},
-						          {clause,new_line(),
-						           [{tuple,line(),
-						             [{var,line(),'Pos'},
-						              {atom,line(),repeated},
-						              {match,line(),
-						               {cons,line(),{var,line(),'Head'},{var,line(),'_'}},
-						               {var,line(),'Data'}},
-						              {var,line(),'_Type'}]},
-						            {var,line(),'Acc'}],
-						           [[{call,line(),{atom,line(),is_tuple},[{var,line(),'Head'}]}]],
-						           [{match,new_line(),
-						             {var,line(),'RecName'},
-						             {call,line(),
-						              {remote,line(),{atom,line(),erlang},{atom,line(),element}},
-						              [{integer,line(),1},{var,line(),'Head'}]}},
-						            {match,new_line(),
-						             {var,line(),'EncodedRecs'},
-						             {call,new_line(),
-						              {atom,line(),list_to_binary},
-						              [{lc,line(),
-						                {block,line(),
-						                 [{match,new_line(),
-						                   {var,line(),'Method'},
-						                   {call,line(),
-						                    {atom,line(),list_to_atom},
-						                    [{op,line(),'++',
-						                      {string,line(),"encode_"},
-						                      {call,line(),
-						                       {atom,line(),atom_to_list},
-						                       [{var,line(),'RecName'}]}}]}},
-						                  {match,new_line(),
-						                   {var,line(),'EncodedRec'},
-						                   {call,line(),
-						                    {atom,line(),apply},
-						                    [{atom,line(),ModNameAtom},
-						                     {var,line(),'Method'},
-						                     {cons,line(),{var,line(),'Record'},{nil,line()}}]}},
-						                  {call,new_line(),
-						                   {remote,line(),{atom,line(),protobuffs},{atom,line(),encode}},
-						                   [{var,line(),'Pos'},{var,line(),'EncodedRec'},{atom,line(),bytes}]}]},
-						                [{generate,new_line(),{var,line(),'Record'},{var,line(),'Data'}}]}]}},
-						            {cons,new_line(),{var,line(),'EncodedRecs'},{var,line(),'Acc'}}]},
-						          {clause,new_line(),
-						           [{tuple,line(),
-						             [{var,line(),'Pos'},
-						              {atom,line(),repeated},
-						              {var,line(),'Data'},
-						              {var,line(),'Type'}]},
-						            {var,line(),'Acc'}],
-						           [],
-						           [{match,new_line(),
-						             {var,line(),'Encoded'},
-						             {lc,line(),
-						              {call,line(),
-						               {remote,line(),{atom,line(),protobuffs},{atom,line(),encode}},
-						               [{var,line(),'Pos'},{var,line(),'Item'},{var,line(),'Type'}]},
-						              [{generate,line(),{var,line(),'Item'},{var,line(),'Data'}}]}},
-						            {cons,new_line(),{var,line(),'Encoded'},{var,line(),'Acc'}}]},
-						          {clause,new_line(),
-						           [{tuple,line(),
-						             [{var,line(),'Pos'},{var,line(),'_Tag'},{var,line(),'Data'},{var,line(),'Type'}]},
-						            {var,line(),'Acc'}],
-						           [],
-						           [{'case',new_line(),
-						             {call,line(),{atom,line(),atom_to_list},[{var,line(),'Type'}]},
-						             [{clause,new_line(),
-						               [{op,line(),'++',{string,line(),"int"},{var,line(),'_'}}],
-						               [[{call,line(),{atom,line(),is_list},[{var,line(),'Data'}]}]],
-						               [{cons,new_line(),
-						                 {call,line(),
-						                  {remote,line(),{atom,line(),protobuffs},{atom,line(),encode}},
-						                  [{var,line(),'Pos'},
-						                   {call,line(),{atom,line(),list_to_integer},[{var,line(),'Data'}]},
-						                   {var,line(),'Type'}]},
-						                 {var,line(),'Acc'}}]},
-						              {clause,new_line(),
-						               [{var,line(),'_'}],
-						               [],
-						               [{cons,new_line(),
-						                 {call,line(),
-						                  {remote,line(),{atom,line(),protobuffs},{atom,line(),encode}},
-						                  [{var,line(),'Pos'},{var,line(),'Data'},{var,line(),'Type'}]},
-						                 {var,line(),'Acc'}}]}]}]}]}},
-						       {nil,new_line()},
-						       {var,line(),'Data_Tuples'}]}]}]
-				}]
-	}).
+					   [],
+                       [{call,new_line(),
+					     {atom,line(),iolist_to_binary},
+					     [
+							lists:foldl(
+								fun({Pos,Tag,Type,Name,_,Default}, Acc) ->
+									T = {call,new_line(),
+									        {atom,line(),list_to_atom("pack_" ++ LRecName)},
+									        [{integer,line(),Pos},
+											 {atom,line(),Tag},
+									         {call,line(),
+									          {atom,line(),list_to_atom("with_default_" ++ LRecName)},[
+												{record_field,line(),{var,line(),'Rec'},list_to_atom(LRecName),{atom,line(),list_to_atom(Name)}}, 
+												a(Default)]},
+									         {call,line(),{atom,line(),list_to_atom("atomize_type" ++ LRecName)},[{string,line(),Type}]},
+									         {nil,line()}]},
+									{cons,line(),T,Acc}
+								end, {nil,line()}, Fields)
+						 ]}]}]}),
+						
+	append({function,new_line(),list_to_atom("with_default_" ++ LRecName),2,
+			 [{clause,line(),
+				[{atom,line(),undefined},{atom,line(),none}],
+				[],
+				[{atom,line(),undefined}]},
+			  {clause,new_line(),
+			   	[{atom,line(),undefined},{var,line(),'Default'}],
+			   	[],
+			   	[{var,line(),'Default'}]},
+			  {clause,new_line(),
+				[{var,line(),'Val'},{var,line(),'_'}],
+				[],
+				[{var,line(),'Val'}]}]}),
+						
+	append({function,new_line(),list_to_atom("atomize_type" ++ LRecName),1,
+			 [{clause,line(),
+			   [{var,line(),'Type'}],
+			   [],
+			   [{call,line(),
+			     {atom,line(),list_to_atom},
+			     [{call,line(),
+			       {remote,line(),{atom,line(),string},{atom,line(),to_lower}},
+			       [{var,line(),'Type'}]}]}]}]}),
+			
+	append({function,new_line(),list_to_atom("pack_" ++ LRecName),5,
+			lists:reverse(lists:foldl(
+				fun({Pos,Tag,Type,_,_,_}, Acc) ->
+					case [Tag, Type] of
+						[repeated, [C|_]] when C >= $A, C =< $Z ->
+							LRecFieldName = string:to_lower(Type),							
+
+							[{clause,new_line(),
+							   [{integer,line(),Pos},
+								{atom,line(),repeated},
+							    {cons,line(),{var,line(),'Head'},{var,line(),'Tail'}},
+							    {atom,line(),list_to_atom(LRecFieldName)},
+							    {var,line(),'Acc'}],
+							   [[{call,line(),{atom,line(),is_record},[{var,line(),'Head'},{atom,line(),list_to_atom(LRecFieldName)}]}]],
+							   [{match,new_line(),
+							      {var,line(),'Acc1'},
+							      {cons,line(),
+							       {call,line(),
+							        {remote,line(),{atom,line(),protobuffs},{atom,line(),encode}},
+							        [{integer,line(),Pos},
+							         {call,line(),
+							          {atom,line(),list_to_atom("encode_" ++ LRecFieldName)},
+							          [{var,line(),'Head'}]},
+							         {atom,line(),bytes}]},
+							       {var,line(),'Acc'}}},
+							     {call,new_line(),
+							      {atom,line(),list_to_atom("pack_" ++ LRecName)},
+							      [{integer,line(),Pos},{atom,line(),repeated},{var,line(),'Tail'},{atom,line(),list_to_atom(LRecFieldName)},{var,line(),'Acc1'}]}]},
+							
+							{clause,new_line(),
+							   [{integer,line(),Pos},{atom,line(),repeated},{nil,line()},{atom,line(),list_to_atom(LRecFieldName)},{var,line(),'Acc'}],
+							   [],
+							   [{call,line(),{remote,line(),{atom,line(),lists},{atom,line(),reverse}},[{var,line(),'Acc'}]}]} | Acc];
+
+						[repeated, _] ->
+
+							[{clause,new_line(),
+							   [{integer,line(),Pos},
+								{atom,line(),repeated},
+							    {cons,line(),{var,line(),'Head'},{var,line(),'Tail'}},
+							    {atom,line(),list_to_atom(Type)},
+							    {var,line(),'Acc'}],
+							   [case Type of
+										"string" ->
+											[{call,line(),{atom,line(),is_list},[{var,line(),'Head'}]}];
+										"int" ++ _ ->
+											[{call,line(),{atom,line(),is_integer},[{var,line(),'Head'}]}];
+										"bytes" ->
+											[{call,line(),{atom,line(),is_binary},[{var,line(),'Head'}]}];
+										_ -> []
+								end],
+							   [{match,new_line(),
+							     {var,line(),'Acc1'},
+							     {cons,line(),
+							      {call,line(),
+							       {remote,line(),{atom,line(),protobuffs},{atom,line(),encode}},
+							       [{integer,line(),Pos},{var,line(),'Head'},{atom,line(),list_to_atom(Type)}]},
+							      {var,line(),'Acc'}}},
+							    {call,new_line(),
+							     {atom,line(),list_to_atom("pack_" ++ LRecName)},
+							     [{integer,line(),Pos},{atom,line(),repeated},{var,line(),'Tail'},{atom,line(),list_to_atom(Type)},{var,line(),'Acc1'}]}]},
+
+							{clause,new_line(),
+							   [{integer,line(),Pos},{atom,line(),repeated},{nil,line()},{atom,line(),list_to_atom(Type)},{var,line(),'Acc'}],
+							   [],
+							   [{call,line(),{remote,line(),{atom,line(),lists},{atom,line(),reverse}},[{var,line(),'Acc'}]}]} | Acc];
+							
+						[_, [C|_]] when C >= $A, C =< $Z -> 
+							LRecFieldName = string:to_lower(Type),
+							[{clause,new_line(),
+							    [{integer,line(),Pos},{atom,line(),Tag},{var,line(),'Data'},{atom,line(),list_to_atom(LRecFieldName)},{var,line(),'_'}],
+							    [[{call,line(),{atom,line(),is_record},[{var,line(),'Data'},{atom,line(),list_to_atom(LRecFieldName)}]}]],
+							    [{call,new_line(),
+							      {remote,line(),{atom,line(),protobuffs},{atom,line(),encode}},
+							      [{integer,line(),Pos},
+							       {call,line(),
+							        {remote,line(),{atom,line(),list_to_atom(string:to_lower(Basename))},{atom,line(),list_to_atom("encode_" ++ LRecFieldName)}},
+							        [{var,line(),'Data'}]},
+							       {atom,line(),bytes}]}]} | Acc];
+
+						[_, _] ->
+							[{clause,new_line(),
+								[{integer,line(),Pos},{atom,line(),Tag},{var,line(),'Data'},{atom,line(),list_to_atom(Type)},{var,line(),'_'}],
+								   [case Type of
+										"string" ->
+											[{call,line(),{atom,line(),is_list},[{var,line(),'Data'}]}];
+										"int" ++ _ ->
+											[{call,line(),{atom,line(),is_integer},[{var,line(),'Data'}]}];
+										"bytes" ->
+											[{call,line(),{atom,line(),is_binary},[{var,line(),'Data'}]}];
+										_ -> []
+									end],
+								   [{call,new_line(),
+								     {remote,line(),{atom,line(),protobuffs},{atom,line(),encode}},
+								     [{integer,line(),Pos},{var,line(),'Data'},{atom,line(),list_to_atom(Type)}]}]} | Acc]
+								
+					end
+				end, 
+				[{clause,new_line(),
+				   [{var,line(),'_'},{atom,line(),required},{atom,line(),undefined},{var,line(),'_'},{var,line(),'_'}],
+				   [],
+				   [{call,line(),{atom,line(),exit},[{atom,line(),required_field_is_undefined}]}]},
+				 {clause,new_line(),
+				   [{var,line(),'_'},{atom,line(),optional},{atom,line(),undefined},{var,line(),'_'},{var,line(),'_'}],
+				   [],
+				   [{nil,line()}]}], 
+					
+				Fields))}),
 	
-value_to_tuple(Value) when is_atom(Value) -> {atom,line(),Value};
-value_to_tuple(Value) when is_integer(Value) -> {integer,line(),Value};
-value_to_tuple(Value) when is_binary(Value) -> {bytes,line(),Value};
-value_to_tuple(Value) when is_list(Value) -> {string,line(),Value}.
+	ok.
 		
+%% @hidden	
+%% @spec write_decode(Basename, RecName, Fields) -> ok
+%%		Basename = string()
+%%		RecName = string()
+%%		Fields = [Field_Tuple|_]
+%% 		Field_Tuple = {Pos::integer(), Tag::atom(), Type::string(), Name::string(), number, Default::any()|none}	
 write_decode(Basename, RecName, Fields) ->
 	LRecName = string:to_lower(RecName),
-	Decode_Function_Atom = list_to_atom("decode_" ++ LRecName),
-	To_Record_Function_Atom = list_to_atom(LRecName ++ "_to_record"),
 
-	append({function,new_line(),Decode_Function_Atom,1,
-     [{clause,line(),
-          [{var,line(),'Bytes'}],
-          [[{call,line(),{atom,line(),is_binary},[{var,line(),'Bytes'}]}]],
-          [{match,new_line(),
-               {var,line(),'Data_Tuples'},
-               {call,line(),
-                   {remote,line(),{atom,line(),protobuffs},{atom,line(),decode_many}},
-                   [{var,line(),'Bytes'}]}},
-           {call,new_line(),{atom,line(),To_Record_Function_Atom},[{var,line(),'Data_Tuples'}]}]}]}),	
+	append({function,new_line(),list_to_atom("decode_" ++ LRecName),1,
+		     [{clause,line(),
+		          [{var,line(),'Bytes'}],
+		          [[{call,line(),{atom,line(),is_binary},[{var,line(),'Bytes'}]}]],
+		          [{match,new_line(),
+		               {var,line(),'Data_Tuples'},
+		               {call,line(),
+		                   {remote,line(),{atom,line(),protobuffs},{atom,line(),decode_many}},
+		                   [{var,line(),'Bytes'}]}},
+		           {call,new_line(),{atom,line(),list_to_atom(LRecName ++ "_to_record")},[{var,line(),'Data_Tuples'}]}]}]}),	
 
-	append({function,new_line(),To_Record_Function_Atom,1,
+	append({function,new_line(),list_to_atom(LRecName ++ "_to_record"),1,
 	     [{clause,line(),
 	          [{var,line(),'Data_Tuples'}],
 	          [],
@@ -279,8 +360,8 @@ write_decode(Basename, RecName, Fields) ->
 	               [begin
 					 Func_Get_Value =
 						case Tag of
-							repeated -> get_values;
-							_ -> get_value
+							repeated -> list_to_atom("get_values_" ++ LRecName);
+							_ -> list_to_atom("get_value_" ++ LRecName)
 						end,
 					 Default_Type =
 						case Default of
@@ -291,7 +372,7 @@ write_decode(Basename, RecName, Fields) ->
 					 {record_field,new_line(),
 	                    {atom,line(),list_to_atom(Name)},
 	                    {call,line(),
-	                        {atom,line(),unpack},
+	                        {atom,line(),list_to_atom("unpack_" ++ LRecName)},
 	                        [{call,line(),
 	                             {atom,line(),Func_Get_Value},
 	                             [{var,line(),'Data_Tuples'},
@@ -301,7 +382,7 @@ write_decode(Basename, RecName, Fields) ->
 	                         {string,line(),Type}]}}
 					end || {Pos,Tag,Type,Name,_,Default} <- Fields]}]}]}),
 					
-	append({function,new_line(),get_value,3,
+	append({function,new_line(),list_to_atom("get_value_" ++ LRecName),3,
 	     [{clause,line(),
 	          [{var,line(),'Data_Tuples'},{var,line(),'Pos'},{var,line(),'Default'}],
 	          [],
@@ -312,7 +393,7 @@ write_decode(Basename, RecName, Fields) ->
 	               [{clause,new_line(),[{atom,line(),undefined}],[],[{var,line(),'Default'}]},
 	                {clause,new_line(),[{var,line(),'Value'}],[],[{var,line(),'Value'}]}]}]}]}),
 
-	append({function,new_line(),get_values,3,
+	append({function,new_line(),list_to_atom("get_values_" ++ LRecName),3,
 	     [{clause,line(),
 	          [{var,line(),'Data_Tuples'},{var,line(),'Pos'},{var,line(),'Default'}],
 	          [],
@@ -323,7 +404,7 @@ write_decode(Basename, RecName, Fields) ->
 	               [{clause,new_line(),[{nil,line()}],[],[{var,line(),'Default'}]},
 	                {clause,new_line(),[{var,line(),'Values'}],[],[{var,line(),'Values'}]}]}]}]}),
 	
-	append({function,new_line(),unpack,3,
+	append({function,new_line(),list_to_atom("unpack_" ++ LRecName),3,
 		 [begin
 			{clause,line(),
 		          [{var,line(),'Data'},{integer,line(),Pos},{string,line(),Type}],
@@ -331,20 +412,48 @@ write_decode(Basename, RecName, Fields) ->
 				  [case [Tag, Type] of
 					
 					[repeated, [C|_]] when C >= $A, C =< $Z -> %% repeated record
-						{lc,new_line(),
-						    {call,line(),
-						        {atom,line(),apply},
-						        [{atom,line(),list_to_atom(string:to_lower(Basename))},
-						         {atom,line(),list_to_atom("decode_" ++ string:to_lower(Type))},
-						         {cons,line(),{var,line(),'Item'},{nil,line()}}]},
-						    [{generate,line(),{var,line(),'Item'},{var,line(),'Data'}}]};
-						
+						{call,new_line(),
+						      {remote,line(),{atom,line(),lists},{atom,line(),foldl}},
+						      [{'fun',line(),
+						        {clauses,
+						         [{clause,line(),
+						           [{var,line(),'Item'},
+						            {var,line(),'Acc'}],
+						           [],
+						           [{cons,new_line(),
+											{call,line(),
+												{atom,line(),list_to_atom("decode_" ++ string:to_lower(Type))},
+												[{var,line(),'Item'}]},
+											{var,43,'Acc'}}]
+									}]}},
+								{nil,line()},
+						        {var,line(),'Data'}]
+							};
+
 					[repeated, _] -> %% repeated scalar
-						{lc,new_line(),
-						    {call,line(),
-						        {remote,line(),{atom,line(),protobuffs},{atom,line(),decode}},
-						        [{var,line(),'Item'},{atom,line(),list_to_atom(Type)}]},
-						    [{generate,line(),{var,line(),'Item'},{var,line(),'Data'}}]};
+						{call,new_line(),
+						      {remote,line(),{atom,line(),lists},{atom,line(),foldl}},
+						      [{'fun',line(),
+						        {clauses,
+						         [{clause,line(),
+						           [{var,line(),'Item'},
+						            {var,line(),'Acc'}],
+						           [],
+						           [case Type of
+										"string" ->
+											{cons,new_line(),
+												{call,new_line(),
+												     {atom,line(),binary_to_list},
+												     [{var,line(),'Item'}]},
+												{var,43,'Acc'}};
+										_ ->
+											{cons,new_line(),
+												{var,line(),'Item'},
+												{var,line(),'Acc'}}
+									end]
+								  }]}},
+						       {nil,line()},
+						       {var,line(),'Data'}]};
 						
 					[_, [C|_]] when C >= $A, C =< $Z -> %% non-repeating record
 						{call,new_line(),
@@ -353,11 +462,39 @@ write_decode(Basename, RecName, Fields) ->
 						      {atom,line(),list_to_atom("decode_" ++ string:to_lower(Type))},
 						      {cons,line(),{var,line(),'Data'},{nil,line()}}]};
 						
-					[_, "string"] -> %% non-repeating scalar
+					[_, "string"] -> %% non-repeating string
 						{call,new_line(),
 						     {atom,line(),binary_to_list},
-						     [{var,line(),'Data'}]}
+						     [{var,line(),'Data'}]};
+					[_, _] ->
+						{var,new_line(),'Data'}
 						
 				  end] }
-		 end || {Pos,Tag,Type,_,_,_} <- Fields]}).
+		 end || {Pos,Tag,Type,_,_,_} <- Fields]}),
+		
+	ok.
 
+%% @hidden
+collect_full_messages(Data) -> collect_full_messages(Data, []).
+
+%% @hidden
+collect_full_messages([], Acc) -> Acc;
+collect_full_messages([{message, Name, Fields} | Tail], Acc) ->
+    FieldsOut = lists:foldl(
+        fun (Input, TmpAcc) ->
+            case Input of
+                {_, _, _, _, _, _} ->  [Input | TmpAcc];
+                _ -> TmpAcc
+            end
+        end,
+        [],
+        Fields
+    ),
+    SubMessages = lists:foldl(
+        fun ({message, C, D}, TmpAcc) -> [{message, C, D} | TmpAcc];
+            (_, TmpAcc) -> TmpAcc
+        end,
+        [],
+        Fields
+    ),
+    collect_full_messages(Tail ++ SubMessages, [{Name, FieldsOut} | Acc]).

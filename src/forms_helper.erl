@@ -6,13 +6,20 @@
 	line/0,
 	append/1,
 	fetch/0,
-	io_format/2
+	io_format/2,
+	a/1
 ]).
 
 io_format(Format, Arg_Var_Name) ->
 	{call,new_line(),
 		{remote,line(),{atom,line(),io},{atom,line(),format}},
 		[{string,line(),Format}, {cons,line(),{var,line(),Arg_Var_Name},{nil,line()}}]}.
+		
+a(A) ->
+	case erl_parse:abstract(A) of
+		{B,_,C} -> {B,line(),C};
+		Other -> Other
+	end.
 
 init_state() ->
 	Pid1 = spawn_link(fun() -> line_num(1) end),

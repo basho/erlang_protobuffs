@@ -105,7 +105,7 @@ decode_value(<<Value:32/little-unsigned-integer, Rest/binary>>, ?TYPE_32BIT, Typ
     {Value, Rest};
 decode_value(<<Value:32/little-signed-integer, Rest/binary>>, ?TYPE_32BIT, Type) when Type =:= sfixed32; Type =:= sfixed64 ->
     {Value, Rest};
-decode_value(<<Value:32/little-float, Rest/binary>>, ?TYPE_32BIT, Type) when Type =:= double; Type =:= float ->
+decode_value(<<Value:32/little-float, Rest/binary>>, ?TYPE_32BIT, Type) when Type =:= double; Type =:= float; Type =:= bytes ->
     {Value, Rest}.
 
 %% @hidden

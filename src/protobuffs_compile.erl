@@ -87,6 +87,8 @@
 -export([scan_file/1]).
 
 -import(forms_helper, [init_state/0,new_line/0,line/0,append/1,fetch/0,a/1]).
+-define(INFO_MSG, fun(Format, Args) -> error_logger:info_msg("[~p:~b] " ++ Format, [?MODULE,?LINE|Args]) end).
+-define(ERROR_MSG, fun(Format, Args) -> error_logger:error_msg("[~p:~b] " ++ Format, [?MODULE,?LINE|Args]) end).
 
 %% @spec scan_file(File_Path) -> ok | {'EXIT', atom()}	
 %%		File_Path = string()
@@ -94,25 +96,25 @@ scan_file(File_Path) ->
 	Basename = filename:basename(File_Path, ".proto") ++ "_pb",
     Parsed = protobuffs_parser:parse_file(File_Path),
 	Messages = collect_full_messages(Parsed),
+	%?INFO_MSG("messages: ~p~n", [Messages]),
 
 	ok = init_state(),
-		
+	%?INFO_MSG("init_state ok~n",[]),	
+	
 	ok = write_module_declarations(Basename, Messages),
+	%?INFO_MSG("write mod declarations ok~n",[]),
 	
 	ok = write_headers(Basename, Messages),
+	%?INFO_MSG("write headers ok~n",[]),
 	
 	ok = write_message_functions(Basename, Messages),
+	%?INFO_MSG("write msg functions ok~n",[]),
 	
 	Forms = fetch(),
+	%?INFO_MSG("forms: ~p~n", [Forms]),
 	
-	%error_logger:info_msg("forms: ~p~n", [Forms]),
-	
-	case compile:forms(Forms) of
-		{ok, _, Bytes} ->
-			ok = file:write_file(Basename ++ ".beam", Bytes);
-		Error ->
-			error_logger:error_msg("compilation failed: ~p~n", [Error])
-	end,
+	{ok, _, Bytes} = compile:forms(Forms, [nowarn_unused_function]),
+	ok = file:write_file(Basename ++ ".beam", Bytes),
 	
 	ok.
 
@@ -191,7 +193,7 @@ write_encode(Basename, RecName, Fields) ->
 									          {atom,line(),list_to_atom("with_default_" ++ LRecName)},[
 												{record_field,line(),{var,line(),'Rec'},list_to_atom(LRecName),{atom,line(),list_to_atom(Name)}}, 
 												a(Default)]},
-									         {call,line(),{atom,line(),list_to_atom("atomize_type" ++ LRecName)},[{string,line(),Type}]},
+									         {call,line(),{atom,line(),list_to_atom("atomize_type_" ++ LRecName)},[{string,line(),Type}]},
 									         {nil,line()}]},
 									{cons,line(),T,Acc}
 								end, {nil,line()}, Fields)
@@ -211,7 +213,7 @@ write_encode(Basename, RecName, Fields) ->
 				[],
 				[{var,line(),'Val'}]}]}),
 						
-	append({function,new_line(),list_to_atom("atomize_type" ++ LRecName),1,
+	append({function,new_line(),list_to_atom("atomize_type_" ++ LRecName),1,
 			 [{clause,line(),
 			   [{var,line(),'Type'}],
 			   [],
@@ -263,15 +265,15 @@ write_encode(Basename, RecName, Fields) ->
 							    {cons,line(),{var,line(),'Head'},{var,line(),'Tail'}},
 							    {atom,line(),list_to_atom(Type)},
 							    {var,line(),'Acc'}],
-							   [case Type of
+							     case Type of
 										"string" ->
-											[{call,line(),{atom,line(),is_list},[{var,line(),'Head'}]}];
+											[[{call,line(),{atom,line(),is_list},[{var,line(),'Head'}]}]];
 										"int" ++ _ ->
-											[{call,line(),{atom,line(),is_integer},[{var,line(),'Head'}]}];
+											[[{call,line(),{atom,line(),is_integer},[{var,line(),'Head'}]}]];
 										"bytes" ->
-											[{call,line(),{atom,line(),is_binary},[{var,line(),'Head'}]}];
+											[[{call,line(),{atom,line(),is_binary},[{var,line(),'Head'}]}]];
 										_ -> []
-								end],
+								end,
 							   [{match,new_line(),
 							     {var,line(),'Acc1'},
 							     {cons,line(),
@@ -304,15 +306,15 @@ write_encode(Basename, RecName, Fields) ->
 						[_, _] ->
 							[{clause,new_line(),
 								[{integer,line(),Pos},{atom,line(),Tag},{var,line(),'Data'},{atom,line(),list_to_atom(Type)},{var,line(),'_'}],
-								   [case Type of
+								   case Type of
 										"string" ->
-											[{call,line(),{atom,line(),is_list},[{var,line(),'Data'}]}];
+											[[{call,line(),{atom,line(),is_list},[{var,line(),'Data'}]}]];
 										"int" ++ _ ->
-											[{call,line(),{atom,line(),is_integer},[{var,line(),'Data'}]}];
+											[[{call,line(),{atom,line(),is_integer},[{var,line(),'Data'}]}]];
 										"bytes" ->
-											[{call,line(),{atom,line(),is_binary},[{var,line(),'Data'}]}];
+											[[{call,line(),{atom,line(),is_binary},[{var,line(),'Data'}]}]];
 										_ -> []
-									end],
+									end,
 								   [{call,new_line(),
 								     {remote,line(),{atom,line(),protobuffs},{atom,line(),encode}},
 								     [{integer,line(),Pos},{var,line(),'Data'},{atom,line(),list_to_atom(Type)}]}]} | Acc]
@@ -363,11 +365,10 @@ write_decode(Basename, RecName, Fields) ->
 							repeated -> list_to_atom("get_values_" ++ LRecName);
 							_ -> list_to_atom("get_value_" ++ LRecName)
 						end,
-					 Default_Type =
-						case Default of
-							A when is_atom(A) -> atom;
-							A when is_list(A) -> string;
-							A when is_integer(A) -> integer
+					 Default1 = 
+						case a(Default) of
+							{atom,L,none} -> {atom,L,undefined};
+							Default0 -> Default0
 						end,
 					 {record_field,new_line(),
 	                    {atom,line(),list_to_atom(Name)},
@@ -377,7 +378,7 @@ write_decode(Basename, RecName, Fields) ->
 	                             {atom,line(),Func_Get_Value},
 	                             [{var,line(),'Data_Tuples'},
 	                              {integer,line(),Pos},
-	                              {Default_Type,line(),Default}]},
+	                              Default1]},
 	                         {integer,line(),Pos},
 	                         {string,line(),Type}]}}
 					end || {Pos,Tag,Type,Name,_,Default} <- Fields]}]}]}),
@@ -442,10 +443,13 @@ write_decode(Basename, RecName, Fields) ->
 						           [case Type of
 										"string" ->
 											{cons,new_line(),
-												{call,new_line(),
-												     {atom,line(),binary_to_list},
-												     [{var,line(),'Item'}]},
-												{var,43,'Acc'}};
+												{'case',new_line(),{var,line(),'Data'},
+									             [{clause,new_line(),[{atom,line(),undefined}],[],[{atom,line(),undefined}]},
+									              {clause,new_line(),[{var,line(),'_'}],[],[
+													{call,new_line(),
+													     {atom,line(),binary_to_list},
+													     [{var,line(),'Item'}]}]}]},
+												{var,line(),'Acc'}};
 										_ ->
 											{cons,new_line(),
 												{var,line(),'Item'},
@@ -463,9 +467,13 @@ write_decode(Basename, RecName, Fields) ->
 						      {cons,line(),{var,line(),'Data'},{nil,line()}}]};
 						
 					[_, "string"] -> %% non-repeating string
-						{call,new_line(),
-						     {atom,line(),binary_to_list},
-						     [{var,line(),'Data'}]};
+						{'case',new_line(),{var,line(),'Data'},
+			             [{clause,new_line(),[{atom,line(),undefined}],[],[{atom,line(),undefined}]},
+			              {clause,new_line(),[{var,line(),'_'}],[],[
+							{call,new_line(),
+							     {atom,line(),binary_to_list},
+							     [{var,line(),'Data'}]}]}]};
+				
 					[_, _] ->
 						{var,new_line(),'Data'}
 						

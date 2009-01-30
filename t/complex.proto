@@ -1,0 +1,224 @@
+message Error {
+	required int32 code = 1;
+	required string msg = 2;
+}
+
+message Application {
+	required string id = 1;
+	required string secret = 2;
+	required int32 created_at = 3;
+	required int32 max_permission = 4 [default = 0];
+	required int32 request_id = 5 [default = 0];
+}
+
+message Login {
+    required string email = 1;
+    required string password = 2;
+}
+
+message Session {
+	required string id = 1;
+    required string application_id = 2;
+    required int32 user_id = 3;
+    required int32 created_at = 4;
+	required int32 permission = 5;
+}
+
+message Sessions {
+	repeated Session sessions = 1;
+}
+
+message User {
+	required int32 id = 1;
+	optional string gamername = 2;
+	optional string name = 3;
+	optional string roles = 4;
+	optional string location = 5;
+	optional int32 logged_in_at = 6;
+	optional int32 created_at = 7;
+	optional int32 updated_at = 8;
+	optional int32 deleted = 9;
+	optional string time_zone = 10;
+	optional string security_token = 11;
+	optional int32 token_expiry = 12;
+	optional int32 verified = 13;
+	optional int32 last_seen_when = 14;
+	optional string last_seen_game = 15;
+	optional int32 fan_nofity = 16;
+	optional int32 comment_notify = 17;
+	optional int32 delta = 18;
+	optional int32 show_welcome = 19;
+	optional string tagline = 20;
+	optional int32 last_closed_site_announcement_at = 21;
+	optional string last_seen_activity = 22;
+	optional int64 nucleus_id = 23;
+	optional string nucleus_email = 24;
+	optional int32 deleted_at = 25;
+	optional int32 last_closed_rupture_challenge_at = 26;
+	optional int32 message_notify = 27;
+	optional int32 comments_count = 28;
+	optional int32 challenge_issued_notify = 29;
+	optional int32 challenge_accepted_rejected_notify = 30;
+	optional string password = 31;
+	optional string date_of_birth = 32;
+	optional string country = 33;
+//	optional string language = 34 [default = "en"];
+//	optional string terms_of_service_version = 35 [default = "1.0"];
+//	optional string status = 36 [default = "ACTIVE"];	
+	optional string language = 34;
+	optional string terms_of_service_version = 35;
+	optional string status = 36;
+	optional bool global_optin = 37;
+	optional bool third_party_optin = 38;
+}
+
+message Users {
+	repeated User users = 1;
+}
+
+message Image {
+	required int32 id = 1;
+	optional int32 user_id = 2;
+	optional string mime = 3;
+	optional string about = 4;
+	optional int32 created_at = 5;
+	optional int32 height = 6;
+	optional int32 width = 7;
+	optional string thumbnail_region = 8;
+	optional string label = 9;
+}
+
+message Identity {
+    required int32 id = 1;
+    optional int32 user_id = 2;
+    optional int32 identity_provider_id = 3;
+    optional string values = 4;
+    optional int32 created_at = 5;
+    optional int32 imported_at = 6;
+    optional int32 attempted_at = 7;
+    optional int32 failed_attempts = 8;
+    optional string error_message = 9;
+    optional string identity_string = 10;
+    optional string identity_key = 11;
+    optional int32 functional = 12;
+    optional int32 deleted_at = 13;
+    optional int32 enqueued_at = 14;
+}
+
+message Identities {
+	repeated Identity identities = 1;
+}
+
+message Event_Details {
+    optional int32 id = 1;
+    optional int32 user_id = 2;
+    optional string xml = 3;
+    optional int32 created_at = 4;
+    optional int32 updated_at = 5;
+    optional int32 content_type_id = 6;
+    optional string key = 7;
+    optional string xml_key = 8;
+}
+
+message Event {
+    optional int32 id = 1;
+    optional string key = 2;
+    optional int32 user_id = 3;
+    optional int32 studio_id = 4;
+    optional string event_class = 5;
+    optional string event_type = 6;
+    optional string datasource_name = 7;
+    optional string game_name = 8;
+    optional string platform = 9;
+    optional string identity = 10;
+    optional string action = 11;
+    optional string action_label = 12;
+    optional string affiliation = 13;
+    optional string opponent = 14;
+    optional string map_name = 15;
+    optional int32 participant_count = 16;
+    optional string original_display = 17;
+    optional float original_weight = 18;
+    optional string current_display = 19;
+    optional float current_weight = 20;
+    optional string score_display = 21;
+    optional float score_weight = 22;
+    optional string reward_display = 23;
+    optional float reward_weight = 24;
+    optional string accomplishment_name = 25;
+    optional float accomplishment_weight = 26;
+    optional int32 outcome = 27;
+    optional int32 duration = 28;
+    optional string event_attrs = 29; 
+    optional string custom_message = 30;
+    optional int32 comments_count = 31;
+    optional string locale = 32;
+    optional int32 occurred_at = 33;
+    optional int32 created_at = 34;
+    optional int32 datetime = 35;
+    optional string outcome_display = 36;
+    optional int32 identity_id = 37;
+    optional int32 game_id = 38;
+}
+
+message Events {
+	repeated Event events = 1;
+}
+
+message Game {
+	required int32 id = 1;
+	optional string img_url_icon = 2;
+	optional string name = 3;
+	optional string platform = 4;
+	optional string param = 5;
+	optional int32 ign_id = 6;
+	optional string ign_status = 7;
+	optional string fly_upc = 8;
+	optional string ign_title = 9;
+	optional string publisher = 10;
+	optional int32 publisher_id = 11;
+	optional string publisher_url = 12;
+	optional string developer = 13;
+	optional int32 developer_id = 14;
+	optional string description = 15;
+	optional string genre = 16;
+	optional string esrb = 17;
+	optional int32 us_release_date = 18;
+	optional int32 eu_release_date = 19;
+	optional int32 jp_release_date = 20;
+	optional int32 au_release_date = 21;
+	optional float editorial_score = 22;
+	optional float editorial_score_game_spy = 23;
+	optional string hint_tips = 24;
+	optional string short_description = 25;
+	optional string upc_13 = 26;
+	optional string upc_8 = 27;
+	optional string us_msrp = 28;
+	optional string jp_msrp = 29;
+	optional string eu_msrp = 30;
+	optional string au_msrp = 31;
+	optional string jp_upc_13 = 32;
+	optional string eu_upc_13 = 33;
+	optional string eu_upc_8 = 34;
+	optional int32 us_prebook_date = 35;
+	optional int32 number_of_players = 36;
+	optional string additional_platforms = 37;
+	optional string ign_xml = 38;
+	optional int32 comments_count = 39;
+}
+
+message Games {
+	repeated Game games = 1;
+}
+
+message Game_Session {
+    required int32 id = 1;
+    optional int32 game_id = 2;
+    optional int32 user_id = 3;
+    optional int32 session_start = 4;
+    optional int32 last_activity = 5;
+}
+
+message Game_Sessions {
+	repeated Game_Session game_session = 1;
+}

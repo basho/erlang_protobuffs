@@ -51,10 +51,8 @@ main(_) ->
 	Person1 = repeater_pb:decode_person(PersonBinData1),
 	Person2 = repeater_pb:decode_person(PersonBinData2),
 	
-	io:format("bins: ~n~p~n~p~n", [PersonBinData1, PersonBinData2]),
 	etap:is(PersonBinData1, PersonBinData2, "Person binaries match"),
 
-	io:format("persons: ~n~p~n~p~n~p~n", [Person, Person1, Person2]),
 	etap:is(Person, Person1, "Encoded and decoded persons match"),
 	
 	etap:is(Person1, Person2, "Encoded and decoded persons match"),

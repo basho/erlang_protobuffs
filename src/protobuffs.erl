@@ -55,6 +55,8 @@ encode(FieldID, String, bytes) when is_list(String) ->
     encode(FieldID, list_to_binary(String), bytes);
 encode(FieldID, Bytes, bytes) when is_binary(Bytes) ->
     [encode_field_tag(FieldID, ?TYPE_STRING), encode_varint(size(Bytes)), Bytes];
+encode(FieldID, String, bytes) when is_list(String) ->
+	encode(FieldID, list_to_binary(String), bytes);
 encode(FieldID, Float, float) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<Float:32/little-float>>];
 encode(FieldID, Float, double) when is_float(Float) ->
@@ -103,7 +105,7 @@ decode_value(<<Value:32/little-unsigned-integer, Rest/binary>>, ?TYPE_32BIT, Typ
     {Value, Rest};
 decode_value(<<Value:32/little-signed-integer, Rest/binary>>, ?TYPE_32BIT, Type) when Type =:= sfixed32; Type =:= sfixed64 ->
     {Value, Rest};
-decode_value(<<Value:32/little-float, Rest/binary>>, ?TYPE_32BIT, Type) when Type =:= double; Type =:= float ->
+decode_value(<<Value:32/little-float, Rest/binary>>, ?TYPE_32BIT, Type) when Type =:= double; Type =:= float; Type =:= bytes ->
     {Value, Rest}.
 
 %% @hidden

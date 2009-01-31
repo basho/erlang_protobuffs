@@ -10,7 +10,7 @@ test: all
 clean:
 	(cd src;$(MAKE) clean)
 	(cd t; $(MAKE) clean)
-	rm -rf erl_crash.dump simple_pb.* ebin/*.beam
+	rm -rf erl_crash.dump *.beam *.hrl
 
 dist-src:
 	mkdir erlang_protobuffs-0.1/ && cp -rfv src support Makefile erlang_protobuffs-0.1/

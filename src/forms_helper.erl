@@ -1,3 +1,4 @@
+
 -module(forms_helper).
 
 -export([
@@ -10,17 +11,20 @@
 	a/1
 ]).
 
+%% @hidden
 io_format(Format, Arg_Var_Name) ->
 	{call,new_line(),
 		{remote,line(),{atom,line(),io},{atom,line(),format}},
 		[{string,line(),Format}, {cons,line(),{var,line(),Arg_Var_Name},{nil,line()}}]}.
-		
+
+%% @hidden		
 a(A) ->
 	case erl_parse:abstract(A) of
 		{B,_,C} -> {B,line(),C};
 		Other -> Other
 	end.
 
+%% @hidden
 init_state() ->
 	Pid1 = spawn_link(fun() -> line_num(1) end),
 	put(line_num_pid, Pid1),
@@ -29,7 +33,8 @@ init_state() ->
 	put(forms_pid, Pid2),
 	
 	ok.
-		
+
+%% @hidden
 new_line() ->
 	Pid = get(line_num_pid),
 	Pid ! {self(), new_line},
@@ -40,7 +45,8 @@ new_line() ->
 			0
 		end,
 	Line_Number1.
-	
+
+%% @hidden
 line() ->
 	Pid = get(line_num_pid),
 	Pid ! {self(), line},
@@ -51,7 +57,8 @@ line() ->
 			0
 		end,
 	Line_Number1.
-	
+
+%% @hidden
 append(Forms) ->
 	Pid = get(forms_pid),
 	Pid ! {self(), append, Forms},
@@ -61,7 +68,8 @@ append(Forms) ->
 		error
 	end,
 	ok.
-	
+
+%% @hidden
 fetch() ->
 	Pid = get(forms_pid),
 	Pid ! {self(), fetch},
@@ -72,7 +80,8 @@ fetch() ->
 			[]
 		end,
 	Forms1.
-	
+
+%% @hidden
 line_num(Line_Number) ->
 	receive
 		{Pid, new_line} ->
@@ -82,7 +91,8 @@ line_num(Line_Number) ->
 			Pid ! {self(), Line_Number},
 			line_num(Line_Number)
 	end.
-	
+
+%% @hidden
 forms(Forms) ->
 	receive
 		{Pid, append, New} ->

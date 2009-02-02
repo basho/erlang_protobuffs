@@ -251,7 +251,12 @@ write_encode(Basename, RecName, Fields) ->
 							     {call,new_line(),
 							      {atom,line(),list_to_atom("pack_" ++ LRecName)},
 							      [{integer,line(),Pos},{atom,line(),repeated},{var,line(),'Tail'},{atom,line(),list_to_atom(LRecFieldName)},{var,line(),'Acc1'}]}]},
-							
+
+							{clause,new_line(),
+							   [{integer,line(),Pos},{atom,line(),repeated},{atom,line(),undefined},{atom,line(),list_to_atom(LRecFieldName)},{var,line(),'Acc'}],
+							   [],
+							   [{var,line(),'Acc'}]},
+															
 							{clause,new_line(),
 							   [{integer,line(),Pos},{atom,line(),repeated},{nil,line()},{atom,line(),list_to_atom(LRecFieldName)},{var,line(),'Acc'}],
 							   [],
@@ -284,6 +289,11 @@ write_encode(Basename, RecName, Fields) ->
 							    {call,new_line(),
 							     {atom,line(),list_to_atom("pack_" ++ LRecName)},
 							     [{integer,line(),Pos},{atom,line(),repeated},{var,line(),'Tail'},{atom,line(),list_to_atom(Type)},{var,line(),'Acc1'}]}]},
+
+							{clause,new_line(),
+							   [{integer,line(),Pos},{atom,line(),repeated},{atom,line(),undefined},{atom,line(),list_to_atom(Type)},{var,line(),'Acc'}],
+							   [],
+							   [{var,line(),'Acc'}]},
 
 							{clause,new_line(),
 							   [{integer,line(),Pos},{atom,line(),repeated},{nil,line()},{atom,line(),list_to_atom(Type)},{var,line(),'Acc'}],
@@ -403,9 +413,14 @@ write_decode(Basename, RecName, Fields) ->
 	                   {remote,line(),{atom,line(),proplists},{atom,line(),get_all_values}},
 	                   [{var,line(),'Pos'},{var,line(),'Data_Tuples'}]},
 	               [{clause,new_line(),[{nil,line()}],[],[{var,line(),'Default'}]},
+					{clause,new_line(),[{atom,line(),undefined}],[],[{var,line(),'Default'}]},
 	                {clause,new_line(),[{var,line(),'Values'}],[],[{var,line(),'Values'}]}]}]}]}),
 	
 	append({function,new_line(),list_to_atom("unpack_" ++ LRecName),3,
+		 [	{clause,line(),
+				  [{atom,line(),undefined},{var,line(),'_'},{var,line(),'_'}],
+				  [],
+				  [{atom,line(),undefined}]} | 
 		 [begin
 			{clause,line(),
 		          [{var,line(),'Data'},{integer,line(),Pos},{string,line(),Type}],
@@ -478,7 +493,7 @@ write_decode(Basename, RecName, Fields) ->
 						{var,new_line(),'Data'}
 						
 				  end] }
-		 end || {Pos,Tag,Type,_,_,_} <- Fields]}),
+		 end || {Pos,Tag,Type,_,_,_} <- Fields]]}),
 		
 	ok.
 

@@ -37,7 +37,10 @@ main(_Args) ->
 	
 print_row([], _) -> ok;
 print_row([[Field, Type, Null, _Key, Default, _Extra]|Tail], Number) ->
-	io:format("    ~s ~s ~s = ~w~s;~n", [null(Null), type(binary_to_list(Type)), Field, Number, default(Default)]),
+	Null1 = null(Null),
+	Type1 = type(binary_to_list(Type)),
+	Default1 = default(Type1, Default),
+	io:format("    ~s ~s ~s = ~w~s;~n", [Null1, Type1, Field, Number, Default1]),
 	print_row(Tail, Number+1).
 		
 null(<<"YES">>) -> "optional";
@@ -57,7 +60,8 @@ type("char" ++ _) -> "string";
 type("text" ++ _) -> "string";
 type(Type) -> Type.
 
-default(<<"NULL">>) -> "";
-default(undefined) -> "";
-default(Default) -> lists:flatten(io_lib:format(" [default = ~p]", [binary_to_list(Default)])).
+default(_, <<"NULL">>) -> "";
+default(_, undefined) -> "";
+default("int" ++ _, Default) -> lists:flatten(io_lib:format(" [default = ~w]", [list_to_integer(binary_to_list(Default))]));
+default(_, Default) -> lists:flatten(io_lib:format(" [default = ~p]", [binary_to_list(Default)])).
 	

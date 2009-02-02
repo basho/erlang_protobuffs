@@ -6,7 +6,7 @@
 -record(person, {name, address, phone_number, age, hobbies, locations}).
 
 main(_) ->
-    etap:plan(4),
+    etap:plan(5),
     etap:is(protobuffs_compile:scan_file("t/repeater.proto"), ok, "repeater.proto compiled"),
 
 	Fields1 = [
@@ -56,6 +56,16 @@ main(_) ->
 	etap:is(Person, Person1, "Encoded and decoded persons match"),
 	
 	etap:is(Person1, Person2, "Encoded and decoded persons match"),
+	
+	Person3 = #person {
+		name = "Nick",
+        address = "Mountain View",
+        phone_number = "+1 (000) 555-1234",
+        age = 25,
+		hobbies = ["paddling", "floating"]
+	},
+	
+	etap:is(repeater_pb:decode_person(repeater_pb:encode_person(Person3)), Person3, "Encoded and decoded person without locations"),
 
 	ok = file:delete("repeater_pb.hrl"),
 	ok = file:delete("repeater_pb.beam"),

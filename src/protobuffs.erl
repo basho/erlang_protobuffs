@@ -128,56 +128,36 @@ encode_varint_field(FieldID, Integer) ->
     [encode_field_tag(FieldID, ?TYPE_VARINT), encode_varint(Integer)].
 
 %% @hidden
-encode_varint(I) when I band 16#7f =:= I ->
-    I;
-encode_varint(I) when I band 16#3fff =:= I ->
-    <<(16#80 bor (I bsr 7)), (I band 16#7f)>>;
-encode_varint(I) when I band 16#1fffff =:= I ->
-    <<(16#80 bor (I bsr 14)),
-      (16#80 bor (I bsr 7) band 16#ff), (I band 16#7f)>>;
-encode_varint(I) when I band 16#fffffff =:= I ->
-    <<(16#80 bor (I bsr 21)), (16#80 bor (I bsr 14) band 16#ff),
-      (16#80 bor (I bsr 7) band 16#ff), (I band 16#7f)>>;
-encode_varint(I) when I band 16#7ffffffff =:= I ->
-    <<(16#80 bor (I bsr 28)),
-      (16#80 bor (I bsr 21) band 16#ff), (16#80 bor (I bsr 14) band 16#ff),
-      (16#80 bor (I bsr 7) band 16#ff), (I band 16#7f)>>;
-encode_varint(I) when I band 16#3ffffffffff =:= I ->
-    <<(16#80 bor (I bsr 35)), (16#80 bor (I bsr 28) band 16#ff),
-      (16#80 bor (I bsr 21) band 16#ff), (16#80 bor (I bsr 14) band 16#ff),
-      (16#80 bor (I bsr 7) band 16#ff), (I band 16#7f)>>;
-encode_varint(I) when I band 16#1ffffffffffff =:= I ->
-    <<(16#80 bor (I bsr 42)),
-      (16#80 bor (I bsr 35) band 16#ff), (16#80 bor (I bsr 28) band 16#ff),
-      (16#80 bor (I bsr 21) band 16#ff), (16#80 bor (I bsr 14) band 16#ff),
-      (16#80 bor (I bsr 7) band 16#ff), (I band 16#7f)>>;
-encode_varint(I) when I band 16#ffffffffffffff =:= I ->
-    <<(16#80 bor (I bsr 49) band 16#ff), (16#80 bor (I bsr 42) band 16#ff),
-      (16#80 bor (I bsr 35) band 16#ff), (16#80 bor (I bsr 28) band 16#ff),
-      (16#80 bor (I bsr 21) band 16#ff), (16#80 bor (I bsr 14) band 16#ff),
-      (16#80 bor (I bsr 7) band 16#ff), (I band 16#7f)>>;
-encode_varint(I) when I band 16#7fffffffffffffff =:= I ->
-    <<(16#80 bor (I bsr 56)),
-      (16#80 bor (I bsr 49) band 16#ff), (16#80 bor (I bsr 42) band 16#ff),
-      (16#80 bor (I bsr 35) band 16#ff), (16#80 bor (I bsr 28) band 16#ff),
-      (16#80 bor (I bsr 21) band 16#ff), (16#80 bor (I bsr 14) band 16#ff),
-      (16#80 bor (I bsr 7) band 16#ff), (I band 16#7f)>>;
-encode_varint(I) when I band 16#ffffffffffffffff =:= I ->
-    <<(16#80 bor (I bsr 63) band 16#81), (16#80 bor (I bsr 56) band 16#ff),
-      (16#80 bor (I bsr 49) band 16#ff), (16#80 bor (I bsr 42) band 16#ff),
-      (16#80 bor (I bsr 35) band 16#ff), (16#80 bor (I bsr 28) band 16#ff),
-      (16#80 bor (I bsr 21) band 16#ff), (16#80 bor (I bsr 14) band 16#ff),
-      (16#80 bor (I bsr 7) band 16#ff), (I band 16#7f)>>.
+encode_varint(I) ->
+	encode_varint(I, []).
+	
+encode_varint(I, []) when I =< 16#7f ->	
+	I;
+	
+encode_varint(I, Acc) when I =< 16#7f ->
+	iolist_to_binary(lists:reverse([I|Acc]));
+	
+encode_varint(I, Acc) ->
+	Last_Seven_Bits = (I - ((I bsr 7) bsl 7)),
+	First_X_Bits = (I bsr 7),
+	With_Leading_Bit = Last_Seven_Bits bor 16#80,
+	encode_varint(First_X_Bits, [With_Leading_Bit|Acc]).
 
 %% @hidden
 decode_varint(Bytes) ->
-    decode_varint(Bytes, 0).
+    decode_varint(Bytes, []).
 
-%% @hidden
-decode_varint(<<0:1, I:7, Rest/binary>>, Accum) when Accum =< 16#3ffffffffffffff ->
-    {Accum bsl 7 bor I, Rest};
+decode_varint(<<0:1, I:7, Rest/binary>>, Acc) ->
+	Acc1 = [I|Acc],
+	Result = 
+		lists:foldl(
+			fun(X, Acc0) ->
+				(Acc0 bsl 7 bor X)
+			end, 0, Acc1),
+	{Result, Rest};
+
 decode_varint(<<1:1, I:7, Rest/binary>>, Accum) ->
-    decode_varint(Rest, Accum bsl 7 bor I).
+	decode_varint(Rest, [I|Accum]).
 
 %% @hidden
 decode_many(<<>>, Acc) -> lists:keysort(1, Acc);

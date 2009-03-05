@@ -1,4 +1,8 @@
 LIBDIR=`erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell`
+<<<<<<< HEAD:Makefile
+=======
+VERSION=0.1
+>>>>>>> 98ff3f396fabf7485fe2befa69abdaaa2b88d3bc:Makefile
 
 all:
 	mkdir -p ebin/
@@ -12,10 +16,11 @@ clean:
 	(cd t; $(MAKE) clean)
 	rm -rf erl_crash.dump *.beam *.hrl
 
-dist-src:
-	mkdir erlang_protobuffs-0.1/ && cp -rfv src support Makefile erlang_protobuffs-0.1/
-	tar zcf erlang_protobuffs-0.1.tgz erlang_protobuffs-0.1
+package: clean
+	@mkdir erlang_protobuffs-$(VERSION)/ && cp -rf src eqct support t Makefile mysql.escript README.markdown erlang_protobuffs-$(VERSION)
+	@COPYFILE_DISABLE=true tar zcf erlang_protobuffs-$(VERSION).tgz erlang_protobuffs-$(VERSION)
+	@rm -rf erlang_protobuffs-$(VERSION)/
 
-install: all
-	mkdir -p ${LIBDIR}/protobuffs-0.1/{ebin,include}
-	for i in ebin/*.beam; do install $$i $(LIBDIR)/protobuffs-0.1/$$i ; done
+install:
+	mkdir -p $(prefix)/$(LIBDIR)/erlang_protobuffs-$(VERSION)/ebin
+	for i in ebin/*.beam; do install $$i $(prefix)/$(LIBDIR)/erlang_protobuffs-$(VERSION)/$$i ; done

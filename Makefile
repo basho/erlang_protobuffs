@@ -1,8 +1,5 @@
 LIBDIR=`erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell`
-<<<<<<< HEAD:Makefile
-=======
 VERSION=0.1
->>>>>>> 98ff3f396fabf7485fe2befa69abdaaa2b88d3bc:Makefile
 
 all:
 	mkdir -p ebin/

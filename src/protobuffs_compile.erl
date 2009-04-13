@@ -523,7 +523,6 @@ write_decode(Basename, RecName, Fields) ->
 collect_full_messages(Data) -> collect_full_messages(Data, []).
 
 %% @hidden
-collect_full_messages([], Acc) -> Acc;
 collect_full_messages([{message, Name, Fields} | Tail], Acc) ->
     FieldsOut = lists:foldl(
         fun (Input, TmpAcc) ->
@@ -542,4 +541,8 @@ collect_full_messages([{message, Name, Fields} | Tail], Acc) ->
         [],
         Fields
     ),
-    collect_full_messages(Tail ++ SubMessages, [{Name, FieldsOut} | Acc]).
+    collect_full_messages(Tail ++ SubMessages, [{Name, FieldsOut} | Acc]);
+collect_full_messages([{package, _Line1}, {bareword, _Line2, _PackageName}, {';', _Line3} | Tail], Acc) ->
+    collect_full_messages(Tail, Acc);
+collect_full_messages([], Acc) -> 
+    Acc.

@@ -56,17 +56,13 @@ encode(FieldID, String, bytes) when is_list(String) ->
 encode(FieldID, Bytes, bytes) when is_binary(Bytes) ->
     [encode_field_tag(FieldID, ?TYPE_STRING), encode_varint(size(Bytes)), Bytes];
 encode(FieldID, String, bytes) when is_list(String) ->
-	encode(FieldID, list_to_binary(String), bytes);
+    encode(FieldID, list_to_binary(String), bytes);
 encode(FieldID, Float, float) when is_integer(Float) ->
-	encode(FieldID, Float + 0.0, float);
+    encode(FieldID, Float + 0.0, float);
 encode(FieldID, Float, float) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<Float:32/little-float>>];
 encode(FieldID, Float, double) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_64BIT), <<Float:64/little-float>>].
-%% encode(FieldID, Value, _) when is_binary(Value) ->
-%%     encode(FieldID, Value, bytes);
-%% encode(FieldID, Value, _) when is_atom(Value) ->
-%%     encode(FieldID, erlang:atom_to_list(Value), string).
 
 %% @spec decode(Bytes, ExpectedType) -> Result
 %%       Bytes = binary()
@@ -131,35 +127,32 @@ encode_varint_field(FieldID, Integer) ->
 
 %% @hidden
 encode_varint(I) ->
-	encode_varint(I, []).
-	
+    encode_varint(I, []).
+
+%% @hidden
 encode_varint(I, []) when I =< 16#7f ->	
-	I;
-	
+    I;
 encode_varint(I, Acc) when I =< 16#7f ->
-	iolist_to_binary(lists:reverse([I|Acc]));
-	
+    iolist_to_binary(lists:reverse([I | Acc]));
 encode_varint(I, Acc) ->
-	Last_Seven_Bits = (I - ((I bsr 7) bsl 7)),
-	First_X_Bits = (I bsr 7),
-	With_Leading_Bit = Last_Seven_Bits bor 16#80,
-	encode_varint(First_X_Bits, [With_Leading_Bit|Acc]).
+    Last_Seven_Bits = (I - ((I bsr 7) bsl 7)),
+    First_X_Bits = (I bsr 7),
+    With_Leading_Bit = Last_Seven_Bits bor 16#80,
+    encode_varint(First_X_Bits, [With_Leading_Bit|Acc]).
 
 %% @hidden
 decode_varint(Bytes) ->
     decode_varint(Bytes, []).
-
 decode_varint(<<0:1, I:7, Rest/binary>>, Acc) ->
-	Acc1 = [I|Acc],
-	Result = 
-		lists:foldl(
-			fun(X, Acc0) ->
-				(Acc0 bsl 7 bor X)
-			end, 0, Acc1),
-	{Result, Rest};
-
-decode_varint(<<1:1, I:7, Rest/binary>>, Accum) ->
-	decode_varint(Rest, [I|Accum]).
+    Acc1 = [I|Acc],
+    Result = 
+        lists:foldl(
+            fun(X, Acc0) ->
+                (Acc0 bsl 7 bor X)
+            end, 0, Acc1),
+    {Result, Rest};
+decode_varint(<<1:1, I:7, Rest/binary>>, Acc) ->
+    decode_varint(Rest, [I | Acc]).
 
 %% @hidden
 decode_many(<<>>, Acc) -> lists:keysort(1, Acc);

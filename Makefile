@@ -4,6 +4,7 @@ VERSION=0.1
 all:
 	mkdir -p ebin/
 	(cd src;$(MAKE))
+	(cd t;$(MAKE))
 
 test: all
 	prove -v t/*.t

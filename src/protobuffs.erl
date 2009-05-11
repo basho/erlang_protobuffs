@@ -1,6 +1,7 @@
 %% @doc A protcol buffers encoding and decoding module.
 -module(protobuffs).
 -export([encode/3, decode/2, decode_many/1]).
+-compile(export_all).
 
 -define(TYPE_VARINT, 0).
 -define(TYPE_64BIT, 1).
@@ -21,23 +22,27 @@ encode(FieldID, true, bool) ->
     encode(FieldID, 1, int32);
 encode(FieldID, Integer, enum) ->
     encode(FieldID, Integer, uint32);
-encode(FieldID, Integer, IntType) when IntType =:= int32,  Integer >= -16#80000000, Integer =< 16#7fffffff ->
+encode(FieldID, Integer, int32) when Integer >= -16#80000000, Integer < 0 ->
+    encode(FieldID, Integer, int64);
+encode(FieldID, Integer, int64) when Integer >= -16#8000000000000000, Integer < 0 ->
+    encode(FieldID, Integer + (1 bsl 64), uint64);
+encode(FieldID, Integer, int32) when Integer >= -16#80000000, Integer =< 16#7fffffff ->
     encode_varint_field(FieldID, Integer);
-encode(FieldID, Integer, IntType) when IntType =:= uint32, Integer band 16#ffffffff =:= Integer ->
+encode(FieldID, Integer, uint32) when Integer band 16#ffffffff =:= Integer ->
+    encode_varint_field(FieldID, Integer);    
+encode(FieldID, Integer, int64) when Integer >= -16#8000000000000000, Integer =< 16#7fffffffffffffff ->
     encode_varint_field(FieldID, Integer);
-encode(FieldID, Integer, IntType) when IntType =:= int64,  Integer >= -16#8000000000000000, Integer =< 16#7fffffffffffffff ->
+encode(FieldID, Integer, uint64) when Integer band 16#ffffffffffffffff =:= Integer ->
     encode_varint_field(FieldID, Integer);
-encode(FieldID, Integer, IntType) when IntType =:= uint64, Integer band 16#ffffffffffffffff =:= Integer ->
+encode(FieldID, Integer, bool) when Integer band 1 =:= 1 ->
     encode_varint_field(FieldID, Integer);
-encode(FieldID, Integer, IntType) when IntType =:= bool, Integer band 1 =:= 1 ->
-    encode_varint_field(FieldID, Integer);
-encode(FieldID, Integer, IntType) when IntType =:= sint32, Integer >= -16#80000000, Integer < 0 ->
+encode(FieldID, Integer, sint32) when Integer >= -16#80000000, Integer < 0 ->
     encode_varint_field(FieldID, bnot (Integer bsl 1));
-encode(FieldID, Integer, IntType) when IntType =:= sint64, Integer >= -16#8000000000000000, Integer < 0 ->
+encode(FieldID, Integer, sint64) when Integer >= -16#8000000000000000, Integer < 0 ->
     encode_varint_field(FieldID, bnot (Integer bsl 1));
-encode(FieldID, Integer, IntType) when IntType =:= sint64, Integer >= 0, Integer =< 16#7fffffff ->
+encode(FieldID, Integer, sint32) when Integer >= 0, Integer =< 16#7fffffff ->
     encode_varint_field(FieldID, Integer bsl 1);
-encode(FieldID, Integer, IntType) when IntType =:= sint64, Integer >= 0, Integer =< 16#7fffffffffffffff ->
+encode(FieldID, Integer, sint64) when Integer >= 0, Integer =< 16#7fffffffffffffff ->
     encode_varint_field(FieldID, Integer bsl 1);
 encode(FieldID, Integer, fixed32) when Integer band 16#ffffffff =:= Integer ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<Integer:32/little-integer>>];
@@ -130,8 +135,6 @@ encode_varint(I) ->
     encode_varint(I, []).
 
 %% @hidden
-encode_varint(I, []) when I =< 16#7f ->	
-    I;
 encode_varint(I, Acc) when I =< 16#7f ->
     iolist_to_binary(lists:reverse([I | Acc]));
 encode_varint(I, Acc) ->

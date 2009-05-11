@@ -66,6 +66,8 @@ encode(FieldID, Float, float) when is_integer(Float) ->
     encode(FieldID, Float + 0.0, float);
 encode(FieldID, Float, float) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<Float:32/little-float>>];
+encode(FieldID, Float, double) when is_integer(Float) ->
+    encode(FieldID, Float + 0.0, double);
 encode(FieldID, Float, double) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_64BIT), <<Float:64/little-float>>].
 

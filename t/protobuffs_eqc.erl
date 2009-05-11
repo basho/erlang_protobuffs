@@ -18,8 +18,6 @@
 
 prop_encode_decode2() ->
     ?FORALL({FieldNum,Data,Type},fault_rate(5,10,protobuff_data()),
-       ?NotYetImplemented(Data<0,
-	     begin
 		 case catch protobuffs:encode(FieldNum,Data,Type) of
 		     {'EXIT', _} ->
 			     not in_range(Data,Type);
@@ -28,19 +26,17 @@ prop_encode_decode2() ->
     			 in_range(Data,Type) andalso
     			     FieldNum=:=N andalso
     			     (Data==RData orelse foreign_type(Type,Data,RData))  
-	         end
-	     end)).
+	     end).
 
 prop_encode_decode() ->
     ?FORALL({FieldNum,Data,Type},protobuff_data(),
-       ?NotYetImplemented(Data<0,
 	    collect(Type,
     	    begin
         		{{N, RData}, <<>>} = protobuffs:decode(list_to_binary(protobuffs:encode(FieldNum, Data, Type)), Type),
         		FieldNum=:=N andalso 
         		(Data==RData orelse foreign_type(Type,Data,RData))  
     	    end
-	   ))).
+	    )).
 
 foreign_type(bool,false,0) ->
     true;

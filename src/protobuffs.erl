@@ -101,8 +101,6 @@ decode_value(<<Value:64/little-signed-integer, Rest/binary>>, ?TYPE_64BIT, sfixe
     {Value, Rest};
 decode_value(<<Value:32/little-signed-integer, _:32, Rest/binary>>, ?TYPE_64BIT, sfixed32) ->
     {Value, Rest};
-decode_value(<<Value:64/little-float, Rest/binary>>, ?TYPE_64BIT, Type) when Type =:= double; Type =:= float ->
-    {Value, Rest};
 decode_value(Bytes, ?TYPE_STRING, ExpectedType) when ExpectedType =:= string; ExpectedType =:= bytes ->
     {Length, Rest} = decode_varint(Bytes),
     split_binary(Rest, Length);
@@ -110,8 +108,12 @@ decode_value(<<Value:32/little-unsigned-integer, Rest/binary>>, ?TYPE_32BIT, Typ
     {Value, Rest};
 decode_value(<<Value:32/little-signed-integer, Rest/binary>>, ?TYPE_32BIT, Type) when Type =:= sfixed32; Type =:= sfixed64 ->
     {Value, Rest};
-decode_value(<<Value:32/little-float, Rest/binary>>, ?TYPE_32BIT, Type) when Type =:= double; Type =:= float; Type =:= bytes ->
-    {Value, Rest}.
+decode_value(<<Value:64/little-float, Rest/binary>>, ?TYPE_64BIT, double) ->
+	{Value, Rest};
+decode_value(<<Value:32/little-float, Rest/binary>>, ?TYPE_32BIT, float) ->
+	{Value, Rest};
+decode_value(_, Type, _) ->
+	exit({unexpected_value, Type}).
 
 %% @hidden
 typecast(Value, SignedType) when SignedType =:= int32; SignedType =:= int64 ->

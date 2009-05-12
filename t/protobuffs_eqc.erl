@@ -9,6 +9,7 @@
 
 -compile(export_all).
 
+-define(Mach_Eps, 1.1920928955078125e-7).
 -define(NotYetImplemented(Cond,Prop),?IMPLIES(not (Cond),Prop)).
 
 %% eqc_gen:sample(protobuffs_eqc:field_num()).
@@ -25,7 +26,7 @@ prop_encode_decode2() ->
 			     {{N, RData}, <<>>} = protobuffs:decode(list_to_binary(Bin), Type),
     			 in_range(Data,Type) andalso
     			     FieldNum=:=N andalso
-    			     (Data==RData orelse foreign_type(Type,Data,RData))  
+    			     (compare(Data,RData) orelse foreign_type(Type,Data,RData))
 	     end).
 
 prop_encode_decode() ->
@@ -34,7 +35,7 @@ prop_encode_decode() ->
     	    begin
         		{{N, RData}, <<>>} = protobuffs:decode(list_to_binary(protobuffs:encode(FieldNum, Data, Type)), Type),
         		FieldNum=:=N andalso 
-        		(Data==RData orelse foreign_type(Type,Data,RData))  
+        		(compare(Data,RData) orelse foreign_type(Type,Data,RData))  
     	    end
 	    )).
 
@@ -69,7 +70,9 @@ protobuff_data() ->
 	             {field_num(), uint(64),uint64},
 	             {field_num(), bool(),bool},
                  {field_num(), sint(32),sint32},
-		         {field_num(), sint(64),sint64}])).
+		         {field_num(), sint(64),sint64},
+		         {field_num(), real(),float},
+		         {field_num(), real(),double}])).
 
 field_num() ->
     ?SUCHTHAT(N,nat(),N>0).
@@ -90,14 +93,6 @@ exp(1) ->
     2;
 exp(N) ->
     2*exp(N-1).
-
-%uint(32) ->
-%    oneof([choose(0,16#ff),choose(0,16#ffff),choose(0,16#ffffff),
-%	   choose(0,16#ffffffff)]);
-%uint(64) ->
-%    oneof([uint(32),choose(0,16#ffffffffffffffff)]);
-%uint(80) ->
-%    oneof([uint(32),uint(64),choose(0,16#ffffffffffffffffffff)]).
 
 %%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -124,11 +119,22 @@ in_range(Int,sint64) ->
     fitbits(abs(Int),63);
 in_range(Int,uint64) ->
     fitbits(Int,64);
+in_range(Float,float) ->
+    fitbits(Float,32);
+in_range(Float,double) ->
+    fitbits(Float,64);
 in_range(false,bool) ->
     true;
 in_range(true,bool) ->
     true.
 
+compare(Float1, Float2) when is_float(Float1), is_float(Float2) ->
+    (abs(Float1 - Float2) =< ?Mach_Eps);
+compare(A,A) -> true;
+compare(_,_) -> false.
+    
+fitbits(Float,32) when is_float(Float) -> true;
+fitbits(Float,64) when is_float(Float) -> true;
 fitbits(Int,Bits) ->
     RestBits = 80-Bits,
     << NoFit:RestBits, _:Bits >> = <<Int:80>>,

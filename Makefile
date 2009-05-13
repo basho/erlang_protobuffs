@@ -4,10 +4,12 @@ VERSION=0.2
 all:
 	mkdir -p ebin/
 	(cd src;$(MAKE))
-	(cd t;$(MAKE))
 
 test: all
-	prove -v t/*.t
+	prove t/*.t
+
+test-eqc: all
+	(cd t;$(MAKE))
 
 clean:
 	(cd src;$(MAKE) clean)

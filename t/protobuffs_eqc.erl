@@ -1,3 +1,10 @@
+%%% erlc -o ebin t/*.erl -pa ebin
+%%% erl -name eqc_pb -pa ebin
+%%% eqc_gen:sample(protobuffs_eqc:protobuff_data()).
+%%% eqc:quickcheck(protobuffs_eqc:prop_encode_decode1()).
+%%% eqc:quickcheck(protobuffs_eqc:prop_encode_decode2()).
+%%% eqc:quickcheck(protobuffs_eqc:prop_encode_decode3()).
+%%%
 %%% File    : protobuffs_eqc.erl
 %%% Author  :  <thomas@QUVIQ-THOMAS>
 %%% Description : QuickCheck specification used in class for
@@ -12,11 +19,17 @@
 -define(Mach_Eps, 1.1920928955078125e-7).
 -define(NotYetImplemented(Cond,Prop), ?IMPLIES(not (Cond),Prop)).
 
-%% eqc_gen:sample(protobuffs_eqc:field_num()).
-%% eqc:quickcheck(protobuffs_eqc:prop_encode_decode2()).
+%% Properties
 
-%%%%%%%%%%%%%%% Properties %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+prop_encode_decode1() ->
+    ?FORALL({FieldNum,Data,Type}, protobuff_data(),
+        collect(Type,
+            begin
+                {{N, RData}, <<>>} = protobuffs:decode(list_to_binary(protobuffs:encode(FieldNum, Data, Type)), Type),
+                FieldNum =:= N andalso 
+                (compare(Data, RData) orelse foreign_type(Type, Data, RData))  
+            end)).
+    
 prop_encode_decode2() ->
     ?FORALL({FieldNum,Data,Type}, fault_rate(5,10,protobuff_data()),
         case catch protobuffs:encode(FieldNum,Data,Type) of
@@ -27,19 +40,50 @@ prop_encode_decode2() ->
                 in_range(Data,Type) andalso
                 FieldNum =:= N andalso
                 (compare(Data,RData) orelse foreign_type(Type,Data,RData))
-        end
-    ).
+        end).
 
-prop_encode_decode() ->
-    ?FORALL({FieldNum,Data,Type}, protobuff_data(),
-        collect(Type,
-            begin
-                {{N, RData}, <<>>} = protobuffs:decode(list_to_binary(protobuffs:encode(FieldNum, Data, Type)), Type),
-                FieldNum =:= N andalso 
-                (compare(Data, RData) orelse foreign_type(Type, Data, RData))  
-            end
-        )
+prop_encode_decode3() ->
+    ?FORALL(Many, protobuff_many(),
+        begin
+            Sorted = lists:keysort(1, Many),
+            IOList = [protobuffs:encode(FNum,Data,Type) || {FNum,Data,Type} <- Sorted],
+            Bin = iolist_to_binary(IOList),
+            Decoded = protobuffs:decode_many(Bin),
+            lists:foldl(
+                fun (_, false) -> false;
+                    (I, true) ->                        
+                        {FNum1, Data1, Type1} = lists:nth(I, Sorted),
+                        {FNum2, Data2} = lists:nth(I, Decoded),
+                        Res = (FNum1 =:= FNum2 andalso
+                              (Data1 == Data2 orelse foreign_type(Type1,Data1,Data2))),
+                        case Res of
+                            true -> Res;
+                            _ -> io:format(" (~p =/= ~p) ", [Data1, Data2]), Res
+                        end
+                end, true, lists:seq(1, length(Sorted))) 
+        end).
+
+%% Data generators
+
+protobuff_many() ->
+    list(protobuff_data()).
+    
+protobuff_data() ->
+    fault({field_num(), int(80), oneof([int32,uint32,int64,uint64,sint32,sint64])},
+        oneof([
+            {field_num(), int(32),int32},
+            {field_num(), uint(32),uint32},
+            {field_num(), int(64),int64},
+            {field_num(), uint(64),uint64},
+            {field_num(), bool(),bool},
+            {field_num(), sint(32),sint32},
+            {field_num(), sint(64),sint64},
+            {field_num(), real(),float},
+            {field_num(), real(),double}
+        ])
     ).
+    
+%% Internal Functions
 
 foreign_type(bool,false,0) ->
     true;
@@ -63,23 +107,6 @@ prop_varint() ->
 right_bits([0|Rest]) ->
     lists:all(fun(B) -> B==1 end,Rest).
 
-%%%%%%%%%%%%%%% Data generators %%%%%%%%%%%%%%%%%%%%%
-
-protobuff_data() ->
-    fault({field_num(), int(80), oneof([int32,uint32,int64,uint64,sint32,sint64])},
-        oneof([
-            {field_num(), int(32),int32},
-            {field_num(), uint(32),uint32},
-            {field_num(), int(64),int64},
-            {field_num(), uint(64),uint64},
-            {field_num(), bool(),bool},
-            {field_num(), sint(32),sint32},
-            {field_num(), sint(64),sint64},
-            {field_num(), real(),float},
-            {field_num(), real(),double}
-        ])
-    ).
-
 field_num() ->
     ?SUCHTHAT(N,nat(),N>0).
 
@@ -100,8 +127,6 @@ exp(1) ->
     2;
 exp(N) ->
     2*exp(N-1).
-
-%%%%%%%%%%%%%%%%% Helper functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 decompose(<<Bit:1,Data:7>>) ->
     {[Bit],<<Data:7>>};

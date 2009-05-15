@@ -2,6 +2,11 @@
 %% -*- erlang -*-
 %%! -sasl errlog_type error -boot start_sasl -noshell
 
+%% ====================================================
+%% Generate proto message from mysql table definition
+%% $> escript mysql.escript host port user pwd db table
+%% ====================================================
+
 main([Host, Port0, User, Password, Database, Table]) ->
 	ok = crypto:start(),
 	Greeting_Fun =

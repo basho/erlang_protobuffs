@@ -25,7 +25,7 @@ prop_encode_decode1() ->
     ?FORALL({FieldNum,Data,Type}, protobuff_data(),
         collect(Type,
             begin
-                {{N, RData}, <<>>} = protobuffs:decode(list_to_binary(protobuffs:encode(FieldNum, Data, Type)), Type),
+                {{N, RData}, <<>>} = protobuffs:decode(protobuffs:encode(FieldNum, Data, Type), Type),
                 FieldNum =:= N andalso 
                 (compare(Data, RData) orelse foreign_type(Type, Data, RData))  
             end)).
@@ -36,7 +36,7 @@ prop_encode_decode2() ->
             {'EXIT', _} ->
                 not in_range(Data,Type);
             Bin ->
-                {{N, RData}, <<>>} = protobuffs:decode(list_to_binary(Bin), Type),
+                {{N, RData}, <<>>} = protobuffs:decode(Bin, Type),
                 in_range(Data,Type) andalso
                 FieldNum =:= N andalso
                 (compare(Data,RData) orelse foreign_type(Type,Data,RData))
@@ -48,21 +48,22 @@ prop_encode_decode3() ->
             Sorted = lists:keysort(1, Many),
             IOList = [protobuffs:encode(FNum,Data,Type) || {FNum,Data,Type} <- Sorted],
             Bin = iolist_to_binary(IOList),
-            Decoded = protobuffs:decode_many(Bin),
+            {Decoded0,_} = lists:foldl(
+                fun({_,_,Type}, {Acc, Bin1}) ->
+                    {Val, Rest} = protobuffs:decode(Bin1, Type),
+                    {[Val|Acc], Rest}
+                end, {[],Bin}, Sorted),
+            Decoded = lists:reverse(Decoded0),
             lists:foldl(
                 fun (_, false) -> false;
                     (I, true) ->                        
                         {FNum1, Data1, Type1} = lists:nth(I, Sorted),
                         {FNum2, Data2} = lists:nth(I, Decoded),
-                        Res = (FNum1 =:= FNum2 andalso
-                              (Data1 == Data2 orelse foreign_type(Type1,Data1,Data2))),
-                        case Res of
-                            true -> Res;
-                            _ -> io:format(" (~p =/= ~p) ", [Data1, Data2]), Res
-                        end
+                        (FNum1 =:= FNum2 andalso
+                        (compare(Data1,Data2) orelse foreign_type(Type1,Data1,Data2)))
                 end, true, lists:seq(1, length(Sorted))) 
         end).
-
+        
 %% Data generators
 
 protobuff_many() ->

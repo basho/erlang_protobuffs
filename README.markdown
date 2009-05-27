@@ -59,6 +59,14 @@ should be considered alpha software at best. It currently only supports flat
 messages, simple types (ints, strings, etc) and will break on ENUM types and
 any sort of nesting. Please do not use this in production.
 
+## no_debug_info
+
+The protobuffs_compile module relies on the pokemon_pb module being compiled
+with debug info. This is because pokemon_pb serves as a template for generated
+_pb modules. Running protobuffs_compile:scan_file/1 reads the erlang forms from
+the pokemon_pb.beam file and expands and alters those forms to create the generated
+module.
+
 ## CREDITS
 
 Some of the protobuffs.erl module came from code written by Brian Buchanan.

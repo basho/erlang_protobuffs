@@ -10,7 +10,7 @@ main(_) ->
     etap:is(protobuffs_compile:scan_file("t/hasdefault.proto"), ok, "hasdefault.proto created"),
 
 	case catch hasdefault_pb:encode_person(#person{}) of
-		{'EXIT', required_field_is_undefined} ->
+		{'EXIT', {error, {required_field_is_undefined,1,string}}} ->
 			etap:ok(true, "Required field is undefined");
 		_ ->
 			etap:ok(false, "Required field is undefined")

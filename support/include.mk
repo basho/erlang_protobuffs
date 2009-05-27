@@ -7,10 +7,6 @@ INCLUDE_DIRS := ../include $(wildcard ../deps/*/include)
 EBIN_DIRS := $(wildcard ../deps/*/ebin)
 ERLC_FLAGS := -W $(INCLUDE_DIRS:../%=-I ../%) $(EBIN_DIRS:%=-pa %)
 
-ifndef no_debug_info
-  ERLC_FLAGS += +debug_info
-endif
-
 ifdef debug
   ERLC_FLAGS += -Ddebug
 endif

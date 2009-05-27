@@ -35,9 +35,7 @@ output(Basename, Messages) ->
     ok = write_header_include_file(Basename, Messages),
     BeamFile = code:lib_dir(erlang_protobuffs) ++ "/ebin/pokemon_pb.beam",
     {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(BeamFile, [abstract_code]),
-    %{ok, Forms} = epp:parse_file("src/pokemon_pb.erl",[],[]),
     Forms1 = filter_forms(Messages, Forms, Basename, []),
-    %io:format("~p~n", [Forms1]),
     {ok, _, Bytes, _} = compile:forms(Forms1, [return]),
     file:write_file(Basename ++ ".beam", Bytes).
 

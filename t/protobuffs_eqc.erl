@@ -63,26 +63,118 @@ prop_encode_decode3() ->
                         (compare(Data1,Data2) orelse foreign_type(Type1,Data1,Data2)))
                 end, true, lists:seq(1, length(Sorted))) 
         end).
-        
+
+prop_encode_decode4() ->
+    ?FORALL({ProtoName, Msgs}, protobuff_msgs(),   
+        begin
+            code:delete(list_to_atom(ProtoName)),
+            code:purge(list_to_atom(ProtoName)),
+            protobuffs_compile:output(ProtoName, Msgs),
+            ?FORALL(Set, protobuff_set(Defs),
+                begin
+                    Record = build_record_from_defs(MsgName, Defs, Set),
+                    case catch apply(list_to_atom(ProtoName), list_to_atom("encode_" ++ MsgName), [Record]) of
+                        {'EXIT', {error, {required_field_is_undefined, FNum, _}}} ->
+                            {value, {_, required, _, _, _, _}} = lists:keysearch(FNum, 1, Defs),
+                            true;
+                        Bin when is_binary(Bin) ->
+                            Record1 = apply(list_to_atom(ProtoName), list_to_atom("decode_" ++ MsgName), [Bin]),
+                            lists:foldl(
+                                fun ({A,B}, true) ->
+                                        io:format("compare ~p and ~p~n", [A,B]),
+                                        compare(A,B);
+                                    (_, false) ->
+                                        false
+                                end, true, lists:zip(tuple_to_list(Record), tuple_to_list(Record1)))
+                    end
+                end)
+        end).
+    
 %% Data generators
 
+protobuff_msgs() ->
+    {string(), list({msg_name(), protobuff_defs()})}.
+    
 protobuff_many() ->
     list(protobuff_data()).
+    
+protobuff_set(Defs) ->
+    [begin
+        {FNum, Name, field_value(Tag, Type)}
+     end || {FNum, Tag, Type, Name, _, _Default} <- Defs].
     
 protobuff_data() ->
     fault({field_num(), int(80), oneof([int32,uint32,int64,uint64,sint32,sint64])},
         oneof([
-            {field_num(), int(32),int32},
-            {field_num(), uint(32),uint32},
-            {field_num(), int(64),int64},
-            {field_num(), uint(64),uint64},
-            {field_num(), bool(),bool},
-            {field_num(), sint(32),sint32},
-            {field_num(), sint(64),sint64},
-            {field_num(), real(),float},
-            {field_num(), real(),double}
+            {field_num(), int(32), int32},
+            {field_num(), uint(32), uint32},
+            {field_num(), int(64), int64},
+            {field_num(), uint(64), uint64},
+            {field_num(), bool(), bool},
+            {field_num(), sint(32), sint32},
+            {field_num(), sint(64), sint64},
+            {field_num(), real(), float},
+            {field_num(), real(), double},
+            {field_num(), list(char()), string},
+            {field_num(), binary(), bytes}
         ])
     ).
+    
+protobuff_defs() ->
+    ?SUCHTHAT(D,orderedlist(protobuff_def()),length(D) > 0).
+    
+protobuff_def() ->
+    oneof([
+        {field_num(), tag(), "int32",   field_name(), number, oneof([none, int(32)])},
+        {field_num(), tag(), "uint32",  field_name(), number, oneof([none, uint(32)])},
+        {field_num(), tag(), "int64",   field_name(), number, oneof([none, int(64)])},
+        {field_num(), tag(), "uint64",  field_name(), number, oneof([none, uint(64)])},
+        {field_num(), tag(), "bool",    field_name(), number, oneof([none, bool()])},
+        {field_num(), tag(), "sint32",  field_name(), number, oneof([none, sint(32)])},
+        {field_num(), tag(), "sint64",  field_name(), number, oneof([none, sint(64)])},
+        {field_num(), tag(), "float",   field_name(), number, oneof([none, real()])},
+        {field_num(), tag(), "double",  field_name(), number, oneof([none, real()])},
+        {field_num(), tag(), "string",  field_name(), number, oneof([none, list(char())])},
+        {field_num(), tag(), "bytes",   field_name(), number, oneof([none, binary()])}
+    ]).
+    
+field_value(repeated, "int32") -> oneof([undefined, list(int(32))]);
+field_value(repeated, "uint32") -> oneof([undefined, list(uint(32))]);
+field_value(repeated, "int64") -> oneof([undefined, list(int(64))]);
+field_value(repeated, "uint64") -> oneof([undefined, list(uint(64))]);
+field_value(repeated, "bool") -> oneof([undefined, list(bool())]);
+field_value(repeated, "sint32") -> oneof([undefined, list(sint(32))]);
+field_value(repeated, "sint64") -> oneof([undefined, list(sint(64))]);
+field_value(repeated, "float") -> oneof([undefined, list(real())]);
+field_value(repeated, "double") -> oneof([undefined, list(real())]);
+field_value(repeated, "string") -> oneof([undefined, list(list(char()))]);
+field_value(repeated, "bytes") -> oneof([undefined, list(binary())]);
+field_value(_, "int32") -> oneof([undefined, int(32)]);
+field_value(_, "uint32") -> oneof([undefined, uint(32)]);
+field_value(_, "int64") -> oneof([undefined, int(64)]);
+field_value(_, "uint64") -> oneof([undefined, uint(64)]);
+field_value(_, "bool") -> oneof([undefined, bool()]);
+field_value(_, "sint32") -> oneof([undefined, sint(32)]);
+field_value(_, "sint64") -> oneof([undefined, sint(64)]);
+field_value(_, "float") -> oneof([undefined, real()]);
+field_value(_, "double") -> oneof([undefined, real()]);
+field_value(_, "string") -> oneof([undefined, list(char())]);
+field_value(_, "bytes") -> oneof([undefined, binary()]).
+    
+field_num() ->
+    ?SUCHTHAT(N,nat(),N>0).
+    
+tag() ->
+    oneof([optional, required, repeated]).
+    
+field_name() ->
+   ?SUCHTHAT(N,string(),length(N)>0).
+    
+msg_name() ->
+    ?SUCHTHAT(N,string(),length(N)>0).
+    
+string() ->
+    list(oneof([choose(97,122), choose(65,90)])).
     
 %% Internal Functions
 
@@ -104,12 +196,16 @@ prop_varint() ->
         )
     ).
 
+build_record_from_defs(MsgName, Defs, Set) ->
+    lists:foldl(
+        fun({FNum, _Tag, _Type, _Name, _, _Default}, Acc) ->
+            {value, {_,_,Value}} = lists:keysearch(FNum, 1, Set),
+            erlang:append_element(Acc, Value)
+        end, {list_to_atom(MsgName)}, Defs).
+
 %% Bits are in reverse order: First bit should be zero, rest should be 1 
 right_bits([0|Rest]) ->
     lists:all(fun(B) -> B==1 end,Rest).
-
-field_num() ->
-    ?SUCHTHAT(N,nat(),N>0).
 
 int(Base) ->
     ?LET(I,uint(Base),
@@ -156,6 +252,10 @@ in_range(Float,float) ->
     fitbits(Float,32);
 in_range(Float,double) ->
     fitbits(Float,64);
+in_range(_,string) ->
+    true;
+in_range(_,bytes) ->
+    true;
 in_range(false,bool) ->
     true;
 in_range(true,bool) ->
@@ -163,6 +263,8 @@ in_range(true,bool) ->
 
 compare(Float1, Float2) when is_float(Float1), is_float(Float2) ->
     (abs(Float1 - Float2) =< ?Mach_Eps);
+compare(String, Binary) when is_list(String), is_binary(Binary) ->
+    String =:= binary_to_list(Binary);
 compare(A,A) -> true;
 compare(_,_) -> false.
 

@@ -7,7 +7,7 @@ make interfacing with the Protocol Buffers protocol easy.
 
 Encoding is simple.
 
-    1> erlang:iolist_to_binary(protobuffs:encode(1, 1, uint32)).
+    1> protobuffs:encode(1, 1, uint32).
     <<8,1>>
     2> erlang:iolist_to_binary([
         protobuffs:encode(1, <<"Nick">>, string),

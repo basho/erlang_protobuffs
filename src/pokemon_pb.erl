@@ -43,8 +43,8 @@ pack(_, optional, undefined, _, _) -> [];
 
 pack(_, repeated, undefined, _, _) -> [];
     
-pack(_, required, undefined, _, _) ->
-    exit(required_field_is_undefined);
+pack(FNum, required, undefined, Type, _) ->
+    exit({error, {required_field_is_undefined, FNum, Type}});
 
 pack(_, repeated, [], _, Acc) -> 
     lists:reverse(Acc);

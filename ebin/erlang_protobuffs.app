@@ -5,12 +5,12 @@
   {description, "Google protobuffs implementation for Erlang."},
 
   % The version of the applicaton
-  {vsn, "0.1.0.0"},
+  {vsn, "0.3.0"},
 
   % All modules used by the application. 
   {modules,
    [
-	forms_helper,
+    pokemon_pb,
 	protobuffs,
 	protobuffs_compile,
 	protobuffs_parser

@@ -24,11 +24,6 @@ Decoding is simple too.
     3> protobuffs:decode(<<16,25>>, bytes).
     {{2, 25}, <<>>}
 
-Decoding a bunch of stuff is also simple.
-
-    1> protobuffs:decode_many(<<10,4,78,105,99,107,16,25>>).
-    [{1,<<"Nick">>},{2,25}]
-
 ## Using .proto Files
 
 The main objective of this module is to allow developers to use .proto files

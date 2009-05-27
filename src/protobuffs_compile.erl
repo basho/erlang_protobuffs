@@ -23,12 +23,15 @@
 %% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
--export([scan_file/1]).
+-export([scan_file/1, output/2]).
 
 scan_file(ProtoFile) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     Parsed = protobuffs_parser:parse_file(ProtoFile),
     Messages = collect_full_messages(Parsed),
+    output(Basename, Messages).
+    
+output(Basename, Messages) ->
     ok = write_header_include_file(Basename, Messages),
     BeamFile = code:lib_dir(erlang_protobuffs) ++ "/ebin/pokemon_pb.beam",
     {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(BeamFile, [abstract_code]),
@@ -133,6 +136,15 @@ filter_to_record_clause({MsgName, _}, {clause,L,[_Param1,Param2],Guards,[Fold]})
     Fold1 = replace_atom(Fold, pikachu, atomize(MsgName)),
     {clause,L,[{atom,L,atomize(MsgName)},Param2],Guards,[Fold1]}.
 
+%% [{"Location",
+%%   [{2,required,"string","country",number,none},
+%%    {1,required,"string","region",number,none}]},
+%%  {"Person",
+%%   [{5,optional,"Location","location",number,none},
+%%    {4,required,"int32","age",number,none},
+%%    {3,required,"string","phone_number",number,none},
+%%    {2,required,"string","address",number,none},
+%%    {1,required,"string","name",number,none}]}]
 collect_full_messages(Data) -> collect_full_messages(Data, []).
 collect_full_messages([{message, Name, Fields} | Tail], Acc) ->
     FieldsOut = lists:foldl(

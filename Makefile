@@ -2,10 +2,13 @@ LIBDIR=`erl -eval 'io:format("~s~n", [code:lib_dir()])' -s init stop -noshell`
 VERSION=0.3.0
 PKGNAME=erlang_protobuffs
 
-all:
+all: app
 	mkdir -p ebin/
 	(cd src;$(MAKE))
 
+app:
+	sh ebin/$(PKGNAME).app.in $(VERSION)
+    	
 test: all
 	prove t/*.t
 
@@ -15,7 +18,7 @@ test-eqc: all
 clean:
 	(cd src;$(MAKE) clean)
 	(cd t; $(MAKE) clean)
-	rm -rf erl_crash.dump *.beam *.hrl
+	rm -rf erl_crash.dump *.beam *.hrl ebin/*.app
 
 package: clean
 	@mkdir $(PKGNAME)-$(VERSION)/ && cp -rf ebin Makefile README.markdown scripts src support t $(PKGNAME)-$(VERSION)

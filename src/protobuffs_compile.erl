@@ -33,7 +33,7 @@ scan_file(ProtoFile) when is_list(ProtoFile) ->
     
 output(Basename, Messages) ->
     ok = write_header_include_file(Basename, Messages),
-    BeamFile = code:lib_dir(erlang_protobuffs) ++ "/ebin/pokemon_pb.beam",
+    BeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
     {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(BeamFile, [abstract_code]),
     Forms1 = filter_forms(Messages, Forms, Basename, []),
     {ok, _, Bytes, _} = compile:forms(Forms1, [return]),

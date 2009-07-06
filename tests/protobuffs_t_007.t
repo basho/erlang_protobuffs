@@ -1,13 +1,13 @@
 #!/usr/bin/env escript
 %% -*- erlang -*-
-%%! -pa ./ebin -sasl errlog_type error -boot start_sasl -noshell
+%%! -pa ../ebin -sasl errlog_type error -boot start_sasl -noshell
 
 -record(location, {region, country}).
 -record(person, {name, address, phone_number, age, hobbies, locations}).
 
 main(_) ->
     etap:plan(5),
-    etap:is(protobuffs_compile:scan_file("t/repeater.proto"), ok, "repeater.proto compiled"),
+    etap:is(protobuffs_compile:scan_file("repeater.proto"), ok, "repeater.proto compiled"),
 
 	Fields1 = [
 		{1, "Lyon", string},

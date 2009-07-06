@@ -1,13 +1,13 @@
 #!/usr/bin/env escript
 %% -*- erlang -*-
-%%! -pa ./ebin -sasl errlog_type error -boot start_sasl -noshell
+%%! -pa ../ebin -sasl errlog_type error -boot start_sasl -noshell
 
 -record(location, {region, country}).
 -record(person, {name, address, phone_number, age, location}).
 
 main(_) ->
     etap:plan(2),
-    etap:is(protobuffs_compile:scan_file("t/hasdefault.proto"), ok, "hasdefault.proto created"),
+    etap:is(protobuffs_compile:scan_file("hasdefault.proto"), ok, "hasdefault.proto created"),
 
 	Person = #person {
 		name = "Nick",

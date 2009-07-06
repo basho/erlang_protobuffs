@@ -1,10 +1,10 @@
 # The FW_PACKAGE_MAINTAINER field is populated with the 
 # environment variable FW_PACKAGE_DEFAULT_MAINTAINER if non-empty
 
-FW_PACKAGE_NAME="erlang_protobuffs"
+FW_PACKAGE_NAME="erlangprotobuffs"
 FW_PACKAGE_VERSION="0.0.0"
 FW_PACKAGE_MAINTAINER="cliff <cliff@cliffs-macbook-pro-15.local>"
-FW_PACKAGE_SHORT_DESCRIPTION="A short description."
+FW_PACKAGE_SHORT_DESCRIPTION="Google protobuffs implementation for Erlang."
 FW_PACKAGE_DESCRIPTION=`cat README.markdown`
 FW_PACKAGE_ARCHITECTURE_DEPENDENT="0"
 

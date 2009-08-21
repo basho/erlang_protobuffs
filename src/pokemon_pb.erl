@@ -35,9 +35,10 @@ encode_pikachu(Record) when is_record(Record, pikachu) ->
     encode(pikachu, Record).
 
 encode(pikachu, Record) ->
-    iolist_to_binary([
-        pack(1, required, with_default(Record#pikachu.abc, none), string, [])
-    ]).
+    iolist_to_binary(iolist(pikachu, Record)).
+
+iolist(pikachu, Record) ->
+    [pack(1, required, with_default(Record#pikachu.abc, none), string, [])].
 
 with_default(undefined, none) -> undefined;
 with_default(undefined, Default) -> Default;

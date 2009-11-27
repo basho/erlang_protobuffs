@@ -3,7 +3,7 @@
 %%! -pa ../src -noshell
 
 main(_) ->
-    etap:plan(18),
+    etap:plan(20),
     Tests = [
         {8, uint32},
         {16, uint32},
@@ -22,7 +22,9 @@ main(_) ->
         {<<"It's a secret to everyone.">>, string},
         {<<4,8,15,16,23,42>>, bytes},
         {3.141592025756836, float},
-        {1.00000000000000022204460492503130808472633361816406, double}
+        {1.00000000000000022204460492503130808472633361816406, double},
+        {false, bool},
+        {true, bool}
     ],
     lists:foreach(
         fun(Test) ->

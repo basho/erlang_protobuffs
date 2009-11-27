@@ -1,3 +1,5 @@
 * Thu Dec 03 2009 Anthony Molinaro <anthony.molinaro@openx.org> 0.0.1
 - Fixed path for unit tests
 - Have .gitignore ignore all generated files
+- Fixed bool type, they were being improperly left as 0 and 1 instead of using
+the true and false atoms

@@ -1,6 +1,6 @@
 #!/usr/bin/env escript
 %% -*- erlang -*-
-%%! -pa ../ebin -sasl errlog_type error -boot start_sasl -noshell
+%%! -pa ../src -sasl errlog_type error -boot start_sasl -noshell
 
 -record(location, {region, country}).
 -record(person, {name, address, phone_number, age, hobbies, locations}).

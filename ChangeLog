@@ -2,4 +2,6 @@
 - Fixed path for unit tests
 - Have .gitignore ignore all generated files
 - Fixed bool type, they were being improperly left as 0 and 1 instead of using
-the true and false atoms
+  the true and false atoms
+- Nested types should now work according to spec (as much as there is one)
+

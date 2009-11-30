@@ -22,6 +22,7 @@ main(_) ->
                        type = #person_phonenumber_phonetype { mobile = 25 }
                      }]
            },
+
     Bin = nested1_pb:encode_person (Person),
 
     etap:is (nested1_pb:decode_person (Bin), Person, "Encoded and decoded person"),

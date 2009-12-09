@@ -159,33 +159,12 @@ collect_full_messages([{message, Name, Fields} | Tail], Acc) ->
         end
     end, [], Fields),
 
-%    FieldsOut = lists:foldl(
-%        fun (Input, TmpAcc) ->
-%            case Input of
-%                {Index, Rules, Type, Identifier, RealType, Other} ->
-%                  case is_scalar_type (Type) of
-%                    true -> [Input | TmpAcc];
-%                    false ->
-%                      PossibleTypes = all_possible_types (Type, ListName),
-%
-%                      NewType =
-%                        case find_type (PossibleTypes, Acc) of
-%                          false ->
-%                            hd (PossibleTypes);
-%                          ResultType ->
-%                            ResultType
-%                        end,
-%                      [{Index, Rules, NewType, Identifier, RealType, Other} | TmpAcc]
-%                  end;
-%                _ -> TmpAcc
-%            end
-%        end, [], Fields),
-    SubMessages = lists:foldl(
-%        fun ({message, C, D}, TmpAcc) -> [{message, Name ++ "_" ++ C, D} | TmpAcc];
-        fun ({message, C, D}, TmpAcc) -> [{message, [C | ListName], D} | TmpAcc];
-            (_, TmpAcc) -> TmpAcc
-        end, [], Fields),
-    collect_full_messages(Tail ++ SubMessages, [{ListName, FieldsOut} | Acc]);
+  SubMessages = lists:foldl(
+    fun ({message, C, D}, TmpAcc) -> [{message, [C | ListName], D} | TmpAcc];
+      (_, TmpAcc) -> TmpAcc
+    end, [], Fields),
+
+  collect_full_messages(Tail ++ SubMessages, [{ListName, FieldsOut} | Acc]);
 collect_full_messages([{package, _Line1},
                        {bareword, _Line2, _PackageName},
                        {';', _Line3} | Tail], Acc) ->

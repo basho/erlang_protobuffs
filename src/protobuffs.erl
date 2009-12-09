@@ -149,6 +149,11 @@ typecast(Value, SignedType) when SignedType =:= int32; SignedType =:= int64 ->
     end;
 typecast(Value, SignedType) when SignedType =:= sint32; SignedType =:= sint64 ->
     (Value bsr 1) bxor (-(Value band 1));
+typecast(Value, Type) when Type =:= bool ->
+    case Value of
+      1 -> true;
+      _ -> false
+    end;
 typecast(Value, _) ->
     Value.
 

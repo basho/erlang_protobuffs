@@ -1,0 +1,10 @@
+#! /bin/sh
+
+#---------------------------------------------------------------------
+#                                start                                
+# 
+# Executed when the package (service) is shut down.
+# Not supported by all package formats.
+#---------------------------------------------------------------------
+
+exit 0

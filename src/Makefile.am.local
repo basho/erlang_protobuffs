@@ -1,4 +1,6 @@
 # put whatever (auto)make commands here, they will be included from Makefile.am
+bin_SCRIPTS = \
+			protoc-erl
 
 dist_erlappsrc_DATA = 		\
   $(wildcard *.erl)
@@ -9,6 +11,8 @@ dist_erlappinclude_DATA =	\
 erlappebin_SCRIPTS =					\
   @FW_PACKAGE_NAME@.app					\
   $(patsubst %.erl, %.beam, $(dist_erlappsrc_DATA))
+
+EXTRA_DIST += $(bin_SCRIPTS)
 
 # check_DATA =			\
 #   .dialyzer_ok

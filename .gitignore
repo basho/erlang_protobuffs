@@ -1,5 +1,6 @@
 ebin
 *.beam
+*.gz
 *~
 Makefile
 Makefile.am
@@ -40,6 +41,7 @@ fw-pkgin/Makefile
 fw-pkgin/Makefile.am
 fw-pkgin/Makefile.in
 fw-pkgout
+fw-pkgtmp
 install-sh
 missing
 src/Makefile

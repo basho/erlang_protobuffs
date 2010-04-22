@@ -36,7 +36,7 @@ output(Basename, Messages) ->
     BeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
     {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(BeamFile, [abstract_code]),
     Forms1 = filter_forms(Messages, Forms, Basename, []),
-    {ok, _, Bytes, _} = compile:forms(Forms1, [return]),
+    {ok, _, Bytes, _} = compile:forms(Forms1, [return, debug_info]),
     file:write_file(Basename ++ ".beam", Bytes).
 
 filter_forms(Msgs, [{attribute,L,file,{_,_}}|Tail], Basename, Acc) ->
@@ -93,7 +93,7 @@ filter_forms(_, [], _, Acc) -> lists:reverse(Acc).
 expand_encode_function(Msgs, Line, Clause) ->
     {function,Line,encode,2,[filter_encode_clause(Msg, Clause) || Msg <- Msgs]}.
     
-filter_encode_clause({MsgName, Fields}, {clause,L,_Args,Guards,_Content}) ->
+filter_encode_clause({MsgName, _Fields}, {clause,L,_Args,Guards,_Content}) ->
     ToBin = {call,L,{atom,L,iolist_to_binary},[{call,L,
                                                 {atom,L,iolist},
                                                 [{atom,L,atomize(MsgName)},{var,L,'Record'}]}]},

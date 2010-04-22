@@ -116,7 +116,7 @@ output(Basename, Messages, Enums, Options) ->
     PokemonBeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
     {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(PokemonBeamFile, [abstract_code]),
     Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
-    {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return]),
+    {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return, debug_info]),
     case proplists:get_value(output_ebin_dir,Options) of
 	undefined ->
 	    BeamFile = Basename ++ ".beam";
@@ -233,7 +233,7 @@ expand_encode_function(Msgs, Line, Clause) ->
     {function,Line,encode,2,[filter_encode_clause(Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
-filter_encode_clause({MsgName, Fields}, {clause,L,_Args,Guards,_Content}) ->
+filter_encode_clause({MsgName, _Fields}, {clause,L,_Args,Guards,_Content}) ->
     ToBin = {call,L,{atom,L,iolist_to_binary},[{call,L,
                                                 {atom,L,iolist},
                                                 [{atom,L,atomize(MsgName)},{var,L,'Record'}]}]},

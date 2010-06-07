@@ -1,7 +1,7 @@
 {application, protobuffs,
  [
     {description, "Google protobuffs implementation for Erlang."},
-    {vsn, "4"},
+    {vsn, "0.5.0"},
     {modules, [
 		pokemon_pb,
 		protobuffs,

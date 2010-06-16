@@ -168,14 +168,11 @@ collect_full_messages([{message, Name, Fields} | Tail], Acc) ->
             (_, TmpAcc) -> TmpAcc
         end, [], Fields),
     collect_full_messages(Tail ++ SubMessages, [{Name, FieldsOut} | Acc]);
-collect_full_messages([{option,2},
-                       {bareword,2,"java_package"},
-                       {'=',2},
-                       {string,2, _},
-                       {';',2}|Tail], Acc) ->
-    collect_full_messages(Tail, Acc);
 collect_full_messages([{package, _Line1}, {bareword, _Line2, _PackageName}, {';', _Line3} | Tail], Acc) ->
     collect_full_messages(Tail, Acc);
+%% Skip anything we don't understand
+collect_full_messages([_|Tail], Acc) ->
+  collect_full_messages(Tail, Acc);
 collect_full_messages([], Acc) ->
     Acc.
 

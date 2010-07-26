@@ -8,47 +8,47 @@
 %% ====================================================
 
 main([Host, Port0, User, Password, Database, Table]) ->
-	ok = crypto:start(),
-	Greeting_Fun =
-		fun(_M,_L,_E,_F) -> 
-			%{Format,Args} = F(),
-			%io:format("[~p:~b] ~p~n", [M,L,E]),
-			%io:format(Format ++ "~n", Args),
-			ok
-		end,
-		
-	Port = list_to_integer(Port0),
-	{ok, Pid} = mysql_conn:start(Host, Port, User, Password, Database, Greeting_Fun, undefined, undefined),
+    ok = crypto:start(),
+    Greeting_Fun =
+        fun(_M,_L,_E,_F) -> 
+                %{Format,Args} = F(),
+                %io:format("[~p:~b] ~p~n", [M,L,E]),
+                %io:format(Format ++ "~n", Args),
+                ok
+        end,
 
-	[C|Rest] = Table,
-	MessageName = [string:to_upper(C)|Rest],
-	case mysql_conn:fetch(Pid, list_to_binary(lists:flatten(io_lib:format("DESC ~s", [Table]))), self()) of 
+    Port = list_to_integer(Port0),
+    {ok, Pid} = mysql_conn:start(Host, Port, User, Password, Database, Greeting_Fun, undefined, undefined),
+
+    [C|Rest] = Table,
+    MessageName = [string:to_upper(C)|Rest],
+    case mysql_conn:fetch(Pid, list_to_binary(lists:flatten(io_lib:format("DESC ~s", [Table]))), self()) of 
         {data, MySQLRes} ->
             Rows = mysql:get_result_rows(MySQLRes),
-			io:format("message ~s {~n", [MessageName]),
-			print_row(Rows, 1),
-			io:format("}~n");
-		[] -> 
-			[];
-		Err -> 
-			error_logger:error_msg("~p~n", [Err])
+            io:format("message ~s {~n", [MessageName]),
+            print_row(Rows, 1),
+            io:format("}~n");
+        [] -> 
+            [];
+        Err -> 
+            error_logger:error_msg("~p~n", [Err])
     end,
 
-	ok;
-	
+    ok;
+
 main(_Args) ->
-	io:format("usage: escript mysql.escript host port user password database table~n"),
-	io:format("args: ~p~n", [_Args]).
-	
+    io:format("usage: escript mysql.escript host port user password database table~n"),
+    io:format("args: ~p~n", [_Args]).
+
 print_row([], _) -> ok;
 print_row([[Field, Type, Null, _Key, Default, _Extra]|Tail], Number) ->
-	Null1 = null(Null),
-	Type1 = type(binary_to_list(Type)),
-	Default1 = default(Type1, Default),
-	io:format("    ~s ~s ~s = ~w~s;~n", [Null1, Type1, Field, Number, Default1]),
+    Null1 = null(Null),
+    Type1 = type(binary_to_list(Type)),
+    Default1 = default(Type1, Default),
+    io:format("    ~s ~s ~s = ~w~s;~n", [Null1, Type1, Field, Number, Default1]),
 
-	print_row(Tail, Number+1).
-		
+    print_row(Tail, Number+1).
+
 null(<<"YES">>) -> "optional";
 null(<<"NO">>) -> "required".
 

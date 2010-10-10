@@ -119,7 +119,11 @@ decode(Bytes, ExpectedType) ->
 decode_value(Bytes, ?TYPE_VARINT, ExpectedType) ->
     {Value, Rest} = decode_varint(Bytes),
     {typecast(Value, ExpectedType), Rest};
-decode_value(Bytes, ?TYPE_STRING, ExpectedType) when ExpectedType =:= string; ExpectedType =:= bytes ->
+decode_value(Bytes, ?TYPE_STRING, string) ->
+    {Length, Rest} = decode_varint(Bytes),
+    {Value,Rest1} = split_binary(Rest, Length),
+    {binary_to_list(Value),Rest1};
+decode_value(Bytes, ?TYPE_STRING, bytes) ->
     {Length, Rest} = decode_varint(Bytes),
     split_binary(Rest, Length);
 decode_value(<<Value:64/little-unsigned-integer, Rest/binary>>, ?TYPE_64BIT, fixed64) ->

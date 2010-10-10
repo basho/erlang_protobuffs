@@ -60,8 +60,21 @@ pack(FNum, _, Data, _, _) when is_tuple(Data) ->
     [RecName|_] = tuple_to_list(Data),
     protobuffs:encode(FNum, encode(RecName, Data), bytes);
 
-pack(FNum, _, Data, Type, _) ->
-    protobuffs:encode(FNum, Data, Type).
+pack(FNum, _, Data, Type, _) when Type=:=bool;Type=:=int32;Type=:=uint32;
+				  Type=:=int64;Type=:=uint64;Type=:=sint32;
+				  Type=:=sint64;Type=:=fixed32;Type=:=sfixed32;
+				  Type=:=fixed64;Type=:=sfixed64;Type=:=string;
+				  Type=:=bytes;Type=:=float;Type=:=double ->
+    protobuffs:encode(FNum, Data, Type);
+
+pack(FNum, _, Data, Type, _) when is_atom(Data) ->
+    protobuffs:encode(FNum, enum_to_int(Type,Data), enum).
+
+enum_to_int(pikachu,value) ->
+    1.
+
+int_to_enum(_,Val) ->
+    Val.
 
 %% DECODE
 decode_pikachu(Bytes) when is_binary(Bytes) ->
@@ -91,12 +104,12 @@ decode(Bytes, Types, Acc) ->
                 true ->
                     case lists:keytake(FNum, 1, Acc) of
                         {value, {FNum, Name, List}, Acc1} ->
-                            decode(Rest1, Types, [{FNum, Name, lists:reverse([Value1|lists:reverse(List)])}|Acc1]);
+                            decode(Rest1, Types, [{FNum, Name, lists:reverse([int_to_enum(Type,Value1)|lists:reverse(List)])}|Acc1]);
                         false ->
-                            decode(Rest1, Types, [{FNum, Name, [Value1]}|Acc])
+                            decode(Rest1, Types, [{FNum, Name, [int_to_enum(Type,Value1)]}|Acc])
                     end;
                 false ->
-                    decode(Rest1, Types, [{FNum, Name, Value1}|Acc])
+                    decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
             end;
         false ->
             exit({error, {unexpected_field_index, FNum}})

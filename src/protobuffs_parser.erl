@@ -36,18 +36,18 @@ parse(Data) -> parse(Data, []).
 
 %% @hidden
 parse([], Acc) -> lists:reverse(Acc);
-parse([{'}', _Line} | Tail], Acc) -> {Acc, Tail};
-parse([{enum, _Line}, {bareword, _Line, MessageName}, {'{', _Line} | Tail], Acc) ->
+parse([{'}', _} | Tail], Acc) -> {Acc, Tail};
+parse([{enum, _}, {bareword, _, MessageName}, {'{', _} | Tail], Acc) ->
     {Res, Tail2} = parse(Tail, []),
     parse(Tail2, [{enum, MessageName, lists:reverse(Res)} | Acc]);
-parse([{message, _Line}, {bareword, _Line, MessageName}, {'{', _Line} | Tail], Acc) ->
+parse([{message, _}, {bareword, _, MessageName}, {'{', _} | Tail], Acc) ->
     {Res, Tail2} = parse(Tail, []),
     parse(Tail2, [{message, MessageName, lists:reverse(Res)} | Acc]);
-parse([{bareword, _Line, FieldName}, {'=', _Line}, {number, _Line, Value}, {';', _Line} | Tail], Acc) ->
+parse([{bareword, _, FieldName}, {'=', _}, {number, _, Value}, {';', _} | Tail], Acc) ->
     parse(Tail, [{enum, Value, FieldName} | Acc]);
-parse([{Type, _Line}, {bareword, _Line, Field}, {bareword, _Line, FieldName}, {'=', _Line}, {FieldType, _Line, Position}, {'[', _Line}, {bareword, _Line,"default"}, {'=', _Line}, {_DefaultType, _Line, Default}, {']', _Line}, {';', _Line} | Tail], Acc) ->
+parse([{Type, _}, {bareword, _, Field}, {bareword, _, FieldName}, {'=', _}, {FieldType, _, Position}, {'[', _}, {bareword, _,"default"}, {'=', _}, {_DefaultType, _, Default}, {']', _}, {';', _} | Tail], Acc) ->
     parse(Tail, [{Position, Type, Field, FieldName, FieldType, Default} | Acc]);
-parse([{Type, _Line}, {bareword, _Line, Field}, {bareword, _Line, FieldName}, {'=', _Line}, {FieldType, _Line, Position}, {';', _Line} | Tail], Acc) ->
+parse([{Type, _}, {bareword, _, Field}, {bareword, _, FieldName}, {'=', _}, {FieldType, _, Position}, {';', _} | Tail], Acc) ->
     parse(Tail, [{Position, Type, Field, FieldName, FieldType, none} | Acc]);
 parse([{'$end', _} | Tail], Acc) ->
     parse(Tail, Acc);

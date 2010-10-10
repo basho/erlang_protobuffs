@@ -23,22 +23,46 @@
 %% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
--export([scan_file/1, output/2]).
+-export([scan_file/1, generate_source/1, output/2]).
 
 scan_file(ProtoFile) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
-    Parsed = protobuffs_parser:parse_file(ProtoFile),
-    UntypedMessages = collect_full_messages(Parsed),
-    Messages = resolve_types (UntypedMessages),
+    Messages = generate_messages (ProtoFile),
     output(Basename, Messages).
+
+generate_source (ProtoFile) when is_list (ProtoFile) ->
+    Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
+    Messages = generate_messages (ProtoFile),
+    output_source (Basename, Messages).
 
 output(Basename, Messages) ->
     ok = write_header_include_file(Basename, Messages),
+    Forms = generate_forms (Basename, Messages),
+    write_beam_file (Basename, Forms).
+
+output_source (Basename, Messages) ->
+    ok = write_header_include_file(Basename, Messages),
+    Forms = generate_forms (Basename, Messages),
+    write_source_file (Basename, Forms).
+
+generate_messages (ProtoFile) ->
+    Parsed = protobuffs_parser:parse_file(ProtoFile),
+    UntypedMessages = collect_full_messages(Parsed),
+    resolve_types (UntypedMessages).
+
+generate_forms (Basename, Messages) ->
     BeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
-    {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(BeamFile, [abstract_code]),
-    Forms1 = filter_forms(Messages, Forms, Basename, []),
-    {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return]),
-    file:write_file(Basename ++ ".beam", Bytes).
+    {ok,{_,[{abstract_code,{_,Forms}}]}} =
+      beam_lib:chunks(BeamFile, [abstract_code]),
+    filter_forms(Messages, Forms, Basename, []).
+
+write_source_file (Basename, Forms) ->
+  file:write_file(Basename ++ ".erl",
+                  erl_prettypr:format(erl_syntax:form_list (Forms))).
+
+write_beam_file (Basename, Forms) ->
+  {ok, _, Bytes, _Warnings} = compile:forms(Forms, [return]),
+  file:write_file(Basename ++ ".beam", Bytes).
 
 filter_forms(Msgs, [{attribute,L,file,{_,_}}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Tail, Basename, [{attribute,L,file,{"src/" ++ Basename ++ ".erl",L}}|Acc]);

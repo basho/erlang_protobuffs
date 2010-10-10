@@ -76,6 +76,10 @@ scan([$;|Rest], Accum, Line) ->
     scan(Rest, [{';', Line}|Accum], Line);
 scan([$,|Rest], Accum, Line) ->
     scan(Rest, [{',', Line}|Accum], Line);
+scan([$t,$r,$u,$e|Rest], Accum, Line) ->
+    scan(Rest, [{bool, Line, true}|Accum], Line);
+scan([$f,$a,$l,$s,$e|Rest], Accum, Line) ->
+    scan(Rest, [{bool, Line, false}|Accum], Line);
 scan([Digit|_] = String, Accum, Line)
   when Digit >= $0, Digit =< $9 ->
     {Number, Rest} = scan_number(String),

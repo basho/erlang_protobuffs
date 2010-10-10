@@ -24,9 +24,13 @@
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(pokemon_pb).
 -export([encode_pikachu/1, decode_pikachu/1]).
+-export([encode/1]).
 -record(pikachu, {abc, def}).
 
 %% ENCODE
+encode(Record) ->
+	encode(element(1, Record), Record).
+
 encode_pikachu(Record) when is_record(Record, pikachu) ->
     encode(pikachu, Record).
 

@@ -23,7 +23,7 @@
 %% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
--export([scan_file/1, output/3]).
+-export([scan_file/1]).
 
 scan_file(ProtoFile) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",

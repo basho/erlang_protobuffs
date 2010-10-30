@@ -3,7 +3,7 @@ require 'rake/clean'
 
 # Configuration
 START_MODULE = "erlang_protobuffs"
-TEST_MODULE = "test_erlang_protobuffs"
+TEST_MODULE = "protobuffs"
 
 # No Need to change
 PWD = `pwd`.strip
@@ -12,7 +12,7 @@ ERLC_FLAGS = "-I#{INCLUDE} +warn_unused_vars +warn_unused_import"
 
 SRC = FileList['src/**/*.erl']
 OBJ = SRC.pathmap("%{src,ebin}X.beam")
-CLEAN.include(['**/*.dump'])
+CLEAN.include(['**/*.dump','*.hrl','*.beam'])
 CLOBBER.include(['**/*.beam'])
 
 directory 'ebin'
@@ -36,7 +36,7 @@ end
 
 desc "Run Unit Tests"
 task :test do
-  sh("erl -noshell -s #{TEST_MODULE} test -s init stop")
+  sh("erl -noshell -pa #{PWD}/ebin -s eunit test #{TEST_MODULE} -s init stop")
 end
 
 desc "Generate Documentation"

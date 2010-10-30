@@ -1,0 +1,8 @@
+message EnumMsg {
+  enum Values {
+    value1 = 1;
+    value2 = 2;
+  }
+
+  optional Values value = 1;
+} 

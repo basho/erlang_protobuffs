@@ -6,6 +6,7 @@ START_MODULE = "erlang_protobuffs"
 TEST_MODULE = "test_erlang_protobuffs"
 
 # No Need to change
+PWD = `pwd`.strip
 INCLUDE = "include"
 ERLC_FLAGS = "-I#{INCLUDE} +warn_unused_vars +warn_unused_import"
 
@@ -30,7 +31,7 @@ task :compile => ['ebin'] + OBJ
 
 desc "Open up a shell"
 task :shell => [:compile] do
-  sh("erl -sname#{START_MODULE} -pa #{PWD}/ebin")
+  sh("erl -sname #{START_MODULE} -pa #{PWD}/ebin")
 end
 
 desc "Run Unit Tests"
@@ -40,7 +41,7 @@ end
 
 desc "Generate Documentation"
 task :doc do
-  sh("cd doc && erl -noshell edoc files ../#{SRC.join(" ../")} -run init stop")
+    sh("cd doc && erl -noshell -run edoc files ../#{SRC.join(" ../")} -run init stop")
 end
 
 task :default => :compile

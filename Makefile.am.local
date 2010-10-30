@@ -1,3 +1,0 @@
-# put whatever (auto)make commands here, they will be included from Makefile.am
-
-EXTRA_DIST += README.markdown

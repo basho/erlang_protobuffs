@@ -11,9 +11,28 @@
 
 -define(NUM_TESTS,1000).
 
+-export([parse/1]).
+
+parse(FileName) ->
+    {ok, InFile} = file:open(FileName, [read]),
+    Acc = loop(InFile,[]),
+    file:close(InFile),
+    {ok,Parsed} = protobuffs_parser:parse(Acc),
+    Parsed.
+
+loop(InFile,Acc) ->
+    case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
+        {ok,Token,_EndLine} ->
+            loop(InFile,Acc ++ [Token]);
+        {error,token} ->
+            exit(scanning_error);    
+        {eof,_} ->
+            Acc
+    end.
+
 parse_empty_file_test_() ->
     Path = filename:absname("tests/empty.proto"),
-    [{message, "Empty", Messages}] = protobuffs_parser:parse_file(Path),
+    [{message, "Empty", Messages}] = parse(Path),
     [?_assertMatch({1,optional,"double","real1",number,none},lists:keyfind(1,1,Messages)),
      ?_assertMatch({2,optional,"float","real2",number,none},lists:keyfind(2,1,Messages)),
      ?_assertMatch({3,optional,"int32","int1",number,none},lists:keyfind(3,1,Messages)),
@@ -32,7 +51,7 @@ parse_empty_file_test_() ->
 
 parse_has_default_test_() ->
     Path = filename:absname("tests/hasdefault.proto"),
-    [{message, "WithDefault", Messages}] = protobuffs_parser:parse_file(Path),
+    [{message, "WithDefault", Messages}] = parse(Path),
     [?_assertMatch({1,required,"double","real1",number,1.0},lists:keyfind(1,1,Messages)),
      ?_assertMatch({2,required,"float","real2",number,2.0},lists:keyfind(2,1,Messages)),
      ?_assertMatch({3,required,"int32","int1",number,1},lists:keyfind(3,1,Messages)),
@@ -52,7 +71,7 @@ parse_simple_test_() ->
     Path = filename:absname("tests/simple.proto"),
     [{package,"simple"},
      {message, "Person", Person},
-     {message, "Location", Location}] = protobuffs_parser:parse_file(Path),
+     {message, "Location", Location}] = parse(Path),
     [?_assertMatch({1,required,"string","name",number,none},lists:keyfind(1,1,Person)),
      ?_assertMatch({2,required,"string","address",number,none},lists:keyfind(2,1,Person)),
      ?_assertMatch({3,required,"string","phone_number",number,none},lists:keyfind(3,1,Person)),
@@ -63,7 +82,7 @@ parse_simple_test_() ->
 
 parse_enum_test_() ->
     Path = filename:absname("tests/enum.proto"),
-    [{message,"EnumMsg", EnumMsg}] = protobuffs_parser:parse_file(Path),
+    [{message,"EnumMsg", EnumMsg}] = parse(Path),
     {enum, "Values", Values} = lists:keyfind(enum,1,EnumMsg),
     [?_assertMatch({1,optional,"Values","value",number,none},lists:keyfind(1,1,EnumMsg)),
      ?_assertMatch({enum,1,"value1"},lists:keyfind("value1",3,Values)),
@@ -71,7 +90,7 @@ parse_enum_test_() ->
 
 parse_nested1_test_() ->
     Path = filename:absname("tests/nested1.proto"),
-    [{message, "Person", Person}] = protobuffs_parser:parse_file(Path),
+    [{message, "Person", Person}] = parse(Path),
     {message, "PhoneNumber", PhoneNumber} = lists:keyfind("PhoneNumber",2,Person),
     {message, "PhoneType", PhoneType} = lists:keyfind("PhoneType",2,PhoneNumber),
     [?_assertMatch({1,required,"string","name",number,none},lists:keyfind(1,1,Person)),
@@ -85,7 +104,7 @@ parse_nested1_test_() ->
 
 parse_nested2_test_() ->
     Path = filename:absname("tests/nested2.proto"),
-    [{message, "Outer",Outer}] = protobuffs_parser:parse_file(Path),
+    [{message, "Outer",Outer}] = parse(Path),
     {message, "MiddleAA", MiddleAA} = lists:keyfind("MiddleAA",2,Outer),
     {message, "MiddleBB", MiddleBB} = lists:keyfind("MiddleBB",2,Outer),
     {message, "Inner", InnerAA} = lists:keyfind("Inner",2,MiddleAA),
@@ -101,7 +120,7 @@ parse_nested2_test_() ->
 
 parse_nested3_test_() ->
     Path = filename:absname("tests/nested3.proto"),
-    [{message,"Outer",Outer}] = protobuffs_parser:parse_file(Path),
+    [{message,"Outer",Outer}] = parse(Path),
     {message,"Middle",Middle} = lists:keyfind("Middle",2,Outer),
     {message,"Other",Other} = lists:keyfind("Other",2,Outer),
     {message,"Inner",Inner} = lists:keyfind("Inner",2,Middle),
@@ -113,7 +132,7 @@ parse_nested3_test_() ->
 
 parse_nested4_test_() ->
     Path = filename:absname("tests/nested4.proto"),
-    [{message,"Outer",Outer}] = protobuffs_parser:parse_file(Path),
+    [{message,"Outer",Outer}] = parse(Path),
     {message,"Middle",Middle} = lists:keyfind("Middle",2,Outer),
     {message,"Other",Other} = lists:keyfind("Other",2,Outer),
     {message,"Inner",Inner} = lists:keyfind("Inner",2,Middle),
@@ -125,7 +144,7 @@ parse_nested4_test_() ->
 
 parse_nested5_test_() ->
     Path = filename:absname("tests/nested5.proto"),
-    Parsed = protobuffs_parser:parse_file(Path),
+    Parsed = parse(Path),
     {message,"First",First} = lists:keyfind("First",2,Parsed),
     {message,"Second",Second} = lists:keyfind("Second",2,Parsed),
     {message,"Inner",Inner} = lists:keyfind("Inner",2,First),

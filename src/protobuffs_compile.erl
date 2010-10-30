@@ -27,7 +27,7 @@
 
 scan_file(ProtoFile) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
-    Parsed = protobuffs_parser:parse_file(ProtoFile),
+    {ok,Parsed} = parse(ProtoFile),
     {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
     Messages = resolve_types(UntypedMessages,Enums),
     output(Basename, Messages, Enums).
@@ -39,6 +39,23 @@ output(Basename, Messages, Enums) ->
     Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
     {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return]),
     file:write_file(Basename ++ ".beam", Bytes).
+
+parse(FileName) ->
+    {ok, InFile} = file:open(FileName, [read]),
+    Acc = loop(InFile,[]),
+    file:close(InFile),
+    protobuffs_parser:parse(Acc).
+
+loop(InFile,Acc) ->
+    case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
+        {ok,Token,_EndLine} ->
+            loop(InFile,Acc ++ [Token]);
+        {error,token} ->
+            exit(scanning_error);    
+        {eof,_} ->
+            Acc
+    end.
+
 
 filter_forms(Msgs, Enums, [{attribute,L,file,{_,_}}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [{attribute,L,file,{"src/" ++ Basename ++ ".erl",L}}|Acc]);

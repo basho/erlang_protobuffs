@@ -8,4 +8,6 @@
   keywords
 * freke <davabe@hotmail.com>
 - Fixed enum support
-
+- Changed build system to Rake
+- Added QuickCheck tests
+- Changed so parsing of proto files is done by leex and yecc

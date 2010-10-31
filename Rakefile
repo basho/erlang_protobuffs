@@ -10,20 +10,20 @@ PWD = `pwd`.strip
 INCLUDE = "include"
 ERLC_FLAGS = "-I#{INCLUDE} +warn_unused_vars +warn_unused_import"
 
-SRC = FileList['src/**/*.erl']
+SRC = FileList['src/**/*.erl'] + FileList['test/**/*erl']
 YRL = FileList['src/**/*.yrl']
 XRL = FileList['src/**/*.xrl']
 OBJ = SRC.pathmap("%{src,ebin}X.beam") + YRL.pathmap("%X.beam") + XRL.pathmap("%X.beam")
-CLEAN.include(['**/*.dump','*.hrl','*.beam'])
-CLOBBER.include(['**/*.beam'] + YRL.pathmap("%X.erl") + XRL.pathmap("%X.erl"))
+CLEAN.include(['**/*.dump'])
+CLOBBER.include(['**/*.beam','test/*.hrl','doc/*'] + YRL.pathmap("%X.erl") + XRL.pathmap("%X.erl"))
 
 directory 'ebin'
 
 rule ".beam" => ["%{ebin,src}X.erl"] do |t|
   if t.source[-14,14] == "pokemon_pb.erl"
-      sh("erlc -pa ebin -W #{ERLC_FLAGS} +debug_info -o ebin #{t.source}")
+      sh("erlc -pa ebin -W #{ERLC_FLAGS} +debug_info -o #{t.source.pathmap("%{src,ebin}d")} #{t.source}")
   else
-      sh("erlc -pa ebin -W #{ERLC_FLAGS} -o ebin #{t.source}")
+      sh("erlc -pa ebin -W #{ERLC_FLAGS} -o #{t.source.pathmap("%{src,ebin}d")} #{t.source}")
   end
 end
 
@@ -46,7 +46,7 @@ end
 
 desc "Run Unit Tests"
 task :test do
-  sh("erl -noshell -pa #{PWD}/ebin -s eunit test #{TEST_MODULE} -s init stop")
+  sh("cd test; erl -noshell -pa #{PWD}/ebin -s eunit test #{TEST_MODULE} -s init stop")
 end
 
 desc "Generate Documentation"

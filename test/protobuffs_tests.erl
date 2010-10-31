@@ -31,7 +31,7 @@ loop(InFile,Acc) ->
     end.
 
 parse_empty_file_test_() ->
-    Path = filename:absname("tests/empty.proto"),
+    Path = filename:absname("protobuffs_testdata/empty.proto"),
     [{message, "Empty", Messages}] = parse(Path),
     [?_assertMatch({1,optional,"double","real1",number,none},lists:keyfind(1,1,Messages)),
      ?_assertMatch({2,optional,"float","real2",number,none},lists:keyfind(2,1,Messages)),
@@ -50,7 +50,7 @@ parse_empty_file_test_() ->
      ?_assertMatch({15,optional,"bytes","bit1",number,none},lists:keyfind(15,1,Messages))].
 
 parse_has_default_test_() ->
-    Path = filename:absname("tests/hasdefault.proto"),
+    Path = filename:absname("protobuffs_testdata/hasdefault.proto"),
     [{message, "WithDefault", Messages}] = parse(Path),
     [?_assertMatch({1,required,"double","real1",number,1.0},lists:keyfind(1,1,Messages)),
      ?_assertMatch({2,required,"float","real2",number,2.0},lists:keyfind(2,1,Messages)),
@@ -68,7 +68,7 @@ parse_has_default_test_() ->
      ?_assertMatch({14,required,"string","str1",number,"test"},lists:keyfind(14,1,Messages))].
 
 parse_simple_test_() ->
-    Path = filename:absname("tests/simple.proto"),
+    Path = filename:absname("protobuffs_testdata/simple.proto"),
     [{package,"simple"},
      {message, "Person", Person},
      {message, "Location", Location}] = parse(Path),
@@ -81,7 +81,7 @@ parse_simple_test_() ->
      ?_assertMatch({2,required,"string","country",number,none},lists:keyfind(2,1,Location))].
 
 parse_enum_test_() ->
-    Path = filename:absname("tests/enum.proto"),
+    Path = filename:absname("protobuffs_testdata/enum.proto"),
     [{message,"EnumMsg", EnumMsg}] = parse(Path),
     {enum, "Values", Values} = lists:keyfind(enum,1,EnumMsg),
     [?_assertMatch({1,optional,"Values","value",number,none},lists:keyfind(1,1,EnumMsg)),
@@ -89,7 +89,7 @@ parse_enum_test_() ->
      ?_assertMatch({enum,2,"value2"},lists:keyfind("value2",3,Values))].
 
 parse_nested1_test_() ->
-    Path = filename:absname("tests/nested1.proto"),
+    Path = filename:absname("protobuffs_testdata/nested1.proto"),
     [{message, "Person", Person}] = parse(Path),
     {message, "PhoneNumber", PhoneNumber} = lists:keyfind("PhoneNumber",2,Person),
     {message, "PhoneType", PhoneType} = lists:keyfind("PhoneType",2,PhoneNumber),
@@ -103,7 +103,7 @@ parse_nested1_test_() ->
      ?_assertMatch({3,optional,"int32","work",number,none},lists:keyfind(3,1,PhoneType))].
 
 parse_nested2_test_() ->
-    Path = filename:absname("tests/nested2.proto"),
+    Path = filename:absname("protobuffs_testdata/nested2.proto"),
     [{message, "Outer",Outer}] = parse(Path),
     {message, "MiddleAA", MiddleAA} = lists:keyfind("MiddleAA",2,Outer),
     {message, "MiddleBB", MiddleBB} = lists:keyfind("MiddleBB",2,Outer),
@@ -119,7 +119,7 @@ parse_nested2_test_() ->
      ?_assertMatch({2,optional,"bool","booly",number,none},lists:keyfind(2,1,InnerBB))].
 
 parse_nested3_test_() ->
-    Path = filename:absname("tests/nested3.proto"),
+    Path = filename:absname("protobuffs_testdata/nested3.proto"),
     [{message,"Outer",Outer}] = parse(Path),
     {message,"Middle",Middle} = lists:keyfind("Middle",2,Outer),
     {message,"Other",Other} = lists:keyfind("Other",2,Outer),
@@ -131,7 +131,7 @@ parse_nested3_test_() ->
      ?_assertMatch({1,optional,"bool","bar",number,none},lists:keyfind(1,1,Other))].
 
 parse_nested4_test_() ->
-    Path = filename:absname("tests/nested4.proto"),
+    Path = filename:absname("protobuffs_testdata/nested4.proto"),
     [{message,"Outer",Outer}] = parse(Path),
     {message,"Middle",Middle} = lists:keyfind("Middle",2,Outer),
     {message,"Other",Other} = lists:keyfind("Other",2,Outer),
@@ -143,7 +143,7 @@ parse_nested4_test_() ->
      ?_assertMatch({1,optional,"bool","bar",number,none},lists:keyfind(1,1,Other))].
 
 parse_nested5_test_() ->
-    Path = filename:absname("tests/nested5.proto"),
+    Path = filename:absname("protobuffs_testdata/nested5.proto"),
     Parsed = parse(Path),
     {message,"First",First} = lists:keyfind("First",2,Parsed),
     {message,"Second",Second} = lists:keyfind("Second",2,Parsed),
@@ -156,7 +156,7 @@ prop_protobuffs_test_() ->
     [?_assert(eqc:quickcheck(eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs())))].
 
 empty_setup() ->
-    Path = filename:absname("tests/empty.proto"),
+    Path = filename:absname("protobuffs_testdata/empty.proto"),
     protobuffs_compile:scan_file(Path).
 
 teardown(_) ->
@@ -178,7 +178,7 @@ protobuffs_empty_test_() ->
     }.
 
 has_default_setup() ->
-    Path = filename:absname("tests/hasdefault.proto"),
+    Path = filename:absname("protobuffs_testdata/hasdefault.proto"),
     protobuffs_compile:scan_file(Path).
 
 protobuffs_has_default_test_() ->
@@ -197,7 +197,7 @@ protobuffs_has_default_test_() ->
     }.
 
 simple_setup() ->
-    Path = filename:absname("tests/simple.proto"),
+    Path = filename:absname("protobuffs_testdata/simple.proto"),
     protobuffs_compile:scan_file(Path).
 
 protobuffs_simple_test_() ->
@@ -216,7 +216,7 @@ protobuffs_simple_test_() ->
     }.
 
 nested1_setup() ->
-    Path = filename:absname("tests/nested1.proto"),
+    Path = filename:absname("protobuffs_testdata/nested1.proto"),
     protobuffs_compile:scan_file(Path).
 
 protobuffs_nested1_test_() ->
@@ -235,7 +235,7 @@ protobuffs_nested1_test_() ->
     }.
 
 nested2_setup() ->
-    Path = filename:absname("tests/nested2.proto"),
+    Path = filename:absname("protobuffs_testdata/nested2.proto"),
     protobuffs_compile:scan_file(Path).
 
 protobuffs_nested2_test_() ->
@@ -254,7 +254,7 @@ protobuffs_nested2_test_() ->
     }.
 
 nested3_setup() ->
-    Path = filename:absname("tests/nested3.proto"),
+    Path = filename:absname("protobuffs_testdata/nested3.proto"),
     protobuffs_compile:scan_file(Path).
 
 protobuffs_nested3_test_() ->
@@ -273,7 +273,7 @@ protobuffs_nested3_test_() ->
     }.
 
 nested4_setup() ->
-    Path = filename:absname("tests/nested4.proto"),
+    Path = filename:absname("protobuffs_testdata/nested4.proto"),
     protobuffs_compile:scan_file(Path).
 
 protobuffs_nested4_test_() ->
@@ -292,7 +292,7 @@ protobuffs_nested4_test_() ->
     }.
 
 nested5_setup() ->
-    Path = filename:absname("tests/nested5.proto"),
+    Path = filename:absname("protobuffs_testdata/nested5.proto"),
     protobuffs_compile:scan_file(Path).
 
 protobuffs_nested5_test_() ->
@@ -316,7 +316,7 @@ protobuffs_nested5_test_() ->
     }.
 
 enum_setup() ->
-    Path = filename:absname("tests/enum.proto"),
+    Path = filename:absname("protobuffs_testdata/enum.proto"),
     protobuffs_compile:scan_file(Path).
 
 protobuffs_enum_test_() ->

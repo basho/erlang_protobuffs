@@ -69,12 +69,25 @@ module.
 
 ## Building with Rake
 If in rake is installed run
-  > rake
+
+	$> rake
+
 To run the tests run
-  > rake test
-QuickCheck must be installed, QuickCheck Mini is free and can be found at http://www.quviq.com/
+
+	$> rake test
+
+QuickCheck must be installed to run the tests, QuickCheck Mini is free and can be found at http://www.quviq.com/
 To make the dockumentation run
-  > rake doc
+
+	$> rake doc
+
+To clean temporary build files run
+
+	$> rake clean
+
+And to remove all build files run
+
+	$> rake clobber
 
 ## CREDITS
 

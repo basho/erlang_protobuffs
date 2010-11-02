@@ -23,7 +23,7 @@
 %% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
--export([scan_file/1]).
+-export([scan_file/1, generate_source/1]).
 
 scan_file(ProtoFile) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
@@ -32,6 +32,13 @@ scan_file(ProtoFile) when is_list(ProtoFile) ->
     Messages = resolve_types(UntypedMessages,Enums),
     output(Basename, Messages, Enums).
 
+generate_source (ProtoFile) when is_list (ProtoFile) ->
+    Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
+    {ok,Parsed} = parse(ProtoFile),
+    {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
+    Messages = resolve_types(UntypedMessages,Enums),
+    output_source (Basename, Messages, Enums).
+
 output(Basename, Messages, Enums) ->
     ok = write_header_include_file(Basename, Messages),
     BeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
@@ -39,6 +46,13 @@ output(Basename, Messages, Enums) ->
     Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
     {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return]),
     file:write_file(Basename ++ ".beam", Bytes).
+
+output_source (Basename, Messages, Enums) ->
+    ok = write_header_include_file(Basename, Messages),
+    BeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
+    {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(BeamFile, [abstract_code]),
+    Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
+    file:write_file(Basename ++ ".erl", erl_prettypr:format(erl_syntax:form_list (Forms1))).
 
 parse(FileName) ->
     {ok, InFile} = file:open(FileName, [read]),

@@ -152,6 +152,24 @@ parse_nested5_test_() ->
      ?_assertMatch({1,optional,"bool","foo",number,none},lists:keyfind(1,1,Inner)),
      ?_assertMatch({1,required,"First.Inner","inner",number,none},lists:keyfind(1,1,Second))].
 
+parse_addressbook_test_() ->
+    Path = filename:absname("protobuffs_testdata/addressbook.proto"),
+    Parsed = parse(Path),
+    {message,"Person",Person} = lists:keyfind("Person",2,Parsed),
+    {message,"PhoneNumber",PhoneNumber} = lists:keyfind("PhoneNumber",2,Person),
+    {enum, "PhoneType", PhoneType} = lists:keyfind(enum,1,Person),
+    {message,"AddressBook",AddressBook} = lists:keyfind("AddressBook",2,Parsed),
+    [?_assertMatch({1,required,"string","name",number,none},lists:keyfind(1,1,Person)),
+     ?_assertMatch({2,required,"int32","id",number,none},lists:keyfind(2,1,Person)),
+     ?_assertMatch({3,optional,"string","email",number,none},lists:keyfind(3,1,Person)),
+     ?_assertMatch({4,repeated,"PhoneNumber","phone",number,none},lists:keyfind(4,1,Person)),
+     ?_assertMatch({1,required,"string","number",number,none},lists:keyfind(1,1,PhoneNumber)),
+     ?_assertMatch({2,optional,"PhoneType","type",number,'HOME'},lists:keyfind(2,1,PhoneNumber)),
+     ?_assertMatch({1,repeated,"Person","person",number,none},lists:keyfind(1,1,AddressBook)),
+     ?_assertMatch({enum,0,"MOBILE"},lists:keyfind("MOBILE",3,PhoneType)),
+     ?_assertMatch({enum,1,"HOME"},lists:keyfind("HOME",3,PhoneType)),
+     ?_assertMatch({enum,2,"WORK"},lists:keyfind("WORK",3,PhoneType))].
+
 prop_protobuffs_test_() ->
     [?_assert(eqc:quickcheck(eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs())))].
 

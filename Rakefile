@@ -10,7 +10,7 @@ PWD = `pwd`.strip
 INCLUDE = "include"
 ERLC_FLAGS = "-I#{INCLUDE} +warn_unused_vars +warn_unused_import"
 
-SRC = FileList['src/**/*.erl'] + FileList['test/**/*erl']
+SRC = FileList['src/**/*.erl'] + FileList['test/**/*.erl']
 YRL = FileList['src/**/*.yrl']
 XRL = FileList['src/**/*.xrl']
 OBJ = SRC.pathmap("%{src,ebin}X.beam") + YRL.pathmap("%X.beam") + XRL.pathmap("%X.beam")

@@ -16,6 +16,7 @@ g_members -> g_messages : '$1'.
 g_options -> g_option : ['$1'].
 g_options -> g_option g_options : ['$1'|'$2'].
 g_option -> option var '=' var ';' : {option, unwrap('$2'), unwrap('$4')}.
+g_option -> option var '=' string ';' : {option, unwrap('$2'), unwrap('$4')}.
 
 g_messages -> g_message : ['$1'].
 g_messages -> g_message g_messages : ['$1'|'$2'].

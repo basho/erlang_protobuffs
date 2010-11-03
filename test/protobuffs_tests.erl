@@ -9,7 +9,7 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--define(NUM_TESTS,1000).
+-define(NUM_TESTS,100).
 
 -export([parse/1]).
 
@@ -346,6 +346,25 @@ protobuffs_enum_test_() ->
 	      [?_assert(
 		  eqc:quickcheck(
 		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_enum())
+		   )
+		 )
+	      ]
+      end
+    }.
+
+addressbook_setup() ->
+    Path = filename:absname("protobuffs_testdata/addressbook.proto"),
+    protobuffs_compile:scan_file(Path).
+
+protobuffs_addressbook_test_() ->
+    {
+      setup, 
+      fun addressbook_setup/0, 
+      fun teardown/1,
+      fun(_) ->
+	      [?_assert(
+		  eqc:quickcheck(
+		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_addressbook())
 		   )
 		 )
 	      ]

@@ -195,7 +195,7 @@ filter_enum_to_int_clause({enum,EnumTypeName,IntValue,EnumValue}, {clause,L,_Arg
 expand_int_to_enum_function([], Line, Clause) ->
     {function,Line,int_to_enum,2,[Clause]};
 expand_int_to_enum_function(Enums, Line, Clause) ->
-    {function,Line,int_to_enum,2,[filter_int_to_enum_clause(Enum, Clause) || Enum <- Enums]}.
+    {function,Line,int_to_enum,2, [filter_int_to_enum_clause(Enum, Clause) || Enum <- Enums] ++ [Clause]}.
 
 filter_int_to_enum_clause({enum,EnumTypeName,IntValue,EnumValue}, {clause,L,_Args,Guards,_}) ->
     {clause,L,[{atom,L,atomize(EnumTypeName)},{integer,L,IntValue}],Guards,[{atom,L,EnumValue}]}.
@@ -247,7 +247,7 @@ collect_full_messages([{enum, Name, Fields} | Tail], AccEnum, AccMsg) ->
 			      {enum, IntValue, EnumAtom} -> [{enum, 
 							      type_path_to_type(ListName), 
 							      IntValue, 
-							      atomize(EnumAtom)} | TmpAcc];
+							      list_to_atom(EnumAtom)} | TmpAcc];
 			      _ -> TmpAcc
 			  end
 		  end, [], Fields),
@@ -281,9 +281,9 @@ resolve_types ([{TypePath, Fields} | Tail], AllPaths, Enums, Acc) ->
 					  RealPath =
 					      case find_type (PossiblePaths, AllPaths) of
 						  false ->
-						      case is_enum_type(type_path_to_type([Type] ++ TypePath), Enums) of
-							  true ->
-							      [Type] ++ TypePath;
+						      case is_enum_type(Type, PossiblePaths, Enums) of
+							  {true,EnumType} ->
+							      EnumType;
 							  false ->
 							      throw (["Unknown Type ", Type])
 						      end;
@@ -342,6 +342,16 @@ is_scalar_type ("bool") -> true;
 is_scalar_type ("string") -> true;
 is_scalar_type ("bytes") -> true;
 is_scalar_type (_) -> false.
+
+is_enum_type(_Type, [], _Enums) ->
+    false;
+is_enum_type(Type, [TypePath|Paths], Enums) ->
+    case is_enum_type(type_path_to_type(TypePath), Enums) of
+      true ->
+	{true,TypePath};
+      false ->
+	is_enum_type(Type, Paths, Enums)
+    end.
 
 is_enum_type(Type, Enums) ->
     case lists:keysearch(Type,2,Enums) of

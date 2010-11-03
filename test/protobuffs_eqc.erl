@@ -24,7 +24,7 @@ sint64() ->
     choose(-16#8000000000000000,16#7fffffffffffffff).
 
 string() ->
-    ?SUCHTHAT(S,list(char()),S /= []).
+    non_empty(list(char())).
 
 value() ->
     oneof([{real(),double},
@@ -296,4 +296,18 @@ prop_protobuffs_enum() ->
 	    begin
 		Msg = {enummsg,Middle},
 		Msg == enum_pb:decode_enummsg(enum_pb:encode_enummsg(Msg))
+	    end).
+
+address_phone_number() ->
+    list({person_phonenumber,string(),default(undefined,oneof(['HOME','WORK','MOBILE']))}).
+    
+addressbook() ->
+    list({person,string(),sint32(),string(),address_phone_number()}).
+
+prop_protobuffs_addressbook() ->
+    ?FORALL({Addressbook},
+	    {addressbook()},
+	    begin
+		addressbook_pb:decode_addressbook(addressbook_pb:encode_addressbook({addressbook,Addressbook})),
+		true
 	    end).

@@ -41,7 +41,7 @@ task :compile => ['ebin'] + OBJ
 
 desc "Open up a shell"
 task :shell => [:compile] do
-  sh("erl -sname #{START_MODULE} -pa #{PWD}/ebin")
+  sh("erl -sname #{START_MODULE} -pa #{PWD}/ebin -pa #{PWD}/test")
 end
 
 desc "Run Unit Tests"

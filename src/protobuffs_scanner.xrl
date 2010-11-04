@@ -17,7 +17,7 @@ Rules.
 
 {L}({L}|{D})+ : {token, {var, TokenLine,list_to_atom(TokenChars)}}.
 '({L}|{D})+' : S = strip(TokenChars,TokenLen),
-         {token,{var,TokenLine,list_to_atom(S)}}.
+         {token,{string,TokenLine,S}}.
 "({L}|{D})+" : S = strip(TokenChars,TokenLen),
          {token,{string,TokenLine,S}}.
 {S} : {token, {list_to_atom(TokenChars),TokenLine}}.

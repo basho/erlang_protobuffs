@@ -9,8 +9,6 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--define(NUM_TESTS,100).
-
 -export([parse/1]).
 
 parse(FileName) ->
@@ -31,7 +29,8 @@ loop(InFile,Acc) ->
     end.
 
 parse_empty_file_test_() ->
-    Path = filename:absname("protobuffs_testdata/empty.proto"),
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/empty.proto"),
+    io:format("Test path ~p~n",[Path]),
     [{message, "Empty", Messages}] = parse(Path),
     [?_assertMatch({1,optional,"double","real1",number,none},lists:keyfind(1,1,Messages)),
      ?_assertMatch({2,optional,"float","real2",number,none},lists:keyfind(2,1,Messages)),
@@ -50,7 +49,7 @@ parse_empty_file_test_() ->
      ?_assertMatch({15,optional,"bytes","bit1",number,none},lists:keyfind(15,1,Messages))].
 
 parse_has_default_test_() ->
-    Path = filename:absname("protobuffs_testdata/hasdefault.proto"),
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/hasdefault.proto"),
     [{message, "WithDefault", Messages}] = parse(Path),
     [?_assertMatch({1,required,"double","real1",number,1.0},lists:keyfind(1,1,Messages)),
      ?_assertMatch({2,required,"float","real2",number,2.0},lists:keyfind(2,1,Messages)),
@@ -68,7 +67,7 @@ parse_has_default_test_() ->
      ?_assertMatch({14,required,"string","str1",number,"test"},lists:keyfind(14,1,Messages))].
 
 parse_simple_test_() ->
-    Path = filename:absname("protobuffs_testdata/simple.proto"),
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/simple.proto"),
     [{package,"simple"},
      {message, "Person", Person},
      {message, "Location", Location}] = parse(Path),
@@ -81,7 +80,7 @@ parse_simple_test_() ->
      ?_assertMatch({2,required,"string","country",number,none},lists:keyfind(2,1,Location))].
 
 parse_enum_test_() ->
-    Path = filename:absname("protobuffs_testdata/enum.proto"),
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/enum.proto"),
     [{message,"EnumMsg", EnumMsg}] = parse(Path),
     {enum, "Values", Values} = lists:keyfind(enum,1,EnumMsg),
     [?_assertMatch({1,optional,"Values","value",number,none},lists:keyfind(1,1,EnumMsg)),
@@ -89,7 +88,7 @@ parse_enum_test_() ->
      ?_assertMatch({enum,2,"value2"},lists:keyfind("value2",3,Values))].
 
 parse_nested1_test_() ->
-    Path = filename:absname("protobuffs_testdata/nested1.proto"),
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/nested1.proto"),
     [{message, "Person", Person}] = parse(Path),
     {message, "PhoneNumber", PhoneNumber} = lists:keyfind("PhoneNumber",2,Person),
     {message, "PhoneType", PhoneType} = lists:keyfind("PhoneType",2,PhoneNumber),
@@ -103,7 +102,7 @@ parse_nested1_test_() ->
      ?_assertMatch({3,optional,"int32","work",number,none},lists:keyfind(3,1,PhoneType))].
 
 parse_nested2_test_() ->
-    Path = filename:absname("protobuffs_testdata/nested2.proto"),
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/nested2.proto"),
     [{message, "Outer",Outer}] = parse(Path),
     {message, "MiddleAA", MiddleAA} = lists:keyfind("MiddleAA",2,Outer),
     {message, "MiddleBB", MiddleBB} = lists:keyfind("MiddleBB",2,Outer),
@@ -119,7 +118,7 @@ parse_nested2_test_() ->
      ?_assertMatch({2,optional,"bool","booly",number,none},lists:keyfind(2,1,InnerBB))].
 
 parse_nested3_test_() ->
-    Path = filename:absname("protobuffs_testdata/nested3.proto"),
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/nested3.proto"),
     [{message,"Outer",Outer}] = parse(Path),
     {message,"Middle",Middle} = lists:keyfind("Middle",2,Outer),
     {message,"Other",Other} = lists:keyfind("Other",2,Outer),
@@ -131,7 +130,7 @@ parse_nested3_test_() ->
      ?_assertMatch({1,optional,"bool","bar",number,none},lists:keyfind(1,1,Other))].
 
 parse_nested4_test_() ->
-    Path = filename:absname("protobuffs_testdata/nested4.proto"),
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/nested4.proto"),
     [{message,"Outer",Outer}] = parse(Path),
     {message,"Middle",Middle} = lists:keyfind("Middle",2,Outer),
     {message,"Other",Other} = lists:keyfind("Other",2,Outer),
@@ -143,7 +142,7 @@ parse_nested4_test_() ->
      ?_assertMatch({1,optional,"bool","bar",number,none},lists:keyfind(1,1,Other))].
 
 parse_nested5_test_() ->
-    Path = filename:absname("protobuffs_testdata/nested5.proto"),
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/nested5.proto"),
     Parsed = parse(Path),
     {message,"First",First} = lists:keyfind("First",2,Parsed),
     {message,"Second",Second} = lists:keyfind("Second",2,Parsed),
@@ -153,7 +152,7 @@ parse_nested5_test_() ->
      ?_assertMatch({1,required,"First.Inner","inner",number,none},lists:keyfind(1,1,Second))].
 
 parse_addressbook_test_() ->
-    Path = filename:absname("protobuffs_testdata/addressbook.proto"),
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/addressbook.proto"),
     Parsed = parse(Path),
     {message,"Person",Person} = lists:keyfind("Person",2,Parsed),
     {message,"PhoneNumber",PhoneNumber} = lists:keyfind("PhoneNumber",2,Person),
@@ -170,203 +169,3 @@ parse_addressbook_test_() ->
      ?_assertMatch({enum,1,"HOME"},lists:keyfind("HOME",3,PhoneType)),
      ?_assertMatch({enum,2,"WORK"},lists:keyfind("WORK",3,PhoneType))].
 
-prop_protobuffs_test_() ->
-    [?_assert(eqc:quickcheck(eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs())))].
-
-empty_setup() ->
-    Path = filename:absname("protobuffs_testdata/empty.proto"),
-    protobuffs_compile:scan_file(Path).
-
-teardown(_) ->
-    ok.
-
-protobuffs_empty_test_() ->
-    {
-      setup, 
-      fun empty_setup/0, 
-      fun teardown/1,
-      fun(_) ->
-	      [?_assert(
-		  eqc:quickcheck(
-		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_empty())
-		   )
-		 )
-	      ]
-      end
-    }.
-
-has_default_setup() ->
-    Path = filename:absname("protobuffs_testdata/hasdefault.proto"),
-    protobuffs_compile:scan_file(Path).
-
-protobuffs_has_default_test_() ->
-    {
-      setup, 
-      fun has_default_setup/0, 
-      fun teardown/1,
-      fun(_) ->
-	      [?_assert(
-		  eqc:quickcheck(
-		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_has_default())
-		   )
-		 )
-	      ]
-      end
-    }.
-
-simple_setup() ->
-    Path = filename:absname("protobuffs_testdata/simple.proto"),
-    protobuffs_compile:scan_file(Path).
-
-protobuffs_simple_test_() ->
-    {
-      setup, 
-      fun simple_setup/0, 
-      fun teardown/1,
-      fun(_) ->
-	      [?_assert(
-		  eqc:quickcheck(
-		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_simple())
-		   )
-		 )
-	      ]
-      end
-    }.
-
-nested1_setup() ->
-    Path = filename:absname("protobuffs_testdata/nested1.proto"),
-    protobuffs_compile:scan_file(Path).
-
-protobuffs_nested1_test_() ->
-    {
-      setup, 
-      fun nested1_setup/0, 
-      fun teardown/1,
-      fun(_) ->
-	      [?_assert(
-		  eqc:quickcheck(
-		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_nested1())
-		   )
-		 )
-	      ]
-      end
-    }.
-
-nested2_setup() ->
-    Path = filename:absname("protobuffs_testdata/nested2.proto"),
-    protobuffs_compile:scan_file(Path).
-
-protobuffs_nested2_test_() ->
-    {
-      setup, 
-      fun nested2_setup/0, 
-      fun teardown/1,
-      fun(_) ->
-	      [?_assert(
-		  eqc:quickcheck(
-		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_nested2())
-		   )
-		 )
-	      ]
-      end
-    }.
-
-nested3_setup() ->
-    Path = filename:absname("protobuffs_testdata/nested3.proto"),
-    protobuffs_compile:scan_file(Path).
-
-protobuffs_nested3_test_() ->
-    {
-      setup, 
-      fun nested3_setup/0, 
-      fun teardown/1,
-      fun(_) ->
-	      [?_assert(
-		  eqc:quickcheck(
-		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_nested3())
-		   )
-		 )
-	      ]
-      end
-    }.
-
-nested4_setup() ->
-    Path = filename:absname("protobuffs_testdata/nested4.proto"),
-    protobuffs_compile:scan_file(Path).
-
-protobuffs_nested4_test_() ->
-    {
-      setup, 
-      fun nested4_setup/0, 
-      fun teardown/1,
-      fun(_) ->
-	      [?_assert(
-		  eqc:quickcheck(
-		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_nested4())
-		   )
-		 )
-	      ]
-      end
-    }.
-
-nested5_setup() ->
-    Path = filename:absname("protobuffs_testdata/nested5.proto"),
-    protobuffs_compile:scan_file(Path).
-
-protobuffs_nested5_test_() ->
-    {
-      setup, 
-      fun nested5_setup/0, 
-      fun teardown/1,
-      fun(_) ->
-	      [?_assert(
-		  eqc:quickcheck(
-		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_nested5_1())
-		   )
-		 ),
-	       ?_assert(
-		  eqc:quickcheck(
-		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_nested5_2())
-		   )
-		 )
-	      ]
-      end
-    }.
-
-enum_setup() ->
-    Path = filename:absname("protobuffs_testdata/enum.proto"),
-    protobuffs_compile:scan_file(Path).
-
-protobuffs_enum_test_() ->
-    {
-      setup, 
-      fun enum_setup/0, 
-      fun teardown/1,
-      fun(_) ->
-	      [?_assert(
-		  eqc:quickcheck(
-		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_enum())
-		   )
-		 )
-	      ]
-      end
-    }.
-
-addressbook_setup() ->
-    Path = filename:absname("protobuffs_testdata/addressbook.proto"),
-    protobuffs_compile:scan_file(Path).
-
-protobuffs_addressbook_test_() ->
-    {
-      setup, 
-      fun addressbook_setup/0, 
-      fun teardown/1,
-      fun(_) ->
-	      [?_assert(
-		  eqc:quickcheck(
-		    eqc:numtests(?NUM_TESTS,protobuffs_eqc:prop_protobuffs_addressbook())
-		   )
-		 )
-	      ]
-      end
-    }.

@@ -67,27 +67,15 @@ _pb modules. Running protobuffs_compile:scan_file/1 reads the erlang forms from
 the pokemon_pb.beam file and expands and alters those forms to create the generated
 module.
 
-## Building with Rake
-If in rake is installed run
+## Building with rebar
+To compile
+    %>./rebar compile
 
-	$> rake
+To run all tests
+    %>./rebar eunit
+    %>./rebar ct
 
-To run the tests run
-
-	$> rake test
-
-QuickCheck must be installed to run the tests, QuickCheck Mini is free and can be found at http://www.quviq.com/
-To make the dockumentation run
-
-	$> rake doc
-
-To clean temporary build files run
-
-	$> rake clean
-
-And to remove all build files run
-
-	$> rake clobber
+Se rebar doc for more information.
 
 ## CREDITS
 

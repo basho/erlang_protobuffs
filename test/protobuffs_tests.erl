@@ -9,24 +9,37 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([parse/1]).
+%%--------------------------------------------------------------------
+%% Encode/Decode int32 value 150
+%%--------------------------------------------------------------------
+encode_test1_test_() ->
+    [?_assertMatch(<<8,150,1>>,protobuffs:encode(1, 150, int32))].
+decode_test1_test_() ->
+    [?_assertMatch({{1, 150},<<>>}, protobuffs:decode(<<8,150,1>>, int32))].
 
-parse(FileName) ->
-    {ok, InFile} = file:open(FileName, [read]),
-    Acc = loop(InFile,[]),
-    file:close(InFile),
-    {ok,Parsed} = protobuffs_parser:parse(Acc),
-    Parsed.
+%%--------------------------------------------------------------------
+%% Encode/Decode string "testing"
+%%--------------------------------------------------------------------
+encode_test2_test_() ->
+    [?_assertMatch(<<18,7,116,101,115,116,105,110,103>>,protobuffs:encode(2,"testing",string))].
+decode_test2_test_() ->
+    [?_assertMatch({{2,"testing"},<<>>},protobuffs:decode(<<18,7,116,101,115,116,105,110,103>>,string))].
 
-loop(InFile,Acc) ->
-    case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
-        {ok,Token,_EndLine} ->
-            loop(InFile,Acc ++ [Token]);
-        {error,token} ->
-            exit(scanning_error);    
-        {eof,_} ->
-            Acc
-    end.
+%%--------------------------------------------------------------------
+%% Encode/Decode Test1
+%%--------------------------------------------------------------------
+encode_test3_test_() ->
+    [?_assertMatch(<<26,3,8,150,1>>,protobuffs:encode(3,<<8,150,1>>,bytes))].
+decode_test3_test_() ->
+    [?_assertMatch({{3,<<8,150,1>>},<<>>},protobuffs:decode(<<26,3,8,150,1>>,bytes))].
+
+%%--------------------------------------------------------------------
+%% Encode/Decode repeated
+%%--------------------------------------------------------------------
+encode_test4_test_() ->
+    [?_assertMatch(<<34,6,3,142,2,158,167,5>>,protobuffs:encode_packed(4,[3,270,86942],int32))].
+decode_test4_test_() ->
+    [?_assertMatch({{4,[3,270,86942]},<<>>},protobuffs:decode_packed(<<34,6,3,142,2,158,167,5>>,int32))].
 
 parse_empty_file_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/empty.proto"),
@@ -168,4 +181,54 @@ parse_addressbook_test_() ->
      ?_assertMatch({enum,0,"MOBILE"},lists:keyfind("MOBILE",3,PhoneType)),
      ?_assertMatch({enum,1,"HOME"},lists:keyfind("HOME",3,PhoneType)),
      ?_assertMatch({enum,2,"WORK"},lists:keyfind("WORK",3,PhoneType))].
+
+parse_repeater_test_() ->
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/repeater.proto"),
+    Parsed = parse(Path),
+    {message,"Person",Person} = lists:keyfind("Person",2,Parsed),
+    {message,"Location",Location} = lists:keyfind("Location",2,Parsed),
+    [?_assertMatch({1,required,"string","name",number,none},lists:keyfind(1,1,Person)),
+     ?_assertMatch({2,required,"string","address",number,none},lists:keyfind(2,1,Person)),
+     ?_assertMatch({3,required,"string","phone_number",number,none},lists:keyfind(3,1,Person)),
+     ?_assertMatch({4,required,"int32","age",number,none},lists:keyfind(4,1,Person)),
+     ?_assertMatch({5,repeated,"string","hobbies",number,none},lists:keyfind(5,1,Person)),
+     ?_assertMatch({6,repeated,"Location","locations",number,none},lists:keyfind(6,1,Person)),
+     ?_assertMatch({7,repeated,"uint32","ids",number,none},lists:keyfind(7,1,Person)),
+     ?_assertMatch({1,required,"string","region",number,none},lists:keyfind(1,1,Location)),
+     ?_assertMatch({2,required,"string","country",number,none},lists:keyfind(2,1,Location))].
+
+parse_packed_repeated_test_() ->
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/packed_repeated.proto"),
+    Parsed = parse(Path),
+    {message,"Person",Person} = lists:keyfind("Person",2,Parsed),
+    {message,"Location",Location} = lists:keyfind("Location",2,Parsed),
+    [?_assertMatch({1,required,"string","name",number,none},lists:keyfind(1,1,Person)),
+     ?_assertMatch({2,required,"string","address",number,none},lists:keyfind(2,1,Person)),
+     ?_assertMatch({3,required,"string","phone_number",number,none},lists:keyfind(3,1,Person)),
+     ?_assertMatch({4,required,"int32","age",number,none},lists:keyfind(4,1,Person)),
+     ?_assertMatch({5,repeated,"string","hobbies",number,none},lists:keyfind(5,1,Person)),
+     ?_assertMatch({6,repeated,"Location","locations",number,none},lists:keyfind(6,1,Person)),
+     ?_assertMatch({7,repeated_packed,"uint32","ids",number,none},lists:keyfind(7,1,Person)),
+     ?_assertMatch({1,required,"string","region",number,none},lists:keyfind(1,1,Location)),
+     ?_assertMatch({2,required,"string","country",number,none},lists:keyfind(2,1,Location))].
+
+%%--------------------------------------------------------------------
+%% Help functions
+%%--------------------------------------------------------------------
+parse(FileName) ->
+    {ok, InFile} = file:open(FileName, [read]),
+    Acc = loop(InFile,[]),
+    file:close(InFile),
+    {ok,Parsed} = protobuffs_parser:parse(Acc),
+    Parsed.
+
+loop(InFile,Acc) ->
+    case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
+        {ok,Token,_EndLine} ->
+            loop(InFile,Acc ++ [Token]);
+        {error,token} ->
+            exit(scanning_error);    
+        {eof,_} ->
+            Acc
+    end.
 

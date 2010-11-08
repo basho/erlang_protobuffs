@@ -56,14 +56,37 @@ prop_protobuffs() ->
 	    begin
 		case Type of
 		    float ->
-			{{FieldID,Float},<<>>} = 
-			    protobuffs:decode(
-			      protobuffs:encode(FieldID,Value,Type),Type),
+			Encoded = protobuffs:encode(FieldID,Value,Type),
+			{{FieldID,Float},<<>>} = protobuffs:decode(Encoded,Type),
 			fuzzy_match(Float,Value,3);
 		    _Else ->
-			{{FieldID,Value},<<>>} == 
-			    protobuffs:decode(
-			      protobuffs:encode(FieldID,Value,Type),Type)
+			Encoded = protobuffs:encode(FieldID,Value,Type),
+			{{FieldID,Value},<<>>} == protobuffs:decode(Encoded,Type)
+		end
+	    end).
+
+prop_protobuffs_packed() ->
+    ?FORALL({FieldID,{Values,Type}},{?SUCHTHAT(I, uint32(),I =< 16#3fffffff ),oneof([{non_empty(list(uint32())),uint32},
+										     {non_empty(list(uint64())),uint64},
+										     {non_empty(list(sint32())),sint32},
+										     {non_empty(list(sint64())),sint64},
+										     {non_empty(list(sint32())),int32},
+										     {non_empty(list(sint64())),int64},
+										     {non_empty(list(bool())),bool},
+										     {non_empty(list(real())),double},
+										     {non_empty(list(real())),float}])},
+	    begin
+		case Type of
+		    float ->
+			Encoded = protobuffs:encode_packed(FieldID,Values,Type),
+			Decoded = protobuffs:decode_packed(Encoded,Type),
+			test_server:format("Encoded ~p Decoded ~p~n",[Encoded,Decoded]),
+			true;
+		    _Else ->
+			Encoded = protobuffs:encode_packed(FieldID,Values,Type),
+			Decoded = protobuffs:decode_packed(Encoded,Type),
+			test_server:format("Encoded ~p Decoded ~p~n",[Encoded, Decoded]),
+			{{FieldID,Values},<<>>} == Decoded
 		end
 	    end).
 
@@ -302,12 +325,36 @@ address_phone_number() ->
     list({person_phonenumber,string(),default(undefined,oneof(['HOME','WORK','MOBILE']))}).
     
 addressbook() ->
-    list({person,string(),sint32(),string(),address_phone_number()}).
+    list({person,string(),sint32(),string(),default(undefined,address_phone_number())}).
 
 prop_protobuffs_addressbook() ->
     ?FORALL({Addressbook},
-	    {addressbook()},
+	    {default(undefined,addressbook())},
 	    begin
-		addressbook_pb:decode_addressbook(addressbook_pb:encode_addressbook({addressbook,Addressbook})),
+		Msg = {addressbook,Addressbook},
+		addressbook_pb:decode_addressbook(addressbook_pb:encode_addressbook(Msg)),
 		true
 	    end).
+
+repeater_location() ->
+    {location,string(),string()}.
+
+repeater_person() ->
+    {person,string(),string(),string(),sint32(),default(undefined,list(string())),default(undefined,list(repeater_location())),list(uint32())}.
+
+prop_protobuffs_repeater() ->
+    ?FORALL({Repeater},
+	    {repeater_person()},
+	    begin
+		repeater_pb:decode_person(repeater_pb:encode_person(Repeater)),
+		true
+	    end).
+
+prop_protobuffs_packed_repeated() ->
+    ?FORALL({Repeater},
+	    {repeater_person()},
+	    begin
+		packed_repeated_pb:decode_person(packed_repeated_pb:encode_person(Repeater)),
+		true
+	    end).
+

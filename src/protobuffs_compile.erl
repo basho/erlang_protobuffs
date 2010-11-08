@@ -25,6 +25,13 @@
 -module(protobuffs_compile).
 -export([scan_file/1, generate_source/1]).
 
+%%--------------------------------------------------------------------
+%% @doc Generats a built .beam file and header file .hrl
+%% @spec scan_file(ProtoFile) -> Result
+%%       ProtoFile = string()
+%%       Result = ok | {error, Reason}
+%%       Reason = ext_posix() | terminated | system_limit
+%%--------------------------------------------------------------------
 scan_file(ProtoFile) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,Parsed} = parse(ProtoFile),
@@ -32,6 +39,13 @@ scan_file(ProtoFile) when is_list(ProtoFile) ->
     Messages = resolve_types(UntypedMessages,Enums),
     output(Basename, Messages, Enums).
 
+%%--------------------------------------------------------------------
+%% @doc Generats a source .erl file and header file .hrl
+%% @spec scan_file(ProtoFile) -> Result
+%%       ProtoFile = string()
+%%       Result = ok | {error, Reason}
+%%       Reason = ext_posix() | terminated | system_limit
+%%--------------------------------------------------------------------
 generate_source (ProtoFile) when is_list (ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,Parsed} = parse(ProtoFile),
@@ -47,6 +61,7 @@ output(Basename, Messages, Enums) ->
     {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return]),
     file:write_file(Basename ++ ".beam", Bytes).
 
+%% @hidden
 output_source (Basename, Messages, Enums) ->
     ok = write_header_include_file(Basename, Messages),
     BeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
@@ -54,12 +69,14 @@ output_source (Basename, Messages, Enums) ->
     Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
     file:write_file(Basename ++ ".erl", erl_prettypr:format(erl_syntax:form_list (Forms1))).
 
+%% @hidden
 parse(FileName) ->
     {ok, InFile} = file:open(FileName, [read]),
     Acc = loop(InFile,[]),
     file:close(InFile),
     protobuffs_parser:parse(Acc).
 
+%% @hidden
 loop(InFile,Acc) ->
     case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
         {ok,Token,_EndLine} ->
@@ -70,7 +87,7 @@ loop(InFile,Acc) ->
             Acc
     end.
 
-
+%% @hidden
 filter_forms(Msgs, Enums, [{attribute,L,file,{_,_}}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [{attribute,L,file,{"src/" ++ Basename ++ ".erl",L}}|Acc]);
 
@@ -129,9 +146,11 @@ filter_forms(Msgs, Enums, [Form|Tail], Basename, Acc) ->
 
 filter_forms(_, _, [], _, Acc) -> lists:reverse(Acc).
 
+%% @hidden
 expand_encode_function(Msgs, Line, Clause) ->
     {function,Line,encode,2,[filter_encode_clause(Msg, Clause) || Msg <- Msgs]}.
 
+%% @hidden
 filter_encode_clause({MsgName, Fields}, {clause,L,_Args,Guards,_Content}) ->
     Cons = lists:foldl(
 	     fun({FNum,Tag,SType,SName,_,Default}, Acc) ->
@@ -151,10 +170,12 @@ filter_encode_clause({MsgName, Fields}, {clause,L,_Args,Guards,_Content}) ->
     ToBin = {call,L,{atom,L,iolist_to_binary},[Cons]},
     {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Record'}],Guards,[ToBin]}.
 
+%% @hidden
 expand_decode_function(Msgs, Line, Clause) ->
     {function,Line,decode,2, [{clause,Line,[{atom,Line,enummsg_values},{integer,Line,1}],[],[{atom,Line,value1}]}] ++ 
      [filter_decode_clause(Msgs, Msg, Clause) || Msg <- Msgs]}.
 
+%% @hidden
 filter_decode_clause(Msgs, {MsgName, Fields}, {clause,L,_Args,Guards,[_,B,C]}) ->
     Types = lists:keysort(1, [{FNum, list_to_atom(SName), 
 			       atomize(SType), 
@@ -168,8 +189,9 @@ filter_decode_clause(Msgs, {MsgName, Fields}, {clause,L,_Args,Guards,[_,B,C]}) -
     C1 = replace_atom(C, pikachu, atomize(MsgName)),
     {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Bytes'}],Guards,[A,B,C1]}.
 
+%% @hidden
 decode_opts(Msgs, Tag, Type) ->
-    Opts0 = if Tag == repeated -> [repeated]; true -> [] end,
+    Opts0 = if Tag == repeated -> [repeated]; Tag == repeated_packed -> [repeated_packed]; true -> [] end,
     case lists:keymember(Type, 1, Msgs) of
         true ->
             [is_record|Opts0];
@@ -177,29 +199,36 @@ decode_opts(Msgs, Tag, Type) ->
             Opts0
     end.
 
+%% @hidden
 expand_to_record_function(Msgs, Line, Clause) ->
     {function,Line,to_record,2,[filter_to_record_clause(Msg, Clause) || Msg <- Msgs]}.
 
+%% @hidden
 filter_to_record_clause({MsgName, _}, {clause,L,[_Param1,Param2],Guards,[Fold]}) ->
     Fold1 = replace_atom(Fold, pikachu, atomize(MsgName)),
     {clause,L,[{atom,L,atomize(MsgName)},Param2],Guards,[Fold1]}.
 
+%% @hidden
 expand_enum_to_int_function([], Line, Clause) ->
     {function,Line,enum_to_int,2,[Clause]};
 expand_enum_to_int_function(Enums, Line, Clause) ->
     {function,Line,enum_to_int,2,[filter_enum_to_int_clause(Enum, Clause) || Enum <- Enums]}.
 
+%% @hidden
 filter_enum_to_int_clause({enum,EnumTypeName,IntValue,EnumValue}, {clause,L,_Args,Guards,_}) ->
     {clause,L,[{atom,L,atomize(EnumTypeName)},{atom,L,EnumValue}],Guards,[{integer,L,IntValue}]}.
 
+%% @hidden
 expand_int_to_enum_function([], Line, Clause) ->
     {function,Line,int_to_enum,2,[Clause]};
 expand_int_to_enum_function(Enums, Line, Clause) ->
     {function,Line,int_to_enum,2, [filter_int_to_enum_clause(Enum, Clause) || Enum <- Enums] ++ [Clause]}.
 
+%% @hidden
 filter_int_to_enum_clause({enum,EnumTypeName,IntValue,EnumValue}, {clause,L,_Args,Guards,_}) ->
     {clause,L,[{atom,L,atomize(EnumTypeName)},{integer,L,IntValue}],Guards,[{atom,L,EnumValue}]}.
 
+%% @hidden
 %% [{"Location",
 %%   [{2,required,"string","country",number,none},
 %%    {1,required,"string","region",number,none}]},
@@ -260,6 +289,7 @@ collect_full_messages([{option,_,_} | Tail], AccEnum, AccMsg) ->
 collect_full_messages([], AccEnum, AccMsg) ->
     {{msg,AccMsg},{enum,AccEnum}}.
 
+%% @hidden
 resolve_types (Data, Enums) -> resolve_types (Data, Data, Enums, []).
 resolve_types ([{TypePath, Fields} | Tail], AllPaths, Enums, Acc) ->
     FieldsOut = lists:foldl(
@@ -299,6 +329,7 @@ resolve_types ([{TypePath, Fields} | Tail], AllPaths, Enums, Acc) ->
 resolve_types ([], _, _, Acc) ->
     Acc.
 
+%% @hidden
 write_header_include_file(Basename, Messages) ->
     {ok, FileRef} = file:open(Basename ++ ".hrl", [write]),
     [begin
@@ -312,20 +343,20 @@ write_header_include_file(Basename, Messages) ->
      end || {Name, Fields} <- Messages],
     file:close(FileRef).
 
+%% @hidden
 atomize(String) ->
     list_to_atom(string:to_lower(String)).
 
+%% @hidden
 replace_atom(Find, Find, Replace) -> Replace;
-
 replace_atom(Tuple, Find, Replace) when is_tuple(Tuple) ->
     list_to_tuple([replace_atom(Term, Find, Replace) || Term <- tuple_to_list(Tuple)]);
-
 replace_atom(List, Find, Replace) when is_list(List) ->
     [replace_atom(Term, Find, Replace) || Term <- List];
-
 replace_atom(Other, _Find, _Replace) ->
     Other.
 
+%% @hidden
 is_scalar_type ("double") -> true;
 is_scalar_type ("float") -> true;
 is_scalar_type ("int32") -> true;
@@ -343,6 +374,7 @@ is_scalar_type ("string") -> true;
 is_scalar_type ("bytes") -> true;
 is_scalar_type (_) -> false.
 
+%% @hidden
 is_enum_type(_Type, [], _Enums) ->
     false;
 is_enum_type(Type, [TypePath|Paths], Enums) ->
@@ -352,7 +384,6 @@ is_enum_type(Type, [TypePath|Paths], Enums) ->
       false ->
 	is_enum_type(Type, Paths, Enums)
     end.
-
 is_enum_type(Type, Enums) ->
     case lists:keysearch(Type,2,Enums) of
 	false ->
@@ -361,6 +392,7 @@ is_enum_type(Type, Enums) ->
 	    true
     end.
 
+%% @hidden
 sublists(List) when is_list(List) ->
     sublists(List,[]).
 sublists([],Acc) ->
@@ -368,6 +400,7 @@ sublists([],Acc) ->
 sublists(List,Acc) ->
     sublists (tl (List), [ List | Acc ]).
 
+%% @hidden
 all_possible_type_paths (Type, TypePath) ->
     lists:foldl (fun (TypeSuffix, AccIn) ->
 			 [[Type | TypeSuffix] | AccIn]
@@ -375,6 +408,7 @@ all_possible_type_paths (Type, TypePath) ->
 		 [],
 		 sublists (TypePath)).
 
+%% @hidden
 find_type ([], _KnownTypes) ->
     false;
 find_type ([Type | TailTypes], KnownTypes) ->
@@ -385,6 +419,7 @@ find_type ([Type | TailTypes], KnownTypes) ->
 	    RealType
     end.
 
+%% @hidden
 type_path_to_type (TypePath) ->
     string:join (lists:reverse (TypePath), "_").
 

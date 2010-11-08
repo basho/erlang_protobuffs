@@ -25,8 +25,7 @@
 %%
 %% @doc A protcol buffers encoding and decoding module.
 -module(protobuffs).
--export([encode/3, read_field_num_and_wire_type/1, decode/2, decode_value/3]).
--compile(export_all).
+-export([encode/3, encode_packed/3, next_field_num/1, decode/2, decode_packed/2]).
 
 -define(TYPE_VARINT, 0).
 -define(TYPE_64BIT, 1).
@@ -43,6 +42,13 @@
 %% @doc Encode an Erlang data structure into a Protocol Buffers value.
 encode(FieldID, Value, Type) ->
     iolist_to_binary(encode_internal(FieldID, Value, Type)).
+
+encode_packed(_FieldID, [], _Type) ->
+    <<>>;
+encode_packed(FieldID, Values, Type) ->
+    PackedValues = iolist_to_binary(encode_packed_internal(Values,Type,[])),
+    Size = encode_varint(size(PackedValues)),
+    iolist_to_binary([encode_field_tag(FieldID, ?TYPE_STRING),Size,PackedValues]).
     
 %% @hidden
 encode_internal(FieldID, false, bool) ->
@@ -100,6 +106,14 @@ encode_internal(FieldID, Float, double) when is_integer(Float) ->
 encode_internal(FieldID, Float, double) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_64BIT), <<Float:64/little-float>>].
 
+%% @hidden
+encode_packed_internal([],_Type,Acc) ->
+    lists:reverse(Acc);
+encode_packed_internal([Integer|Tail], ExpectedType, Acc) ->
+    [_|Value] = encode_internal(1, Integer, ExpectedType),
+    encode_packed_internal(Tail, ExpectedType, [Value|Acc]).
+
+%% @hidden
 read_field_num_and_wire_type(Bytes) ->
     {Tag, Rest} = decode_varint(Bytes),
     FieldID = Tag bsr 3,
@@ -114,6 +128,59 @@ decode(Bytes, ExpectedType) ->
     {{FieldID, WireType}, Rest} = read_field_num_and_wire_type(Bytes),
     {Value, Rest1} = decode_value(Rest, WireType, ExpectedType),
     {{FieldID, Value}, Rest1}.
+
+%% @spec decode_packed(Bytes, ExpectedType) -> Result
+%%       Bytes = binary()
+%%       ExpectedType = bool | enum | int32 | uint32 | int64 | unit64 | sint32 | sint64 | float | double 
+%%       Result = {{integer(), any()}, binary()}
+decode_packed(Bytes, ExpectedType) ->
+    {{FieldID, ?TYPE_STRING}, Rest} = read_field_num_and_wire_type(Bytes),
+    {Length, Rest1} = decode_varint(Rest),
+    {Packed,Rest2} = split_binary(Rest1, Length),
+    Values = decode_packed_values(Packed, ExpectedType, []),
+    {{FieldID, Values},Rest2}.
+
+%% @spec next_field_num_and_wiretype(Bytes) -> Result
+%%       Bytes = binary()
+%%       Result = {integer(),integer()} 
+next_field_num(Bytes) ->
+    {{FieldID,_WiredType}, _Rest} = read_field_num_and_wire_type(Bytes),
+    {ok,FieldID}.
+    
+%% @hidden    
+decode_packed_values(<<>>, _, Acc) ->
+    lists:reverse(Acc);
+decode_packed_values(Bytes, bool, Acc) ->
+    {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, bool),
+    decode_packed_values(Rest, bool, [Value|Acc]);
+decode_packed_values(Bytes, enum, Acc) ->
+    {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, enum),
+    decode_packed_values(Rest, bool, [Value|Acc]);
+decode_packed_values(Bytes, int32, Acc) ->
+    {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, int32),
+    decode_packed_values(Rest, int32, [Value|Acc]);
+decode_packed_values(Bytes, uint32, Acc) ->
+    {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, uint32),
+    decode_packed_values(Rest, uint32, [Value|Acc]);
+decode_packed_values(Bytes, sint32, Acc) ->
+    {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, sint32),
+    decode_packed_values(Rest, sint32, [Value|Acc]);
+decode_packed_values(Bytes, int64, Acc) ->
+    {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, int64),
+    decode_packed_values(Rest, int64, [Value|Acc]);
+decode_packed_values(Bytes, uint64, Acc) ->
+    {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, uint64),
+    decode_packed_values(Rest, uint64, [Value|Acc]);
+decode_packed_values(Bytes, sint64, Acc) ->
+    {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, sint64),
+    decode_packed_values(Rest, sint64, [Value|Acc]);
+decode_packed_values(Bytes, float, Acc) ->
+    {Value,Rest} = decode_value(Bytes,?TYPE_32BIT, float),
+    decode_packed_values(Rest, float, [Value|Acc]);
+decode_packed_values(Bytes, double, Acc) ->
+    {Value,Rest} = decode_value(Bytes,?TYPE_64BIT, double),
+    decode_packed_values(Rest, double, [Value|Acc]).
+
 
 %% @hidden
 decode_value(Bytes, ?TYPE_VARINT, ExpectedType) ->

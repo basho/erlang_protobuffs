@@ -55,9 +55,7 @@ decode functions for the messages defined.
 ## CAVEATS
 
 Support for parsing proto files and creating code from it is volatile and
-should be considered alpha software at best. <strike>It currently only supports flat
-messages, simple types (ints, strings, etc) and will break on ENUM types and
-any sort of nesting.</strike> Please do not use this in production.
+should be considered alpha software at best. Please do not use this in production.
 
 ## no_debug_info
 

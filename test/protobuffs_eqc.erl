@@ -79,13 +79,11 @@ prop_protobuffs_packed() ->
 		case Type of
 		    float ->
 			Encoded = protobuffs:encode_packed(FieldID,Values,Type),
-			Decoded = protobuffs:decode_packed(Encoded,Type),
-			test_server:format("Encoded ~p Decoded ~p~n",[Encoded,Decoded]),
-			true;
+			{{FieldID,DecodedValues},<<>>} = protobuffs:decode_packed(Encoded,Type),
+			lists:all(fun({Expected,Result}) -> fuzzy_match(Expected,Result,3) end, lists:zip(Values,DecodedValues));
 		    _Else ->
 			Encoded = protobuffs:encode_packed(FieldID,Values,Type),
 			Decoded = protobuffs:decode_packed(Encoded,Type),
-			test_server:format("Encoded ~p Decoded ~p~n",[Encoded, Decoded]),
 			{{FieldID,Values},<<>>} == Decoded
 		end
 	    end).

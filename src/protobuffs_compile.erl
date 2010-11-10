@@ -23,7 +23,7 @@
 %% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
--export([scan_file/1, generate_source/1]).
+-export([scan_file/1, scan_file/2, generate_source/1, generate_source/2]).
 
 %%--------------------------------------------------------------------
 %% @doc Generats a built .beam file and header file .hrl
@@ -32,12 +32,25 @@
 %%       Result = ok | {error, Reason}
 %%       Reason = ext_posix() | terminated | system_limit
 %%--------------------------------------------------------------------
-scan_file(ProtoFile) when is_list(ProtoFile) ->
+scan_file(ProtoFile) ->
+    scan_file(ProtoFile,[]).
+
+%%--------------------------------------------------------------------
+%% @doc Generats a built .beam file and header file .hrl
+%%      Considerd option properties: output_include_dir, 
+%%                                   output_ebin_dir
+%% @spec scan_file(ProtoFile,Options) -> Result
+%%       ProtoFile = string()
+%%       Options = proplists()
+%%       Result = ok | {error, Reason}
+%%       Reason = ext_posix() | terminated | system_limit
+%%--------------------------------------------------------------------
+scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,Parsed} = parse(ProtoFile),
     {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
     Messages = resolve_types(UntypedMessages,Enums),
-    output(Basename, Messages, Enums).
+    output(Basename, Messages, Enums, Options).
 
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
@@ -46,28 +59,70 @@ scan_file(ProtoFile) when is_list(ProtoFile) ->
 %%       Result = ok | {error, Reason}
 %%       Reason = ext_posix() | terminated | system_limit
 %%--------------------------------------------------------------------
-generate_source (ProtoFile) when is_list (ProtoFile) ->
+generate_source(ProtoFile) ->
+    generate_source(ProtoFile,[]).
+
+%%--------------------------------------------------------------------
+%% @doc Generats a source .erl file and header file .hrl
+%%      Consider option properties: output_include_dir, 
+%%                                  output_src_dir 
+%% @spec scan_file(ProtoFile,Options) -> Result
+%%       ProtoFile = string()
+%%       Options = proplists()
+%%       Result = ok | {error, Reason}
+%%       Reason = ext_posix() | terminated | system_limit
+%%--------------------------------------------------------------------
+generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,Parsed} = parse(ProtoFile),
     {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
     Messages = resolve_types(UntypedMessages,Enums),
-    output_source (Basename, Messages, Enums).
-
-output(Basename, Messages, Enums) ->
-    ok = write_header_include_file(Basename, Messages),
-    BeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
-    {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(BeamFile, [abstract_code]),
-    Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
-    {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return]),
-    file:write_file(Basename ++ ".beam", Bytes).
+    output_source (Basename, Messages, Enums, Options).
 
 %% @hidden
-output_source (Basename, Messages, Enums) ->
-    ok = write_header_include_file(Basename, Messages),
-    BeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
-    {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(BeamFile, [abstract_code]),
+output(Basename, Messages, Enums, Options) ->
+    case proplists:get_value(output_include_dir,Options) of
+	undefined ->
+	    HeaderFile = Basename ++ ".hrl";
+	HeaderPath ->
+	    HeaderFile = filename:join(HeaderPath,Basename) ++ ".hrl"
+    end,
+    error_logger:info_msg("Writing header file to ~p~n",[HeaderFile]),
+    ok = write_header_include_file(HeaderFile, Messages),
+    PokemonBeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
+    {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(PokemonBeamFile, [abstract_code]),
     Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
-    file:write_file(Basename ++ ".erl", erl_prettypr:format(erl_syntax:form_list (Forms1))).
+    {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return]),
+    case proplists:get_value(output_ebin_dir,Options) of
+	undefined ->
+	    BeamFile = Basename ++ ".beam";
+	BeamPath ->
+	    BeamFile = filename:join(BeamPath,Basename) ++ ".beam"
+    end,
+    error_logger:info_msg("Writing beam file to ~p~n",[BeamFile]),
+    file:write_file(BeamFile, Bytes).
+
+%% @hidden
+output_source (Basename, Messages, Enums, Options) ->
+    case proplists:get_value(output_include_dir,Options) of
+	undefined ->
+	    HeaderFile = Basename ++ ".hrl";
+	HeaderPath ->
+	    HeaderFile = filename:join(HeaderPath,Basename) ++ ".hrl"
+    end,
+    error_logger:info_msg("Writing header file to ~p~n",[HeaderFile]),
+    ok = write_header_include_file(HeaderFile, Messages),
+    PokemonBeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
+    {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(PokemonBeamFile, [abstract_code]),
+    Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
+    case proplists:get_value(output_src_dir,Options) of
+	undefined ->
+	    SrcFile = Basename ++ ".erl";
+	SrcPath ->
+	    SrcFile = filename:join(SrcPath,Basename) ++ ".erl"
+    end,
+    error_logger:info_msg("Writing src file to ~p~n",[SrcFile]),
+    file:write_file(SrcFile, erl_prettypr:format(erl_syntax:form_list (Forms1))).
 
 %% @hidden
 parse(FileName) ->
@@ -331,7 +386,7 @@ resolve_types ([], _, _, Acc) ->
 
 %% @hidden
 write_header_include_file(Basename, Messages) ->
-    {ok, FileRef} = file:open(Basename ++ ".hrl", [write]),
+    {ok, FileRef} = file:open(Basename, [write]),
     [begin
 	 OutFields = [string:to_lower(A) || {_, _, _, A, _, _} <- lists:keysort(1, Fields)],
 	 if

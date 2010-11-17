@@ -356,3 +356,21 @@ prop_protobuffs_packed_repeated() ->
 		true
 	    end).
 
+special_words() ->
+    {message,
+     string(),string(),string(),string(),string(),
+     string(),string(),string(),string(),string(),
+     string(),string(),string(),string(),string(),
+     string(),string(),string(),string(),string(),
+     string(),string(),string(),string()}.
+
+prop_protobuffs_special_words() ->
+    ?FORALL({SpecialWords},
+	    {special_words()},
+	    begin
+		Decoded = special_words_pb:decode_message(special_words_pb:encode_message(SpecialWords)),
+		lists:foldl(
+		  fun({E,D}, Acc) -> E =:= D andalso Acc end, 
+		  true, 
+		  lists:zip(tuple_to_list(SpecialWords),tuple_to_list(Decoded)))
+	    end).

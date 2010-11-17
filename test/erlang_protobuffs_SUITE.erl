@@ -119,7 +119,8 @@ all() ->
      parse_enum_test_case,
      parse_addressbook_test_case,
      parse_repeater_test_case,
-     parse_packed_repeated_test_case].
+     parse_packed_repeated_test_case,
+     parse_special_words_test_case].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase() -> Info
@@ -153,6 +154,8 @@ parse_addressbook_test_case() ->
 parse_repeater_test_case() ->
     [].
 parse_packed_repeated_test_case() ->
+    [].
+parse_special_words_test_case() ->
     [].
 
 %%--------------------------------------------------------------------
@@ -257,6 +260,13 @@ parse_packed_repeated_test_case(Config) ->
     Path = filename:absname(filename:join([DataDir,"packed_repeated.proto"])),
     protobuffs_compile:scan_file(Path),
     true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_packed_repeated())).
+
+parse_special_words_test_case(Config) ->
+    DataDir = ?config(data_dir, Config),
+    NumTests = ?config(num_tests, Config),
+    Path = filename:absname(filename:join([DataDir,"special_words.proto"])),
+    protobuffs_compile:scan_file(Path),
+    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_special_words())).
 
 
 

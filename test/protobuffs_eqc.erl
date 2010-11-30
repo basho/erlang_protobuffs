@@ -44,6 +44,31 @@ value() ->
 	   {string(),string},
 	   {binary(),bytes}]).
 
+compare_messages(ExpectedMsg,Msg) ->
+  lists:foldl(		
+    fun({E,D}, Acc) -> compare(E,D) andalso Acc end, 
+    true, 	
+    lists:zip(tuple_to_list(ExpectedMsg),tuple_to_list(Msg))).
+  
+compare(A,A) ->
+    true;
+compare([A],B) ->
+    compare(A,B);
+compare(A,[B]) ->
+    compare(A,B);
+compare(A,B) when is_tuple(A), is_tuple(B) ->
+    compare(tuple_to_list(A),tuple_to_list(B));
+compare([A|RA],[B|RB]) ->
+    compare(A,B) andalso compare(RA,RB);
+compare(A,B) when is_float(A),is_float(B) ->
+    fuzzy_match(A,B,3);
+compare(_,undefined) ->
+    true;
+compare(undefined,_) ->
+    true;
+compare(_,_) ->
+    false.
+
 fuzzy_match(A,A,_) ->
     true;
 fuzzy_match(A,B,L) ->
@@ -89,37 +114,25 @@ prop_protobuffs_packed() ->
 	    end).
 
 prop_protobuffs_empty() ->
-    ?FORALL({Real1, Float1, Int1, 
-	     Int2, Int3, Int4, 
-	     Int5, Int6, Int7, 
-	     Int8, Int9, Int10, 
-	     Val1, Str1, Bit1},
-	    {default(undefined, real()),
-	     default(undefined, real()),
-	     default(undefined, sint32()),
-	     default(undefined, sint64()),
-	     default(undefined, uint32()),
-	     default(undefined, uint64()),
-	     default(undefined, sint32()),
-	     default(undefined, sint64()),
-	     default(undefined, uint32()),
-	     default(undefined, uint64()),
-	     default(undefined, sint32()),
-	     default(undefined, sint64()),
-	     default(undefined, bool()),
-	     default(undefined, string()),
-	     default(undefined, binary())},
+    ?FORALL({Empty},
+	    {{empty,default(undefined, real()),
+		    default(undefined, real()),
+		    default(undefined, sint32()),
+		    default(undefined, sint64()),
+		    default(undefined, uint32()),
+		    default(undefined, uint64()),
+		    default(undefined, sint32()),
+		    default(undefined, sint64()),
+		    default(undefined, uint32()),
+		    default(undefined, uint64()),
+		    default(undefined, sint32()),
+		    default(undefined, sint64()),
+		    default(undefined, bool()),
+		    default(undefined, string()),
+		    default(undefined, binary())}},
 	    begin
-		{empty,Real1,Float11,
-		 Int1,Int2,Int3,Int4,Int5,
-		 Int6,Int7,Int8,Int9,Int10,
-		 Val1,Str1,Bit1} = empty_pb:decode_empty(
-				     empty_pb:encode_empty({empty,
-							    Real1,Float1,
-							    Int1,Int2,Int3,Int4,Int5,
-							    Int6,Int7,Int8,Int9,Int10,
-							    Val1,Str1,Bit1})),
-		fuzzy_match(Float1,Float11,3)
+		Decoded = empty_pb:decode_empty(empty_pb:encode_empty(Empty)),
+		compare_messages(Empty,Decoded)
 	    end).
 
 check_with_default(Expected,Result,undefined,Fun) ->
@@ -130,13 +143,8 @@ check_with_default(Expected,Result,_Default,Fun) ->
     Fun(Expected,Result).
 
 prop_protobuffs_has_default() ->
-    ?FORALL({Real1, Float1, Int1,
-	     Int2, Int3, Int4,
-	     Int5, Int6, Int7,
-	     Int8, Int9, Int10,
-	     Val1, Str1
-	    },
-	    {default(undefined, real()),
+    ?FORALL({Withdefault},
+	    {{withdefault,default(undefined, real()),
 	     default(undefined, real()),
 	     default(undefined, sint32()),
 	     default(undefined, sint64()),
@@ -149,60 +157,10 @@ prop_protobuffs_has_default() ->
 	     default(undefined, sint32()),
 	     default(undefined, sint64()),
 	     default(undefined, bool()),
-	     default(undefined, string())},
+	     default(undefined, string())}},
 	    begin
-		{withdefault,Real11,Float11,
-		 Int11,Int12,Int13,Int14,Int15,Int16,
-		 Int17,Int18,Int19,Int110,
-		 Val11,Str11} = hasdefault_pb:decode_withdefault(
-				  hasdefault_pb:encode_withdefault(
-				    {withdefault,
-				     Real1,Float1,
-				     Int1,Int2,Int3,Int4,Int5,Int6,
-				     Int7,Int8,Int9,Int10,
-				     Val1,Str1})),
-		check_with_default(
-		  Real1,Real11,1.0,
-		  fun(Expected,Result) -> Expected == Result end), 
-		check_with_default(
-		  Float1,Float11,2.0,
-		  fun(Expected,Result) -> fuzzy_match(Expected,Result,3) end),
-		check_with_default(
-		  Int1,Int11,1,
-		  fun(Expected,Result) -> Expected == Result end),
-		check_with_default(
-		  Int2,Int12,2,
-		  fun(Expected,Result) -> Expected == Result end),
-		check_with_default(
-		  Int3,Int13,3,
-		  fun(Expected,Result) -> Expected == Result end),
-		check_with_default(
-		  Int4,Int14,4,
-		  fun(Expected,Result) -> Expected == Result end),
-		check_with_default(
-		  Int5,Int15,5,
-		  fun(Expected,Result) -> Expected == Result end),
-		check_with_default(
-		  Int6,Int16,6,
-		  fun(Expected,Result) -> Expected == Result end),
-		check_with_default(
-		  Int7,Int17,7,
-		  fun(Expected,Result) -> Expected == Result end),
-		check_with_default(
-		  Int8,Int18,8,
-		  fun(Expected,Result) -> Expected == Result end),
-		check_with_default(
-		  Int9,Int19,9,
-		  fun(Expected,Result) -> Expected == Result end),
-		check_with_default(
-		  Int10,Int110,10,
-		  fun(Expected,Result) -> Expected == Result end),
-		check_with_default(
-		  Val1,Val11,true,
-		  fun(Expected,Result) -> Expected == Result end),
-		check_with_default(
-		  Str1,Str11,"test",
-		  fun(Expected,Result) -> Expected == Result end)
+		Decoded = hasdefault_pb:decode_withdefault(hasdefault_pb:encode_withdefault(Withdefault)),
+		compare_messages(Withdefault,Decoded)
 	    end).
 
 location() ->
@@ -210,11 +168,11 @@ location() ->
     default(undefined,{location,Str,Str}).
 
 prop_protobuffs_simple() ->
-    ?FORALL({Name, Address, PhoneNumber,Age,Location},
-	    {string(),string(),string(),sint32(),location()},
+    ?FORALL({Person},
+	    {{person,string(),string(),string(),sint32(),location()}},
 	    begin
-		Msg = {person,Name,Address,PhoneNumber,Age,Location},
-		Msg == simple_pb:decode_person(simple_pb:encode_person(Msg))
+		Decoded = simple_pb:decode_person(simple_pb:encode_person(Person)),
+		compare_messages(Person,Decoded)
 	    end).
 
 phone_type() ->
@@ -225,17 +183,11 @@ phone_number() ->
     list({person_phonenumber,string(),default(undefined,phone_type())}).
 
 prop_protobuffs_nested1() ->
-    ?FORALL({Name, Id, Email, PhoneNumber},
-	    {string(),sint32(),default(undefined,string()),phone_number()},
+    ?FORALL({Person},
+	    {{person,string(),sint32(),default(undefined,string()),phone_number()}},
 	    begin
-		Msg = {person,Name,Id,Email,PhoneNumber},
-		case nested1_pb:decode_person(nested1_pb:encode_person(Msg)) of
-		    {person,Name,Id,Email,PhoneNumber} -> true;
-		    {person,Name,Id,Email,undefined} ->
-			PhoneNumber == [];
-		    _Else ->
-			false
-		end
+		Decoded = nested1_pb:decode_person(nested1_pb:encode_person(Person)),
+		compare_messages(Person,Decoded)
 	    end).
 
 innerAA() ->
@@ -254,11 +206,11 @@ middleBB() ->
     {outer_middlebb,default(undefined,Inner)}.
 
 prop_protobuffs_nested2() ->
-    ?FORALL({MiddleAA, MiddleBB},
-	    {default(undefined,middleAA()),default(undefined,middleBB())},
+    ?FORALL({Middle},
+	    {{outer,default(undefined,middleAA()),default(undefined,middleBB())}},
 	    begin
-		Msg = {outer,MiddleAA,MiddleBB},
-		Msg == nested2_pb:decode_outer(nested2_pb:encode_outer(Msg))
+		Decoded = nested2_pb:decode_outer(nested2_pb:encode_outer(Middle)),
+		compare_messages(Middle,Decoded)
 	    end).
 
 inner() ->
@@ -275,18 +227,18 @@ middle() ->
 
 prop_protobuffs_nested3() ->
     ?FORALL({Middle},
-	    {default(undefined,middle())},
+	    {default({outer,undefined},{outer,middle()})},
 	    begin
-		Msg = {outer,Middle},
-		Msg == nested3_pb:decode_outer(nested3_pb:encode_outer(Msg))
+		Decoded = nested3_pb:decode_outer(nested3_pb:encode_outer(Middle)),
+		compare_messages(Middle,Decoded)
 	    end).
 
 prop_protobuffs_nested4() ->
     ?FORALL({Middle},
-	    {default(undefined,middle())},
+	    {default({outer,undefined},{outer,middle()})},
 	    begin
-		Msg = {outer,Middle},
-		Msg == nested4_pb:decode_outer(nested4_pb:encode_outer(Msg))
+		Decoded = nested4_pb:decode_outer(nested4_pb:encode_outer(Middle)),
+		compare_messages(Middle,Decoded)
 	    end).
 
 first_inner() ->
@@ -294,18 +246,18 @@ first_inner() ->
 
 prop_protobuffs_nested5_1() ->
     ?FORALL({Inner},
-	    {default(undefined,first_inner())},
+	    {default({first,undefined},{first,first_inner()})},
 	    begin
-		Msg = {first,Inner},
-		Msg == nested5_pb:decode_first(nested5_pb:encode_first(Msg))
+		Decoded = nested5_pb:decode_first(nested5_pb:encode_first(Inner)),
+		compare_messages(Inner,Decoded)
 	    end).
 
 prop_protobuffs_nested5_2() ->
     ?FORALL({Inner},
-	    {first_inner()},
+	    {{second,first_inner()}},
 	    begin
-		Msg = {second,Inner},
-		Msg == nested5_pb:decode_second(nested5_pb:encode_second(Msg))
+		Decoded = nested5_pb:decode_second(nested5_pb:encode_second(Inner)),
+		compare_messages(Inner,Decoded)
 	    end).
 
 enum_value() ->
@@ -313,10 +265,10 @@ enum_value() ->
 
 prop_protobuffs_enum() ->
     ?FORALL({Middle},
-	    {default(undefined,enum_value())},
+	    {default({enummsg,undefined},{enummsg,enum_value()})},
 	    begin
-		Msg = {enummsg,Middle},
-		Msg == enum_pb:decode_enummsg(enum_pb:encode_enummsg(Msg))
+		Decoded = enum_pb:decode_enummsg(enum_pb:encode_enummsg(Middle)),
+		compare_messages(Middle,Decoded)
 	    end).
 
 address_phone_number() ->
@@ -327,11 +279,10 @@ addressbook() ->
 
 prop_protobuffs_addressbook() ->
     ?FORALL({Addressbook},
-	    {default(undefined,addressbook())},
+	    {default({addressbook,undefined},{addressbook,addressbook()})},
 	    begin
-		Msg = {addressbook,Addressbook},
-		addressbook_pb:decode_addressbook(addressbook_pb:encode_addressbook(Msg)),
-		true
+		Decoded = addressbook_pb:decode_addressbook(addressbook_pb:encode_addressbook(Addressbook)),
+		compare_messages(Addressbook,Decoded)
 	    end).
 
 repeater_location() ->
@@ -344,16 +295,16 @@ prop_protobuffs_repeater() ->
     ?FORALL({Repeater},
 	    {repeater_person()},
 	    begin
-		repeater_pb:decode_person(repeater_pb:encode_person(Repeater)),
-		true
+		Decoded = repeater_pb:decode_person(repeater_pb:encode_person(Repeater)),
+		compare_messages(Repeater,Decoded)
 	    end).
 
 prop_protobuffs_packed_repeated() ->
     ?FORALL({Repeater},
 	    {repeater_person()},
 	    begin
-		packed_repeated_pb:decode_person(packed_repeated_pb:encode_person(Repeater)),
-		true
+		Decoded = packed_repeated_pb:decode_person(packed_repeated_pb:encode_person(Repeater)),
+		compare_messages(Repeater,Decoded)
 	    end).
 
 special_words() ->
@@ -369,8 +320,5 @@ prop_protobuffs_special_words() ->
 	    {special_words()},
 	    begin
 		Decoded = special_words_pb:decode_message(special_words_pb:encode_message(SpecialWords)),
-		lists:foldl(
-		  fun({E,D}, Acc) -> E =:= D andalso Acc end, 
-		  true, 
-		  lists:zip(tuple_to_list(SpecialWords),tuple_to_list(Decoded)))
+		compare_messages(SpecialWords,Decoded)
 	    end).

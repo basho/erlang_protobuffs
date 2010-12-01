@@ -412,7 +412,7 @@ generate_field_definitions([], Acc) ->
 generate_field_definitions([{Name, required, _} | Tail], Acc) ->
 	Head = lists:flatten(io_lib:format("~s = erlang:error({required, ~s})", [Name, Name])),
 	generate_field_definitions(Tail, [Head | Acc]);
-generate_field_definitions([{Name, optional, none} | Tail], Acc) ->
+generate_field_definitions([{Name, _, none} | Tail], Acc) ->
 	Head = lists:flatten(io_lib:format("~s", [Name])),
 	generate_field_definitions(Tail, [Head | Acc]);
 generate_field_definitions([{Name, optional, Default} | Tail], Acc) ->

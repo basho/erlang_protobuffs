@@ -388,15 +388,36 @@ resolve_types ([], _, _, Acc) ->
 write_header_include_file(Basename, Messages) ->
     {ok, FileRef} = file:open(Basename, [write]),
     [begin
-	 OutFields = [string:to_lower(A) || {_, _, _, A, _, _} <- lists:keysort(1, Fields)],
+	 OutFields = [{string:to_lower(A), Optional, Default} || {_, Optional, _, A, _, Default} <- lists:keysort(1, Fields)],
 	 if
 	     OutFields /= [] ->
-		 io:format(FileRef, "-record(~s, {~s}).~n", [string:to_lower(Name), string:join(OutFields, ", ")]);
+		 io:format(FileRef, "-record(~s, {~n    ", [Name]),
+         WriteFields = generate_field_definitions(OutFields),
+         FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
+         io:format(FileRef, FormatString, WriteFields),
+         io:format(FileRef, "~n})~n~n", []);
 	     true ->
 		 ok
 	 end
      end || {Name, Fields} <- Messages],
     file:close(FileRef).
+
+%% @hidden
+generate_field_definitions(Fields) ->
+	generate_field_definitions(Fields, []).
+
+%% @hidden
+generate_field_definitions([], Acc) ->
+	lists:reverse(Acc);
+generate_field_definitions([{Name, required, _} | Tail], Acc) ->
+	Head = lists:flatten(io_lib:format("~s = erlang:error({required, ~s})", [Name, Name])),
+	generate_field_definitions(Tail, [Head | Acc]);
+generate_field_definitions([{Name, optional, none} | Tail], Acc) ->
+	Head = lists:flatten(io_lib:format("~s", [Name])),
+	generate_field_definitions(Tail, [Head | Acc]);
+generate_field_definitions([{Name, optional, Default} | Tail], Acc) ->
+	Head = lists:flatten(io_lib:format("~s = ~p", [Name, Default])),
+	generate_field_definitions(Tail, [Head | Acc]).
 
 %% @hidden
 atomize(String) ->

@@ -101,10 +101,23 @@ encode_internal(FieldID, Float, float) when is_integer(Float) ->
     encode_internal(FieldID, Float + 0.0, float);
 encode_internal(FieldID, Float, float) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<Float:32/little-float>>];
-encode_internal(FieldID, Float, double) when is_integer(Float) ->
-    encode_internal(FieldID, Float + 0.0, double);
+encode_internal(FieldID, nan, float) ->
+    [encode_field_tag(FieldID, ?TYPE_32BIT), <<0:16,192:8,255:8>>];
+encode_internal(FieldID, infinity, float) ->
+    [encode_field_tag(FieldID, ?TYPE_32BIT), <<0:16,128:8,127:8>>];
+encode_internal(FieldID, '-infinity', float) ->
+    [encode_field_tag(FieldID, ?TYPE_32BIT), <<0:16,128:8,255:8>>];
 encode_internal(FieldID, Float, double) when is_float(Float) ->
-    [encode_field_tag(FieldID, ?TYPE_64BIT), <<Float:64/little-float>>].
+    [encode_field_tag(FieldID, ?TYPE_64BIT), <<Float:64/little-float>>];
+encode_internal(FieldID, nan, double) ->
+    [encode_field_tag(FieldID, ?TYPE_64BIT), <<0:48,16#F8,16#FF>>];
+encode_internal(FieldID, infinity, double) ->
+    [encode_field_tag(FieldID, ?TYPE_64BIT), <<0:48,16#F0,16#7F>>];
+encode_internal(FieldID, '-infinity', double) ->
+    [encode_field_tag(FieldID, ?TYPE_64BIT), <<0:48,16#F0,16#FF>>].
+
+
+
 
 %% @hidden
 encode_packed_internal([],_Type,Acc) ->
@@ -207,10 +220,22 @@ decode_value(<<Value:32/little-signed-integer, Rest/binary>>, ?TYPE_32BIT, Type)
     {Value, Rest};
 decode_value(<<Value:32/little-float, Rest/binary>>, ?TYPE_32BIT, float) ->
     {Value + 0.0, Rest};
+decode_value(<<0:16, 128:8, 127:8, Rest/binary>>, ?TYPE_32BIT, float) ->
+    {infinity, Rest};
+decode_value(<<0:16, 128:8, 255:8, Rest/binary>>, ?TYPE_32BIT, float) ->
+    {'-infinity', Rest};
+decode_value(<<_:16, 2#1:1, _:7, _:1, 2#1111111:7, Rest/binary>>, ?TYPE_32BIT, float) ->
+    {nan, Rest};
 decode_value(<<Value:64/little-float, Rest/binary>>, ?TYPE_64BIT, double) ->
     {Value + 0.0, Rest};
-decode_value(_, WireType, ExpectedType) ->
-    exit({error, {unexpected_value, WireType, ExpectedType}}).
+decode_value(<<0:48, 240:8, 127:8, Rest/binary>>, ?TYPE_64BIT, double) ->
+    {infinity, Rest};
+decode_value(<<0:48, 240:8, 255:8, Rest/binary>>, ?TYPE_64BIT, double) ->
+    {'-infinity', Rest};
+decode_value(<<_:48, 2#1111:4, _:4, _:1, 2#1111111:7, Rest/binary>>, ?TYPE_64BIT, double) ->
+    {nan, Rest};
+decode_value(Value, WireType, ExpectedType) ->
+    exit({error, {unexpected_value, WireType, ExpectedType, Value}}).
 
 %% @hidden
 typecast(Value, SignedType) when SignedType =:= int32; SignedType =:= int64 ->

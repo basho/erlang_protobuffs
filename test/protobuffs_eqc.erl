@@ -29,6 +29,12 @@ string() ->
 value() ->
     oneof([{real(),double},
 	   {real(),float},
+	   {nan,float},
+	   {infinity,float},
+	   {'-infinity',float},
+	   {nan,double},
+	   {infinity,double},
+	   {'-infinity',double},
 	   {uint32(),uint32},
 	   {uint64(),uint64},
 	   {sint32(),sint32},

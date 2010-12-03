@@ -109,8 +109,9 @@ parse_enum_outside_test() ->
 
 parse_exensions_test() ->
 	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/extensions.proto"),
-	[{message, "Extendable", Extendable}] = parse(Path),
-	[?_assertMatch({extensions, 100, 200}, lists:nth(1, Extendable))].
+	[{message, "Extendable", Extendable}, {message, "MaxTendable", MaxTendable}] = parse(Path),
+	[?_assertMatch({extensions, 100, 200}, lists:nth(1, Extendable)),
+	?_assertMatch({extensions, 100, max}, lists:nth(1, MaxTendable))].
 
 parse_nested1_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/nested1.proto"),

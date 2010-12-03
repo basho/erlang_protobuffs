@@ -1,8 +1,10 @@
 Nonterminals
-g_protobuffs g_members g_members_noopts g_member g_options g_option g_messages g_message g_enums g_enum g_elements g_element g_default g_pack g_var.
+g_protobuffs g_members g_members_noopts g_member g_options g_option 
+g_messages g_message g_service g_rpcs g_rpc g_enums g_enum g_elements 
+g_element g_default g_pack g_var.
 
-Terminals ';' '=' '{' '}' '[' ']'
-package option message enum var integer float string type requirement default pack to extensions max.
+Terminals ';' '=' '{' '}' '[' ']' '(' ')'
+package option message enum var integer float string type requirement default pack to extensions max service rpc returns.
 
 Rootsymbol g_protobuffs.
 Endsymbol '$end'.
@@ -20,6 +22,14 @@ g_members_noopts -> g_member g_members_noopts : ['$1'|'$2'].
 
 g_member -> g_message : '$1'.
 g_member -> enum g_var '{' g_enums '}' : {enum, safe_string('$2'), '$4'}.
+g_member -> g_service : '$1'.
+
+g_service -> service g_var '{' g_rpcs '}' : {service, safe_string('$2'), '$4'}.
+
+g_rpcs -> g_rpc : ['$1'].
+g_rpcs -> g_rpc g_rpcs : ['$1'|'$2'].
+
+g_rpc -> rpc g_var '(' g_var ')' returns '(' g_var ')' ';' : {rpc, safe_string('$2'), safe_string('$4'), safe_string('$8')}.
 
 g_options -> g_option : ['$1'].
 g_options -> g_option g_options : ['$1'|'$2'].

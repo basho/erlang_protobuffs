@@ -7,7 +7,7 @@ WS  = ([\000-\s]|%.*)
 S = [\(\)\]\[\{\};=]
 
 TYPE = (double|float|int32|int64|uint32|uint64|sint32|sint64|fixed32|fixed64|sfixed32|sfixed64|bool|string|bytes)
-KEYWORD = (package|option|message|enum|default|pack|extensions|to|max)
+KEYWORD = (package|option|message|enum|default|pack|extensions|to|max|service|rpc|returns)
 REQUIREMENT = (required|optional|repeated)
 
 Rules.

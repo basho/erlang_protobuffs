@@ -118,6 +118,7 @@ all() ->
      parse_nested5_test_case,
      parse_enum_test_case,
      parse_enum_outside_test_case,
+     parse_extensions_test_case,
      parse_addressbook_test_case,
      parse_repeater_test_case,
      parse_packed_repeated_test_case,
@@ -151,6 +152,8 @@ parse_nested5_test_case() ->
 parse_enum_test_case() ->
     [].
 parse_enum_outside_test_case() ->
+	[].
+parse_extensions_test_case() ->
 	[].
 parse_addressbook_test_case() ->
     [].
@@ -249,6 +252,13 @@ parse_enum_outside_test_case(Config) ->
 	Path = filename:absname(filename:join([DataDir, "enum_outside.proto"])),
 	protobuffs_compile:scan_file(Path),
 	true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_enum_outside())).
+
+parse_extensions_test_case(Config) ->
+	DataDir = ?config(data_dir, Config),
+	NumTests = ?config(num_tests, Config),
+	Path = filename:absname(filename:join([DataDir, "extensions.proto"])),
+	protobuffs_compile:scan_file(Path),
+	true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_extentions())).
 
 parse_addressbook_test_case(Config) ->
     DataDir = ?config(data_dir, Config),

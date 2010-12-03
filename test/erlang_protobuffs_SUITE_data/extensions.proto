@@ -1,0 +1,3 @@
+message Extendable {
+	extensions 100 to 200;
+}

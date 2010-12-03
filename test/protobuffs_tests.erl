@@ -107,7 +107,7 @@ parse_enum_outside_test() ->
 	?_assertMatch({enum,1,"FIRST"},lists:keyfind("FIRST",3,Enums)),
 	?_assertMatch({enum,2,"SECOND"},lists:keyfind("SECOND",3,Enums))].
 
-parse_exentions_test() ->
+parse_exensions_test() ->
 	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/extensions.proto"),
 	[{message, "Extendable", Extendable}] = parse(Path),
 	[?_assertMatch({extensions, 100, 200}, lists:nth(1, Extendable))].

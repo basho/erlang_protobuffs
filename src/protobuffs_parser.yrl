@@ -2,7 +2,7 @@ Nonterminals
 g_protobuffs g_members g_members_noopts g_member g_options g_option g_messages g_message g_enums g_enum g_elements g_element g_default g_pack g_var.
 
 Terminals ';' '=' '{' '}' '[' ']'
-package option message enum var integer float string type requirement default pack.
+package option message enum var integer float string type requirement default pack to extensions.
 
 Rootsymbol g_protobuffs.
 Endsymbol '$end'.
@@ -37,7 +37,8 @@ g_element -> requirement type g_var '=' integer g_default ';' : {unwrap('$5'), u
 g_element -> requirement g_var g_var '=' integer g_default ';' : {unwrap('$5'), unwrap('$1'), safe_string('$2'), safe_string('$3'), number, '$6'}.
 
 g_element -> requirement type g_var '=' integer g_pack ';' : {unwrap('$5'), pack_repeated(unwrap('$1'),'$6'), safe_string(unwrap('$2')), safe_string('$3'), number, none}.
-g_element -> requirement g_var g_var '=' integer g_pack ';' : {unwrap('$5'), pack_repeated('$1','$6'), safe_string('$2'), safe_string('$3'), number, none}.
+g_element -> requirement g_var g_var '=' integer g_pack ';' : {unwrap('$5'), pack_repeated('$1','$6'), safe_string('$2'), safe_string('$3'), number, none}.  
+g_element -> extensions integer to integer ';' : {unwrap('$1'), unwrap('$2'), unwrap('$4')}.
 
 g_element -> enum g_var '{' g_enums '}' : {enum, safe_string('$2'), '$4'}.
 g_element -> g_message : '$1'.
@@ -67,6 +68,7 @@ g_var -> default : default.
 g_var -> pack : pack.
 g_var -> type : unwrap('$1').
 g_var -> requirement : unwrap('$1').
+g_var -> extensions : unwrap('$1').
 
 Erlang code.
 safe_string(A) -> make_safe(atom_to_list(A)).

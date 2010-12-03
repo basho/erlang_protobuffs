@@ -1,5 +1,5 @@
 Nonterminals
-g_protobuffs g_members g_options g_option g_messages g_message g_enums g_enum g_elements g_element g_default g_pack g_var.
+g_protobuffs g_members g_members_noopts g_member g_options g_option g_messages g_message g_enums g_enum g_elements g_element g_default g_pack g_var.
 
 Terminals ';' '=' '{' '}' '[' ']'
 package option message enum var integer float string type requirement default pack.
@@ -10,8 +10,16 @@ Endsymbol '$end'.
 g_protobuffs -> package g_var ';' g_members : [{package, safe_string('$2')}] ++ '$4'.
 g_protobuffs -> g_members : '$1'.
 
-g_members -> g_options g_messages : '$1' ++ '$2'.
-g_members -> g_messages : '$1'. 
+%g_members -> g_options g_messages : '$1' ++ '$2'.
+%g_members -> g_messages : '$1'. 
+g_members -> g_options g_members_noopts : '$1' ++ '$2'.
+g_members -> g_members_noopts : '$1'.
+
+g_members_noopts -> g_member : ['$1'].
+g_members_noopts -> g_member g_members_noopts : ['$1'|'$2'].
+
+g_member -> g_message : '$1'.
+g_member -> enum g_var '{' g_enums '}' : {enum, safe_string('$2'), '$4'}.
 
 g_options -> g_option : ['$1'].
 g_options -> g_option g_options : ['$1'|'$2'].

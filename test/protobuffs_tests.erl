@@ -100,6 +100,14 @@ parse_enum_test_() ->
      ?_assertMatch({enum,1,"value1"},lists:keyfind("value1",3,Values)),
      ?_assertMatch({enum,2,"value2"},lists:keyfind("value2",3,Values))].
 
+parse_enum_outside_test() ->
+	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/enum_outside.proto"),
+	[{message, "EnumUser", EnumUser}] = parse(Path),
+	{enum, "EnumList", Enums} = lists:keyfind(enum, 1, EnumUser),
+	[?_assertMatch({1,optional,"EnumList", "enum_filed", number,none},lists:keyfind(1,1,EnumUser)),
+	?_assertMatch({enum,1,"FIRST"},lists:keyfind("FIRST",3,Enums)),
+	?_assertMatch({enum,2,"SECOND"},lists:keyfind("SECOND",3,Enums))].
+
 parse_nested1_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/nested1.proto"),
     [{message, "Person", Person}] = parse(Path),

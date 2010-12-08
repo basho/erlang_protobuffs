@@ -24,6 +24,7 @@ Rules.
 {S} : {token, {list_to_atom(TokenChars),TokenLine}}.
 {WS}+  : skip_token.
 //.* : skip_token.
+/\*([^\*]|\*[^/])*\*/ : skip_token.
 {D}+ : {token, {integer, TokenLine, list_to_integer(TokenChars)}}.
 {F} : {token, {float, TokenLine, list_to_float(TokenChars)}}.
 {HEX} : {token, {integer, TokenLine, hex_to_int(TokenChars)}}.

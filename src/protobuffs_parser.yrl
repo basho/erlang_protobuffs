@@ -1,8 +1,10 @@
 Nonterminals
-g_protobuffs g_members g_options g_option g_messages g_message g_enums g_enum g_elements g_element g_default g_pack g_var.
+g_protobuffs g_members g_members_noopts g_member g_options g_option 
+g_messages g_message g_service g_rpcs g_rpc g_enums g_enum g_elements 
+g_element g_default g_pack g_var.
 
-Terminals ';' '=' '{' '}' '[' ']'
-package option message enum var integer float string type requirement default pack.
+Terminals ';' '=' '{' '}' '[' ']' '(' ')'
+package option message enum var integer float string type requirement default pack to extensions max service rpc returns.
 
 Rootsymbol g_protobuffs.
 Endsymbol '$end'.
@@ -10,8 +12,24 @@ Endsymbol '$end'.
 g_protobuffs -> package g_var ';' g_members : [{package, safe_string('$2')}] ++ '$4'.
 g_protobuffs -> g_members : '$1'.
 
-g_members -> g_options g_messages : '$1' ++ '$2'.
-g_members -> g_messages : '$1'. 
+%g_members -> g_options g_messages : '$1' ++ '$2'.
+%g_members -> g_messages : '$1'. 
+g_members -> g_options g_members_noopts : '$1' ++ '$2'.
+g_members -> g_members_noopts : '$1'.
+
+g_members_noopts -> g_member : ['$1'].
+g_members_noopts -> g_member g_members_noopts : ['$1'|'$2'].
+
+g_member -> g_message : '$1'.
+g_member -> enum g_var '{' g_enums '}' : {enum, safe_string('$2'), '$4'}.
+g_member -> g_service : '$1'.
+
+g_service -> service g_var '{' g_rpcs '}' : {service, safe_string('$2'), '$4'}.
+
+g_rpcs -> g_rpc : ['$1'].
+g_rpcs -> g_rpc g_rpcs : ['$1'|'$2'].
+
+g_rpc -> rpc g_var '(' g_var ')' returns '(' g_var ')' ';' : {rpc, safe_string('$2'), safe_string('$4'), safe_string('$8')}.
 
 g_options -> g_option : ['$1'].
 g_options -> g_option g_options : ['$1'|'$2'].
@@ -29,7 +47,9 @@ g_element -> requirement type g_var '=' integer g_default ';' : {unwrap('$5'), u
 g_element -> requirement g_var g_var '=' integer g_default ';' : {unwrap('$5'), unwrap('$1'), safe_string('$2'), safe_string('$3'), number, '$6'}.
 
 g_element -> requirement type g_var '=' integer g_pack ';' : {unwrap('$5'), pack_repeated(unwrap('$1'),'$6'), safe_string(unwrap('$2')), safe_string('$3'), number, none}.
-g_element -> requirement g_var g_var '=' integer g_pack ';' : {unwrap('$5'), pack_repeated('$1','$6'), safe_string('$2'), safe_string('$3'), number, none}.
+g_element -> requirement g_var g_var '=' integer g_pack ';' : {unwrap('$5'), pack_repeated('$1','$6'), safe_string('$2'), safe_string('$3'), number, none}.  
+g_element -> extensions integer to integer ';' : {unwrap('$1'), unwrap('$2'), unwrap('$4')}.
+g_element -> extensions integer to max ';' : {unwrap('$1'), unwrap('$2'), unwrap('$4')}.
 
 g_element -> enum g_var '{' g_enums '}' : {enum, safe_string('$2'), '$4'}.
 g_element -> g_message : '$1'.
@@ -59,6 +79,7 @@ g_var -> default : default.
 g_var -> pack : pack.
 g_var -> type : unwrap('$1').
 g_var -> requirement : unwrap('$1').
+g_var -> extensions : unwrap('$1').
 
 Erlang code.
 safe_string(A) -> make_safe(atom_to_list(A)).

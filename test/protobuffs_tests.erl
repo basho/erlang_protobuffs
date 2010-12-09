@@ -100,6 +100,24 @@ parse_enum_test_() ->
      ?_assertMatch({enum,1,"value1"},lists:keyfind("value1",3,Values)),
      ?_assertMatch({enum,2,"value2"},lists:keyfind("value2",3,Values))].
 
+parse_enum_outside_test() ->
+	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/enum_outside.proto"),
+	[{enum, "EnumList", Enums}, {message, "EnumUser", EnumUser}] = parse(Path),
+	[?_assertMatch({1,optional,"EnumList", "enum_filed", number,none},lists:keyfind(1,1,EnumUser)),
+	?_assertMatch({enum,1,"FIRST"},lists:keyfind("FIRST",3,Enums)),
+	?_assertMatch({enum,2,"SECOND"},lists:keyfind("SECOND",3,Enums))].
+
+parse_extensions_test() ->
+	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/extensions.proto"),
+	[{message, "Extendable", Extendable}, {message, "MaxTendable", MaxTendable}] = parse(Path),
+	[?_assertMatch({extensions, 100, 200}, lists:nth(1, Extendable)),
+	?_assertMatch({extensions, 100, max}, lists:nth(1, MaxTendable))].
+
+parse_service_test() ->
+	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/service.proto"),
+	[{service, "SearchService", [SearchService]}, _, _] = parse(Path),
+	[?_assertMatch({rpc, "Search", "SearchRequest", "SearchResponse"},SearchService)].
+
 parse_nested1_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/nested1.proto"),
     [{message, "Person", Person}] = parse(Path),

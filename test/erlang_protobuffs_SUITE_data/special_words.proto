@@ -26,6 +26,12 @@ message message {
 	  required = 22;
 	  optional = 23;
 	  repeated = 24;
+	  to = 25;
+	  extensions = 26;
+	  max = 27;
+	  service = 28;
+	  rpc = 29;
+	  returns = 30;
 	}
 	required string double = 1;
 	required string float = 2;
@@ -51,4 +57,10 @@ message message {
 	required string required = 22;
 	required string optional = 23;
 	required string repeated = 24;
+	required string to = 25;
+	required string extensions = 26;
+	required string max = 27;
+	required string service = 28;
+	required string rpc = 29;
+	required string returns = 30;
 } 

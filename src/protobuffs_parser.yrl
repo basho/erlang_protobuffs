@@ -1,6 +1,6 @@
 Nonterminals
 g_protobuffs g_members g_members_noopts g_member g_options g_option 
-g_messages g_message g_service g_rpcs g_rpc g_enums g_enum g_elements 
+g_message g_service g_rpcs g_rpc g_enums g_enum g_elements 
 g_element g_default g_pack g_var.
 
 Terminals ';' '=' '{' '}' '[' ']' '(' ')'
@@ -12,8 +12,6 @@ Endsymbol '$end'.
 g_protobuffs -> package g_var ';' g_members : [{package, safe_string('$2')}] ++ '$4'.
 g_protobuffs -> g_members : '$1'.
 
-%g_members -> g_options g_messages : '$1' ++ '$2'.
-%g_members -> g_messages : '$1'. 
 g_members -> g_options g_members_noopts : '$1' ++ '$2'.
 g_members -> g_members_noopts : '$1'.
 
@@ -36,8 +34,6 @@ g_options -> g_option g_options : ['$1'|'$2'].
 g_option -> option g_var '=' g_var ';' : {option, '$2', '$4'}.
 g_option -> option g_var '=' string ';' : {option, '$2', '$4'}.
 
-g_messages -> g_message : ['$1'].
-g_messages -> g_message g_messages : ['$1'|'$2'].
 g_message -> message g_var '{' g_elements '}' : {message, safe_string('$2'), '$4'}.
 
 g_elements -> g_element : ['$1'].
@@ -80,6 +76,12 @@ g_var -> pack : pack.
 g_var -> type : unwrap('$1').
 g_var -> requirement : unwrap('$1').
 g_var -> extensions : unwrap('$1').
+g_var -> to : to.
+g_var -> max : max.
+g_var -> service : service.
+g_var -> rpc : rpc.
+g_var -> returns : returns.
+
 
 Erlang code.
 safe_string(A) -> make_safe(atom_to_list(A)).

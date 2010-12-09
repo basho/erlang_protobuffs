@@ -339,7 +339,8 @@ special_words() ->
      string(),string(),string(),string(),string(),
      string(),string(),string(),string(),string(),
      string(),string(),string(),string(),string(),
-     string(),string(),string(),string()}.
+     string(),string(),string(),string(),string(),
+     string(),string(),string(),string(),string()}.
 
 prop_protobuffs_special_words() ->
     ?FORALL({SpecialWords},

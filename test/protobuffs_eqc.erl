@@ -277,6 +277,26 @@ prop_protobuffs_enum() ->
 		compare_messages(Middle,Decoded)
 	    end).
 
+enum_outside_value() ->
+	oneof(['FIRST','SECOND']).
+
+prop_protobuffs_enum_outside() ->
+	?FORALL({Middle},
+		{default({enumuser,undefined},{enumuser,enum_outside_value()})},
+		begin
+		Decoded = enum_outside_pb:decode_enumuser(enum_outside_pb:encode_enumuser(Middle)),
+		compare_messages(Middle,Decoded)
+		end).
+
+prop_protobuffs_extentions() ->
+	?FORALL({Middle},
+		{default({extendable},{maxtendable})},
+		begin
+		DecodeFunc = list_to_atom("decode_" ++ atom_to_list(element(1, Middle))),
+		Decoded = extensions_pb:DecodeFunc(extensions_pb:encode(Middle)),
+		compare_messages(Middle,Decoded)
+		end).
+
 address_phone_number() ->
     list({person_phonenumber,string(),default(undefined,oneof(['HOME','WORK','MOBILE']))}).
     

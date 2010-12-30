@@ -153,7 +153,7 @@ decode_packed(Bytes, ExpectedType) ->
     Values = decode_packed_values(Packed, ExpectedType, []),
     {{FieldID, Values},Rest2}.
 
-%% @spec next_field_num_and_wiretype(Bytes) -> Result
+%% @spec next_field_num(Bytes) -> Result
 %%       Bytes = binary()
 %%       Result = {integer(),integer()} 
 next_field_num(Bytes) ->

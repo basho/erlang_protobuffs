@@ -13,12 +13,7 @@ g_protobuffs -> g_import g_protobuffs : ['$1' | '$2'].
 g_protobuffs -> package g_var ';' g_members : [{package, safe_string('$2')}] ++ '$4'.
 g_protobuffs -> g_members : '$1'.
 
-<<<<<<< HEAD
 g_import -> import g_var ';' : {import, '$2'}.
-%g_members -> g_options g_messages : '$1' ++ '$2'.
-%g_members -> g_messages : '$1'. 
-=======
->>>>>>> 79a8e6353ab6d1e8756849e0db650fb708c778f9
 g_members -> g_options g_members_noopts : '$1' ++ '$2'.
 g_members -> g_members_noopts : '$1'.
 

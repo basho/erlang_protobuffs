@@ -230,6 +230,12 @@ parse_packed_repeated_test_() ->
      ?_assertMatch({1,required,"string","region",number,none},lists:keyfind(1,1,Location)),
      ?_assertMatch({2,required,"string","country",number,none},lists:keyfind(2,1,Location))].
 
+parse_imported_test_() ->
+	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/import.proto"),
+	Parsed = parse(Path),
+	[?_assertEqual(false, lists:keyfind("Imported", 2, Parsed)),
+	?_assertMatch({message, "Foo", _Foo}, lists:keyfind("Foo", 2, Parsed))].
+
 %%--------------------------------------------------------------------
 %% Help functions
 %%--------------------------------------------------------------------

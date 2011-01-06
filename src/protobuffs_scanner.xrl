@@ -7,7 +7,7 @@ WS  = ([\000-\s]|%.*)
 S = [\(\)\]\[\{\};=]
 
 TYPE = (double|float|int32|int64|uint32|uint64|sint32|sint64|fixed32|fixed64|sfixed32|sfixed64|bool|string|bytes)
-KEYWORD = (package|option|message|enum|default|pack|extensions|to|max|service|rpc|returns)
+KEYWORD = (package|option|message|enum|default|pack|extensions|to|max|service|rpc|returns|import)
 REQUIREMENT = (required|optional|repeated)
 
 Rules.
@@ -19,7 +19,7 @@ Rules.
 {L}({L}|{D})+ : {token, {var, TokenLine,list_to_atom(TokenChars)}}.
 '({L}|{D})+' : S = strip(TokenChars,TokenLen),
          {token,{string,TokenLine,S}}.
-"({L}|{D})+" : S = strip(TokenChars,TokenLen),
+"({L}|{D}|/)+" : S = strip(TokenChars,TokenLen),
          {token,{string,TokenLine,S}}.
 {S} : {token, {list_to_atom(TokenChars),TokenLine}}.
 {WS}+  : skip_token.

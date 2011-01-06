@@ -1,17 +1,19 @@
 Nonterminals
 g_protobuffs g_members g_members_noopts g_member g_options g_option 
 g_messages g_message g_service g_rpcs g_rpc g_enums g_enum g_elements 
-g_element g_default g_pack g_var.
+g_element g_default g_pack g_var g_import.
 
 Terminals ';' '=' '{' '}' '[' ']' '(' ')'
-package option message enum var integer float string type requirement default pack to extensions max service rpc returns.
+package option message enum var integer float string type requirement default pack to extensions max service rpc returns import.
 
 Rootsymbol g_protobuffs.
 Endsymbol '$end'.
 
+g_protobuffs -> g_import g_protobuffs : ['$1' | '$2'].
 g_protobuffs -> package g_var ';' g_members : [{package, safe_string('$2')}] ++ '$4'.
 g_protobuffs -> g_members : '$1'.
 
+g_import -> import g_var ';' : {import, '$2'}.
 %g_members -> g_options g_messages : '$1' ++ '$2'.
 %g_members -> g_messages : '$1'. 
 g_members -> g_options g_members_noopts : '$1' ++ '$2'.
@@ -101,4 +103,3 @@ pack_repeated(repeated,true) ->
   repeated_packed;
 pack_repeated(repeated,_) ->
   repeated.
-

@@ -35,7 +35,8 @@ scan_file(ProtoFile) ->
 
 %% @doc Generats a built .beam file and header file .hrl
 %%      Considerd option properties: output_include_dir, 
-%%                                   output_ebin_dir
+%%                                   output_ebin_dir,
+%%                                   imports_dir
 %% @spec scan_file(ProtoFile,Options) -> Result
 %%       ProtoFile = string()
 %%       Options = proplists()
@@ -43,7 +44,9 @@ scan_file(ProtoFile) ->
 %%       Reason = ext_posix() | terminated | system_limit
 scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
-    {ok,Parsed} = parse(ProtoFile),
+    {ok,FirstParsed} = parse(ProtoFile),
+	ImportPaths = ["./" | proplists:get_value(imports_dir, Options, [])],
+	Parsed = parse_imports(FirstParsed, ImportPaths),
     {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
     Messages = resolve_types(UntypedMessages,Enums),
     output(Basename, Messages, Enums, Options).
@@ -58,7 +61,8 @@ generate_source(ProtoFile) ->
 
 %% @doc Generats a source .erl file and header file .hrl
 %%      Consider option properties: output_include_dir, 
-%%                                  output_src_dir 
+%%                                  output_src_dir,
+%%                                  imports_dir
 %% @spec generate_source(ProtoFile,Options) -> Result
 %%       ProtoFile = string()
 %%       Options = proplists()
@@ -66,10 +70,38 @@ generate_source(ProtoFile) ->
 %%       Reason = ext_posix() | terminated | system_limit
 generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
-    {ok,Parsed} = parse(ProtoFile),
+    {ok,FirstParsed} = parse(ProtoFile),
+	ImportPaths = ["./" | proplists:get_value(imports_dir, Options, [])],
+	Parsed = parse_imports(FirstParsed, ImportPaths),
     {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
     Messages = resolve_types(UntypedMessages,Enums),
     output_source (Basename, Messages, Enums, Options).
+
+%% @hidden
+parse_imports(Parsed, Path) ->
+	parse_imports(Parsed, Path, []).
+
+%% @hidden
+parse_imports([], _Path, Acc) ->
+	lists:reverse(Acc);
+parse_imports([{import, File} = Head | Tail], Path, Acc) ->
+	case file:path_open(Path, File, [read]) of
+		{ok, F, Fullname} ->
+			file:close(F),
+		    {ok,FirstParsed} = parse(Fullname),
+			Parsed = lists:append(FirstParsed, Tail),
+			parse_imports(Parsed, Path, [Head | Acc]);
+		{error, Error} ->
+			error_logger:warning_report([
+				"Could not do import",
+				{import, File},
+				{error, Error},
+				{path, Path}
+			]),
+			parse_imports(Tail, Path, [Head | Acc])
+	end;
+parse_imports([Head | Tail], Path, Acc) ->
+	parse_imports(Tail, Path, [Head | Acc]).
 
 %% @hidden
 output(Basename, Messages, Enums, Options) ->
@@ -333,6 +365,8 @@ collect_full_messages([{package, _PackageName} | Tail], AccEnum, AccMsg) ->
     collect_full_messages(Tail, AccEnum, AccMsg);
 collect_full_messages([{option,_,_} | Tail], AccEnum, AccMsg) ->
     collect_full_messages(Tail, AccEnum, AccMsg);
+collect_full_messages([{import, _Filename} | Tail], AccEnum, AccMsg) ->
+	collect_full_messages(Tail, AccEnum, AccMsg);
 collect_full_messages([], AccEnum, AccMsg) ->
     {{msg,AccMsg},{enum,AccEnum}}.
 

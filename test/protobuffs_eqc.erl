@@ -348,3 +348,11 @@ prop_protobuffs_special_words() ->
 		Decoded = special_words_pb:decode_message(special_words_pb:encode_message(SpecialWords)),
 		compare_messages(SpecialWords,Decoded)
 	    end).
+
+prop_protobuffs_import() ->
+	?FORALL({Imported},
+		{default({foo, {imported, string()}},{foo, undefined})},
+		begin
+		Decoded = import_pb:decode_foo(import_pb:encode(Imported)),
+		compare_messages(Imported, Decoded)
+		end).

@@ -45,7 +45,7 @@ scan_file(ProtoFile) ->
 scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,FirstParsed} = parse(ProtoFile),
-	ImportPaths = ["./" | proplists:get_value(imports_dir, Options, [])],
+	ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
 	Parsed = parse_imports(FirstParsed, ImportPaths),
     {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
     Messages = resolve_types(UntypedMessages,Enums),
@@ -71,7 +71,7 @@ generate_source(ProtoFile) ->
 generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,FirstParsed} = parse(ProtoFile),
-	ImportPaths = ["./" | proplists:get_value(imports_dir, Options, [])],
+	ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
 	Parsed = parse_imports(FirstParsed, ImportPaths),
     {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
     Messages = resolve_types(UntypedMessages,Enums),

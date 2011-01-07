@@ -25,7 +25,9 @@
 %%
 %% @doc A protcol buffers encoding and decoding module.
 -module(protobuffs).
--export([encode/3, encode_packed/3, next_field_num/1, decode/2, decode_packed/2]).
+-export([encode/3, encode_packed/3, decode/2, decode_packed/2]).
+
+-export([next_field_num/1]).
 
 -define(TYPE_VARINT, 0).
 -define(TYPE_64BIT, 1).

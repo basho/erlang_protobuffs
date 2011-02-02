@@ -25,9 +25,16 @@
 %%
 %% @doc A protcol buffers encoding and decoding module.
 -module(protobuffs).
+%% Pubic
 -export([encode/3, encode_packed/3, decode/2, decode_packed/2]).
 
+%% Used by generated *_pb file. Not intended to used by User
 -export([next_field_num/1]).
+
+%% Will be removed from export, only intended for internal usage
+-deprecated([{read_field_num_and_wire_type,1,next_version}]).
+-deprecated([{decode_value,3,next_version}]).
+-export([read_field_num_and_wire_type/1, decode_value/3]).
 
 -define(TYPE_VARINT, 0).
 -define(TYPE_64BIT, 1).
@@ -128,7 +135,15 @@ encode_packed_internal([Integer|Tail], ExpectedType, Acc) ->
     [_|Value] = encode_internal(1, Integer, ExpectedType),
     encode_packed_internal(Tail, ExpectedType, [Value|Acc]).
 
-%% @hidden
+%%--------------------------------------------------------------------
+%% @doc Will be hidden in future releases
+%% @spec read_field_num_and_wire_type(Bytes) -> {{FieldID, WireType}, Rest}
+%%       Bytes = binary()
+%%       FieldID = integer()
+%%       WireType = atom()
+%%       Rest = binary()
+%% @end
+%%--------------------------------------------------------------------
 read_field_num_and_wire_type(Bytes) ->
     {Tag, Rest} = decode_varint(Bytes),
     FieldID = Tag bsr 3,
@@ -197,7 +212,16 @@ decode_packed_values(Bytes, double, Acc) ->
     decode_packed_values(Rest, double, [Value|Acc]).
 
 
-%% @hidden
+%%--------------------------------------------------------------------
+%% @doc Will be hidden in future releases
+%% @spec decode_value(Bytes, Type, ExpectedType) -> {Value, Rest}
+%%       Bytes = binary()
+%%       Type = atom()
+%%       ExpectedType = atom()
+%%       Value = value of Type
+%%       Rest = binary() 
+%% @end
+%%--------------------------------------------------------------------
 decode_value(Bytes, ?TYPE_VARINT, ExpectedType) ->
     {Value, Rest} = decode_varint(Bytes),
     {typecast(Value, ExpectedType), Rest};

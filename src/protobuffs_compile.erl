@@ -25,14 +25,17 @@
 -module(protobuffs_compile).
 -export([scan_file/1, scan_file/2, generate_source/1, generate_source/2]).
 
+%%--------------------------------------------------------------------
 %% @doc Generats a built .beam file and header file .hrl
 %% @spec scan_file(ProtoFile) -> Result
 %%       ProtoFile = string()
 %%       Result = ok | {error, Reason}
 %%       Reason = ext_posix() | terminated | system_limit
+%%--------------------------------------------------------------------
 scan_file(ProtoFile) ->
     scan_file(ProtoFile,[]).
 
+%%--------------------------------------------------------------------
 %% @doc Generats a built .beam file and header file .hrl
 %%      Considerd option properties: output_include_dir, 
 %%                                   output_ebin_dir,
@@ -42,6 +45,7 @@ scan_file(ProtoFile) ->
 %%       Options = proplists()
 %%       Result = ok | {error, Reason}
 %%       Reason = ext_posix() | terminated | system_limit
+%%--------------------------------------------------------------------
 scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,FirstParsed} = parse(ProtoFile),
@@ -51,14 +55,17 @@ scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Messages = resolve_types(UntypedMessages,Enums),
     output(Basename, Messages, Enums, Options).
 
+%%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
 %% @spec generate_source(ProtoFile) -> Result
 %%       ProtoFile = string()
 %%       Result = ok | {error, Reason}
 %%       Reason = ext_posix() | terminated | system_limit
+%%--------------------------------------------------------------------
 generate_source(ProtoFile) ->
     generate_source(ProtoFile,[]).
 
+%%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
 %%      Consider option properties: output_include_dir, 
 %%                                  output_src_dir,
@@ -68,6 +75,7 @@ generate_source(ProtoFile) ->
 %%       Options = proplists()
 %%       Result = ok | {error, Reason}
 %%       Reason = ext_posix() | terminated | system_limit
+%%--------------------------------------------------------------------
 generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,FirstParsed} = parse(ProtoFile),

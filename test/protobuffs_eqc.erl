@@ -357,3 +357,14 @@ prop_protobuffs_import() ->
 		Decoded = import_pb:decode_foo(import_pb:encode(Imported)),
 		compare_messages(Imported, Decoded)
 		end).
+
+single() ->
+    {message, uint32()}.
+
+prop_protobuffs_single() ->
+    ?FORALL({Single},
+	    {single()},
+	    begin
+		Decoded = single_pb:decode_message (single_pb:encode_message(Single)),
+		compare_messages (Single, Decoded)
+	    end).

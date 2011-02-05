@@ -44,8 +44,8 @@ scan_file(ProtoFile) ->
 scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,FirstParsed} = parse(ProtoFile),
-	ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
-	Parsed = parse_imports(FirstParsed, ImportPaths),
+    ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
+    Parsed = parse_imports(FirstParsed, ImportPaths),
     {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
     Messages = resolve_types(UntypedMessages,Enums),
     output(Basename, Messages, Enums, Options).
@@ -65,41 +65,41 @@ generate_source(ProtoFile) ->
 %%                                  imports_dir
 %%--------------------------------------------------------------------
 -spec generate_source(ProtoFile :: string(), Options :: list()) ->
-			     ok | {error, atom() | badarg | terminated | system_limit}.
+			     ok | {error, _}.
 generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,FirstParsed} = parse(ProtoFile),
-	ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
-	Parsed = parse_imports(FirstParsed, ImportPaths),
+    ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
+    Parsed = parse_imports(FirstParsed, ImportPaths),
     {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
     Messages = resolve_types(UntypedMessages,Enums),
     output_source (Basename, Messages, Enums, Options).
 
 %% @hidden
 parse_imports(Parsed, Path) ->
-	parse_imports(Parsed, Path, []).
+    parse_imports(Parsed, Path, []).
 
 %% @hidden
 parse_imports([], _Path, Acc) ->
-	lists:reverse(Acc);
+    lists:reverse(Acc);
 parse_imports([{import, File} = Head | Tail], Path, Acc) ->
-	case file:path_open(Path, File, [read]) of
-		{ok, F, Fullname} ->
-			file:close(F),
-		    {ok,FirstParsed} = parse(Fullname),
-			Parsed = lists:append(FirstParsed, Tail),
-			parse_imports(Parsed, Path, [Head | Acc]);
-		{error, Error} ->
-			error_logger:warning_report([
-				"Could not do import",
-				{import, File},
-				{error, Error},
-				{path, Path}
-			]),
-			parse_imports(Tail, Path, [Head | Acc])
-	end;
+    case file:path_open(Path, File, [read]) of
+	{ok, F, Fullname} ->
+	    file:close(F),
+	    {ok,FirstParsed} = parse(Fullname),
+	    Parsed = lists:append(FirstParsed, Tail),
+	    parse_imports(Parsed, Path, [Head | Acc]);
+	{error, Error} ->
+	    error_logger:warning_report([
+					 "Could not do import",
+					 {import, File},
+					 {error, Error},
+					 {path, Path}
+					]),
+	    parse_imports(Tail, Path, [Head | Acc])
+    end;
 parse_imports([Head | Tail], Path, Acc) ->
-	parse_imports(Tail, Path, [Head | Acc]).
+    parse_imports(Tail, Path, [Head | Acc]).
 
 %% @hidden
 output(Basename, Messages, Enums, Options) ->
@@ -181,7 +181,7 @@ filter_forms(Msgs, Enums, [{attribute,L,export,[{encode_pikachu,1},{decode_pikac
 
 filter_forms(Msgs, Enums, [{attribute,L,record,{pikachu,_}}|Tail], Basename, Acc) ->
     Records = [begin
-		   OutFields = [string:to_lower(A) || {_, _, _, A, _, _} <- lists:keysort(1, Fields)],
+		   OutFields = [string:to_lower(A) || {_, _, _, A, _} <- lists:keysort(1, Fields)],
 		   Frm_Fields = [{record_field,L,{atom,L,list_to_atom(OutField)}}|| OutField <- OutFields],
 		   {attribute, L, record, {atomize(Name), Frm_Fields}}
 	       end || {Name, Fields} <- Msgs],
@@ -230,7 +230,7 @@ expand_encode_function(Msgs, Line, Clause) ->
 %% @hidden
 filter_encode_clause({MsgName, Fields}, {clause,L,_Args,Guards,_Content}) ->
     Cons = lists:foldl(
-	     fun({FNum,Tag,SType,SName,_,Default}, Acc) ->
+	     fun({FNum,Tag,SType,SName,Default}, Acc) ->
 		     {cons,L,
 		      {call,L,{atom,L,pack},[{integer,L,FNum},
 					     {atom,L,Tag},
@@ -257,7 +257,7 @@ filter_decode_clause(Msgs, {MsgName, Fields}, {clause,L,_Args,Guards,[_,B,C]}) -
     Types = lists:keysort(1, [{FNum, list_to_atom(SName), 
 			       atomize(SType), 
 			       decode_opts(Msgs, Tag, SType)} || 
-				 {FNum,Tag,SType,SName,_,_} <- Fields]),
+				 {FNum,Tag,SType,SName,_} <- Fields]),
     Cons = lists:foldl(
 	     fun({FNum, FName, Type, Opts}, Acc) ->
 		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
@@ -307,25 +307,25 @@ filter_int_to_enum_clause({enum,EnumTypeName,IntValue,EnumValue}, {clause,L,_Arg
 
 %% @hidden
 %% [{"Location",
-%%   [{2,required,"string","country",number,none},
-%%    {1,required,"string","region",number,none}]},
+%%   [{2,required,"string","country",none},
+%%    {1,required,"string","region",none}]},
 %%  {"Person",
-%%   [{5,optional,"Location","location",number,none},
-%%    {4,required,"int32","age",number,none},
-%%    {3,required,"string","phone_number",number,none},
-%%    {2,required,"string","address",number,none},
-%%    {1,required,"string","name",number,none}]}]
+%%   [{5,optional,"Location","location",none},
+%%    {4,required,"int32","age",none},
+%%    {3,required,"string","phone_number",none},
+%%    {2,required,"string","address",none},
+%%    {1,required,"string","name",none}]}]
 collect_full_messages(Data) -> collect_full_messages(Data, [], []).
 collect_full_messages([{message, Name, Fields} | Tail], AccEnum, AccMsg) ->
     ListName = case erlang:is_list (hd(Name)) of
 		   true -> Name;
 		   false -> [Name]
 	       end,
-
+    
     FieldsOut = lists:foldl(
 		  fun (Input, TmpAcc) ->
 			  case Input of
-			      {_, _, _, _, _, _} -> [Input | TmpAcc];
+			      {_, _, _, _, _} -> [Input | TmpAcc];
 			      _ -> TmpAcc
 			  end
 		  end, [], Fields),
@@ -357,14 +357,14 @@ collect_full_messages([{enum, Name, Fields} | Tail], AccEnum, AccMsg) ->
 			      _ -> TmpAcc
 			  end
 		  end, [], Fields),
-
+    
     collect_full_messages(Tail, FieldsOut ++ AccEnum, AccMsg);
 collect_full_messages([{package, _PackageName} | Tail], AccEnum, AccMsg) ->
     collect_full_messages(Tail, AccEnum, AccMsg);
 collect_full_messages([{option,_,_} | Tail], AccEnum, AccMsg) ->
     collect_full_messages(Tail, AccEnum, AccMsg);
 collect_full_messages([{import, _Filename} | Tail], AccEnum, AccMsg) ->
-	collect_full_messages(Tail, AccEnum, AccMsg);
+    collect_full_messages(Tail, AccEnum, AccMsg);
 collect_full_messages([], AccEnum, AccMsg) ->
     {{msg,AccMsg},{enum,AccEnum}}.
 
@@ -374,7 +374,7 @@ resolve_types ([{TypePath, Fields} | Tail], AllPaths, Enums, Acc) ->
     FieldsOut = lists:foldl(
 		  fun (Input, TmpAcc) ->
 			  case Input of
-			      {Index, Rules, Type, Identifier, RealType, Other} ->
+			      {Index, Rules, Type, Identifier, Other} ->
 				  case is_scalar_type (Type) of
 				      true -> [Input | TmpAcc];
 				      false ->
@@ -399,7 +399,7 @@ resolve_types ([{TypePath, Fields} | Tail], AllPaths, Enums, Acc) ->
 						  ResultType ->
 						      ResultType
 					      end,
-					  [{Index, Rules, type_path_to_type (RealPath), Identifier, RealType, Other} | TmpAcc]
+					  [{Index, Rules, type_path_to_type (RealPath), Identifier, Other} | TmpAcc]
 				  end;
 			      _ -> TmpAcc
 			  end
@@ -412,14 +412,14 @@ resolve_types ([], _, _, Acc) ->
 write_header_include_file(Basename, Messages) ->
     {ok, FileRef} = file:open(Basename, [write]),
     [begin
-	 OutFields = [{string:to_lower(A), Optional, Default} || {_, Optional, _, A, _, Default} <- lists:keysort(1, Fields)],
+	 OutFields = [{string:to_lower(A), Optional, Default} || {_, Optional, _, A, Default} <- lists:keysort(1, Fields)],
 	 if
 	     OutFields /= [] ->
 		 io:format(FileRef, "-record(~s, {~n    ", [string:to_lower(Name)]),
-         WriteFields = generate_field_definitions(OutFields),
-         FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
-         io:format(FileRef, FormatString, WriteFields),
-         io:format(FileRef, "~n}).~n~n", []);
+		 WriteFields = generate_field_definitions(OutFields),
+		 FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
+		 io:format(FileRef, FormatString, WriteFields),
+		 io:format(FileRef, "~n}).~n~n", []);
 	     true ->
 		 ok
 	 end
@@ -428,20 +428,20 @@ write_header_include_file(Basename, Messages) ->
 
 %% @hidden
 generate_field_definitions(Fields) ->
-	generate_field_definitions(Fields, []).
+    generate_field_definitions(Fields, []).
 
 %% @hidden
 generate_field_definitions([], Acc) ->
-	lists:reverse(Acc);
+    lists:reverse(Acc);
 generate_field_definitions([{Name, required, _} | Tail], Acc) ->
-	Head = lists:flatten(io_lib:format("~s = erlang:error({required, ~s})", [Name, Name])),
-	generate_field_definitions(Tail, [Head | Acc]);
+    Head = lists:flatten(io_lib:format("~s = erlang:error({required, ~s})", [Name, Name])),
+    generate_field_definitions(Tail, [Head | Acc]);
 generate_field_definitions([{Name, _, none} | Tail], Acc) ->
-	Head = lists:flatten(io_lib:format("~s", [Name])),
-	generate_field_definitions(Tail, [Head | Acc]);
+    Head = lists:flatten(io_lib:format("~s", [Name])),
+    generate_field_definitions(Tail, [Head | Acc]);
 generate_field_definitions([{Name, optional, Default} | Tail], Acc) ->
-	Head = lists:flatten(io_lib:format("~s = ~p", [Name, Default])),
-	generate_field_definitions(Tail, [Head | Acc]).
+    Head = lists:flatten(io_lib:format("~s = ~p", [Name, Default])),
+    generate_field_definitions(Tail, [Head | Acc]).
 
 %% @hidden
 atomize(String) ->

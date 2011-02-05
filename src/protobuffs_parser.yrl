@@ -25,7 +25,7 @@ g_rpc -> g_var g_var '(' g_var ')' g_var '(' g_var ')' ';'	: {'$1', safe_string(
 g_elements -> g_element						: ['$1'].
 g_elements -> g_element g_elements				: ['$1' | '$2'].
 
-g_element -> g_var g_var g_var '=' integer g_default ';'	: {unwrap('$5'), pack_repeated('$1','$6'), safe_string('$2'), safe_string('$3'), number, default('$6')}.
+g_element -> g_var g_var g_var '=' integer g_default ';'	: {unwrap('$5'), pack_repeated('$1','$6'), safe_string('$2'), safe_string('$3'), default('$6')}.
 g_element -> g_var '=' integer ';'				: {'$1', unwrap('$3')}.
 g_element -> g_var integer g_var integer ';' 			: {'$1', unwrap('$2'), unwrap('$4')}.
 g_element -> g_var integer g_var g_var ';' 			: {'$1', unwrap('$2'), '$4'}.

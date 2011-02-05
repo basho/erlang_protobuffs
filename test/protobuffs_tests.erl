@@ -97,15 +97,15 @@ parse_enum_test_() ->
     [{message,"EnumMsg", EnumMsg}] = parse(Path),
     {enum, "Values", Values} = lists:keyfind(enum,1,EnumMsg),
     [?_assertMatch({1,optional,"Values","value",number,none},lists:keyfind(1,1,EnumMsg)),
-     ?_assertMatch({enum,1,"value1"},lists:keyfind("value1",3,Values)),
-     ?_assertMatch({enum,2,"value2"},lists:keyfind("value2",3,Values))].
+     ?_assertMatch({'value1',1},lists:keyfind('value1',1,Values)),
+     ?_assertMatch({'value2',2},lists:keyfind('value2',1,Values))].
 
-parse_enum_outside_test() ->
+parse_enum_outside_test_() ->
 	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/enum_outside.proto"),
 	[{enum, "EnumList", Enums}, {message, "EnumUser", EnumUser}] = parse(Path),
-	[?_assertMatch({1,optional,"EnumList", "enum_filed", number,none},lists:keyfind(1,1,EnumUser)),
-	?_assertMatch({enum,1,"FIRST"},lists:keyfind("FIRST",3,Enums)),
-	?_assertMatch({enum,2,"SECOND"},lists:keyfind("SECOND",3,Enums))].
+	[?_assertMatch({1,optional,"EnumList", "enum_field", number,none},lists:keyfind(1,1,EnumUser)),
+	?_assertMatch({'FIRST',1},lists:keyfind('FIRST',1,Enums)),
+	?_assertMatch({'SECOND',2},lists:keyfind('SECOND',1,Enums))].
 
 parse_extensions_test() ->
 	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/extensions.proto"),
@@ -196,9 +196,9 @@ parse_addressbook_test_() ->
      ?_assertMatch({1,required,"string","number",number,none},lists:keyfind(1,1,PhoneNumber)),
      ?_assertMatch({2,optional,"PhoneType","type",number,'HOME'},lists:keyfind(2,1,PhoneNumber)),
      ?_assertMatch({1,repeated,"Person","person",number,none},lists:keyfind(1,1,AddressBook)),
-     ?_assertMatch({enum,0,"MOBILE"},lists:keyfind("MOBILE",3,PhoneType)),
-     ?_assertMatch({enum,1,"HOME"},lists:keyfind("HOME",3,PhoneType)),
-     ?_assertMatch({enum,2,"WORK"},lists:keyfind("WORK",3,PhoneType))].
+     ?_assertMatch({'MOBILE',0},lists:keyfind('MOBILE',1,PhoneType)),
+     ?_assertMatch({'HOME',1},lists:keyfind('HOME',1,PhoneType)),
+     ?_assertMatch({'WORK',2},lists:keyfind('WORK',1,PhoneType))].
 
 parse_repeater_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/repeater.proto"),

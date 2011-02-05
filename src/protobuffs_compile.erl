@@ -27,11 +27,9 @@
 
 %%--------------------------------------------------------------------
 %% @doc Generats a built .beam file and header file .hrl
-%% @spec scan_file(ProtoFile) -> Result
-%%       ProtoFile = string()
-%%       Result = ok | {error, Reason}
-%%       Reason = ext_posix() | terminated | system_limit
 %%--------------------------------------------------------------------
+-spec scan_file(ProtoFile :: string()) ->
+		       ok | {error, _}.
 scan_file(ProtoFile) ->
     scan_file(ProtoFile,[]).
 
@@ -40,12 +38,9 @@ scan_file(ProtoFile) ->
 %%      Considerd option properties: output_include_dir, 
 %%                                   output_ebin_dir,
 %%                                   imports_dir
-%% @spec scan_file(ProtoFile,Options) -> Result
-%%       ProtoFile = string()
-%%       Options = proplists()
-%%       Result = ok | {error, Reason}
-%%       Reason = ext_posix() | terminated | system_limit
 %%--------------------------------------------------------------------
+-spec scan_file(ProtoFile :: string(), Options :: list()) ->
+		       ok | {error, _}.
 scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,FirstParsed} = parse(ProtoFile),
@@ -57,11 +52,9 @@ scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
 
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
-%% @spec generate_source(ProtoFile) -> Result
-%%       ProtoFile = string()
-%%       Result = ok | {error, Reason}
-%%       Reason = ext_posix() | terminated | system_limit
 %%--------------------------------------------------------------------
+-spec generate_source(ProtoFile :: string()) ->
+			     ok | {error, _}.
 generate_source(ProtoFile) ->
     generate_source(ProtoFile,[]).
 
@@ -70,12 +63,9 @@ generate_source(ProtoFile) ->
 %%      Consider option properties: output_include_dir, 
 %%                                  output_src_dir,
 %%                                  imports_dir
-%% @spec generate_source(ProtoFile,Options) -> Result
-%%       ProtoFile = string()
-%%       Options = proplists()
-%%       Result = ok | {error, Reason}
-%%       Reason = ext_posix() | terminated | system_limit
 %%--------------------------------------------------------------------
+-spec generate_source(ProtoFile :: string(), Options :: list()) ->
+			     ok | {error, atom() | badarg | terminated | system_limit}.
 generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,FirstParsed} = parse(ProtoFile),
@@ -358,12 +348,12 @@ collect_full_messages([{enum, Name, Fields} | Tail], AccEnum, AccMsg) ->
 	       end,
 
     FieldsOut = lists:foldl(
-		  fun (Input, TmpAcc) ->
-			  case Input of
-			      {enum, IntValue, EnumAtom} -> [{enum, 
-							      type_path_to_type(ListName), 
-							      IntValue, 
-							      list_to_atom(EnumAtom)} | TmpAcc];
+		  fun (Field, TmpAcc) ->
+			  case Field of
+			      {EnumAtom, IntValue} -> [{enum, 
+							type_path_to_type(ListName), 
+							IntValue, 
+							EnumAtom} | TmpAcc];
 			      _ -> TmpAcc
 			  end
 		  end, [], Fields),

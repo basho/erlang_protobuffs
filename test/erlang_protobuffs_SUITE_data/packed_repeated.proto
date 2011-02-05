@@ -5,9 +5,9 @@ message Person {
 	required string address = 2;
 	required string phone_number = 3;
 	required int32 age = 4;
-	repeated string hobbies = 5 [pack=false];
+	repeated string hobbies = 5 [packed=false];
 	repeated Location locations = 6;
-	repeated uint32 ids = 7 [pack=true];
+	repeated uint32 ids = 7 [packed=true];
 }
 
 message Location {

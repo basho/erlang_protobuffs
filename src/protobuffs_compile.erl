@@ -365,6 +365,25 @@ collect_full_messages([{option,_,_} | Tail], AccEnum, AccMsg) ->
     collect_full_messages(Tail, AccEnum, AccMsg);
 collect_full_messages([{import, _Filename} | Tail], AccEnum, AccMsg) ->
     collect_full_messages(Tail, AccEnum, AccMsg);
+collect_full_messages([{extend, Name, ExtendedFields} | Tail], AccEnum, AccMesg) ->
+    ListName = case erlang:is_list (hd(Name)) of
+		   true -> Name;
+		   false -> [Name]
+	       end,
+
+    {ListName,FieldsOut} = lists:keyfind(ListName,1,AccMesg),
+    
+    ExtendedFieldsOut = lists:append(FieldsOut,
+			     lists:foldl(
+			       fun (Input, TmpAcc) ->
+				       case Input of
+					   {_, _, _, _, _} -> [Input | TmpAcc];
+					   _ -> TmpAcc
+				       end
+			       end, [], ExtendedFields)
+			     ),
+
+    collect_full_messages(Tail, AccEnum, lists:keyreplace(ListName,1,AccMesg,{ListName,ExtendedFieldsOut}));
 collect_full_messages([], AccEnum, AccMsg) ->
     {{msg,AccMsg},{enum,AccEnum}}.
 

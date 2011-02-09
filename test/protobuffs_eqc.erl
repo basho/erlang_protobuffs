@@ -351,12 +351,12 @@ prop_protobuffs_special_words() ->
 	    end).
 
 prop_protobuffs_import() ->
-	?FORALL({Imported},
-		{default({foo, {imported, string()}},{foo, undefined})},
-		begin
+    ?FORALL({Imported},
+	    {default({foo, {imported, string()}},{foo, undefined})},
+	    begin
 		Decoded = import_pb:decode_foo(import_pb:encode(Imported)),
 		compare_messages(Imported, Decoded)
-		end).
+	    end).
 
 single() ->
     {message, uint32()}.
@@ -367,4 +367,12 @@ prop_protobuffs_single() ->
 	    begin
 		Decoded = single_pb:decode_message (single_pb:encode_message(Single)),
 		compare_messages (Single, Decoded)
+	    end).
+
+prop_protobuffs_extend() ->
+    ?FORALL({Extend},
+	    {default({extendable, sint32()},{extendable, undefined})},
+	    begin
+		Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Extend)),
+		compare_messages(Extend, Decoded)
 	    end).

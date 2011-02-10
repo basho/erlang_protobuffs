@@ -25,6 +25,8 @@
 -module(protobuffs_compile).
 -export([scan_file/1, scan_file/2, generate_source/1, generate_source/2]).
 
+-record(collected,{enum=[], msg=[], extensions=[]}).
+
 %%--------------------------------------------------------------------
 %% @doc Generats a built .beam file and header file .hrl
 %%--------------------------------------------------------------------
@@ -46,9 +48,9 @@ scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     {ok,FirstParsed} = parse(ProtoFile),
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
     Parsed = parse_imports(FirstParsed, ImportPaths),
-    {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
-    Messages = resolve_types(UntypedMessages,Enums),
-    output(Basename, Messages, Enums, Options).
+    Collected = collect_full_messages(Parsed), 
+    Messages = resolve_types(Collected#collected.msg,Collected#collected.enum),
+    output(Basename, Messages, Collected#collected.enum, Options).
 
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
@@ -71,9 +73,9 @@ generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
     {ok,FirstParsed} = parse(ProtoFile),
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
     Parsed = parse_imports(FirstParsed, ImportPaths),
-    {{msg,UntypedMessages},{enum,Enums}} = collect_full_messages(Parsed),
-    Messages = resolve_types(UntypedMessages,Enums),
-    output_source (Basename, Messages, Enums, Options).
+    Collected = collect_full_messages(Parsed), 
+    Messages = resolve_types(Collected#collected.msg,Collected#collected.enum),
+    output_source (Basename, Messages, Collected#collected.enum, Options).
 
 %% @hidden
 parse_imports(Parsed, Path) ->
@@ -315,33 +317,39 @@ filter_int_to_enum_clause({enum,EnumTypeName,IntValue,EnumValue}, {clause,L,_Arg
 %%    {3,required,"string","phone_number",none},
 %%    {2,required,"string","address",none},
 %%    {1,required,"string","name",none}]}]
-collect_full_messages(Data) -> collect_full_messages(Data, [], []).
-collect_full_messages([{message, Name, Fields} | Tail], AccEnum, AccMsg) ->
+collect_full_messages(Data) -> collect_full_messages(Data, #collected{}).
+collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
     ListName = case erlang:is_list (hd(Name)) of
 		   true -> Name;
 		   false -> [Name]
 	       end,
     
     FieldsOut = lists:foldl(
-		  fun (Input, TmpAcc) ->
-			  case Input of
-			      {_, _, _, _, _} -> [Input | TmpAcc];
-			      _ -> TmpAcc
-			  end
+		  fun ({_,_,_,_,_} = Input, TmpAcc) -> [Input | TmpAcc];
+		      (_, TmpAcc) -> TmpAcc
 		  end, [], Fields),
-
+    
     Enums = lists:foldl(
 	      fun ({enum,C,D}, TmpAcc) -> [{enum, [C | ListName], D} | TmpAcc];
 		  (_, TmpAcc) -> TmpAcc
 	      end, [], Fields),
-
+    
+    Extensions = lists:foldl(
+		   fun ({extensions, From, To}, TmpAcc) -> [{From,To}|TmpAcc];
+		       (_, TmpAcc) -> TmpAcc
+		   end, [], Fields),
+			   
     SubMessages = lists:foldl(
 		    fun ({message, C, D}, TmpAcc) -> [{message, [C | ListName], D} | TmpAcc];
 			(_, TmpAcc) -> TmpAcc
 		    end, [], Fields),
 
-    collect_full_messages(Tail ++ SubMessages ++ Enums, AccEnum, [{ListName, FieldsOut} | AccMsg]);
-collect_full_messages([{enum, Name, Fields} | Tail], AccEnum, AccMsg) ->
+    NewCollected = Collected#collected{
+		     msg=[{ListName, FieldsOut} | Collected#collected.msg],
+		     extensions=[{ListName,Extensions} | Collected#collected.extensions]
+		    },
+    collect_full_messages(Tail ++ SubMessages ++ Enums, NewCollected);
+collect_full_messages([{enum, Name, Fields} | Tail], Collected) ->
     ListName = case erlang:is_list (hd(Name)) of
 		   true -> Name;
 		   false -> [Name]
@@ -358,34 +366,44 @@ collect_full_messages([{enum, Name, Fields} | Tail], AccEnum, AccMsg) ->
 			  end
 		  end, [], Fields),
     
-    collect_full_messages(Tail, FieldsOut ++ AccEnum, AccMsg);
-collect_full_messages([{package, _PackageName} | Tail], AccEnum, AccMsg) ->
-    collect_full_messages(Tail, AccEnum, AccMsg);
-collect_full_messages([{option,_,_} | Tail], AccEnum, AccMsg) ->
-    collect_full_messages(Tail, AccEnum, AccMsg);
-collect_full_messages([{import, _Filename} | Tail], AccEnum, AccMsg) ->
-    collect_full_messages(Tail, AccEnum, AccMsg);
-collect_full_messages([{extend, Name, ExtendedFields} | Tail], AccEnum, AccMesg) ->
+    NewCollected = Collected#collected{enum=FieldsOut++Collected#collected.enum},
+    collect_full_messages(Tail, NewCollected);
+collect_full_messages([{package, _PackageName} | Tail], Collected) ->
+    collect_full_messages(Tail, Collected);
+collect_full_messages([{option,_,_} | Tail], Collected) ->
+    collect_full_messages(Tail, Collected);
+collect_full_messages([{import, _Filename} | Tail], Collected) ->
+    collect_full_messages(Tail, Collected);
+collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
     ListName = case erlang:is_list (hd(Name)) of
 		   true -> Name;
 		   false -> [Name]
 	       end,
 
-    {ListName,FieldsOut} = lists:keyfind(ListName,1,AccMesg),
+    CollectedMsg = Collected#collected.msg,
+    {ListName,FieldsOut} = lists:keyfind(ListName,1,CollectedMsg),
+    {ListName,Extensions} = lists:keyfind(ListName,1,Collected#collected.extensions),
+    
     
     ExtendedFieldsOut = lists:append(FieldsOut,
 			     lists:foldl(
-			       fun (Input, TmpAcc) ->
-				       case Input of
-					   {_, _, _, _, _} -> [Input | TmpAcc];
-					   _ -> TmpAcc
-				       end
+			       fun ({Id, _, _, FieldName, _} = Input, TmpAcc) ->
+				       case lists:any(fun({From,max}) -> From =< Id;
+							 ({From,To}) -> From =< Id andalso Id =< To
+						      end,Extensions) of 
+					   true ->
+					       [Input | TmpAcc];
+					   _ ->
+					       error_logger:error_msg("Extended field ~p (id ~p) to ~p not in any valid range ~p~n",[FieldName,Id,Name,Extensions]),
+					       throw(out_of_range)
+				       end;
+				   (_, TmpAcc) -> TmpAcc
 			       end, [], ExtendedFields)
 			     ),
-
-    collect_full_messages(Tail, AccEnum, lists:keyreplace(ListName,1,AccMesg,{ListName,ExtendedFieldsOut}));
-collect_full_messages([], AccEnum, AccMsg) ->
-    {{msg,AccMsg},{enum,AccEnum}}.
+    NewCollected = Collected#collected{msg=lists:keyreplace(ListName,1,CollectedMsg,{ListName,ExtendedFieldsOut})},
+    collect_full_messages(Tail, NewCollected);
+collect_full_messages([], Collected) ->
+    Collected.
 
 %% @hidden
 resolve_types (Data, Enums) -> resolve_types (Data, Data, Enums, []).

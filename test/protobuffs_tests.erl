@@ -101,22 +101,22 @@ parse_enum_test_() ->
      ?_assertMatch({'value2',2},lists:keyfind('value2',1,Values))].
 
 parse_enum_outside_test_() ->
-	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/enum_outside.proto"),
-	[{enum, "EnumList", Enums}, {message, "EnumUser", EnumUser}] = parse(Path),
-	[?_assertMatch({1,optional,"EnumList", "enum_field",none},lists:keyfind(1,1,EnumUser)),
-	?_assertMatch({'FIRST',1},lists:keyfind('FIRST',1,Enums)),
-	?_assertMatch({'SECOND',2},lists:keyfind('SECOND',1,Enums))].
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/enum_outside.proto"),
+    [{enum, "EnumList", Enums}, {message, "EnumUser", EnumUser}] = parse(Path),
+    [?_assertMatch({1,optional,"EnumList", "enum_field",none},lists:keyfind(1,1,EnumUser)),
+     ?_assertMatch({'FIRST',1},lists:keyfind('FIRST',1,Enums)),
+     ?_assertMatch({'SECOND',2},lists:keyfind('SECOND',1,Enums))].
 
 parse_extensions_test() ->
-	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/extensions.proto"),
-	[{message, "Extendable", Extendable}, {message, "MaxTendable", MaxTendable}] = parse(Path),
-	[?_assertMatch({extensions, 100, 200}, lists:nth(1, Extendable)),
-	?_assertMatch({extensions, 100, max}, lists:nth(1, MaxTendable))].
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/extensions.proto"),
+    [{message, "Extendable", Extendable}, {message, "MaxTendable", MaxTendable}] = parse(Path),
+    [?_assertMatch({extensions, 100, 200}, lists:nth(1, Extendable)),
+     ?_assertMatch({extensions, 100, max}, lists:nth(1, MaxTendable))].
 
 parse_service_test() ->
-	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/service.proto"),
-	[{service, "SearchService", [SearchService]}, _, _] = parse(Path),
-	[?_assertMatch({rpc, "Search", "SearchRequest", "SearchResponse"},SearchService)].
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/service.proto"),
+    [{service, "SearchService", [SearchService]}, _, _] = parse(Path),
+    [?_assertMatch({rpc, "Search", "SearchRequest", "SearchResponse"},SearchService)].
 
 parse_nested1_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/nested1.proto"),
@@ -231,10 +231,16 @@ parse_packed_repeated_test_() ->
      ?_assertMatch({2,required,"string","country",none},lists:keyfind(2,1,Location))].
 
 parse_imported_test_() ->
-	Path = filename:absname("../test/erlang_protobuffs_SUITE_data/import.proto"),
-	Parsed = parse(Path),
-	[?_assertEqual(false, lists:keyfind("Imported", 2, Parsed)),
-	?_assertMatch({message, "Foo", _Foo}, lists:keyfind("Foo", 2, Parsed))].
+    Path = filename:absname("../test/erlang_protobuffs_SUITE_data/import.proto"),
+    Parsed = parse(Path),
+    [?_assertEqual(false, lists:keyfind("Imported", 2, Parsed)),
+     ?_assertMatch({message, "Foo", _Foo}, lists:keyfind("Foo", 2, Parsed))].
+
+parse_extend_out_of_range_test_() ->
+    DataDir = "../test/erlang_protobuffs_SUITE_data",
+    Path = filename:absname(filename:join([DataDir,"extend_out_of_range.proto"])),
+    Error = (catch protobuffs_compile:scan_file(Path, [{imports_dir, [DataDir]}])),
+    [?_assertEqual(out_of_range, Error)].
 
 %%--------------------------------------------------------------------
 %% Help functions

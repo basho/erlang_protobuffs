@@ -92,12 +92,12 @@ parse_imports([{import, File} = Head | Tail], Path, Acc) ->
 	    Parsed = lists:append(FirstParsed, Tail),
 	    parse_imports(Parsed, Path, [Head | Acc]);
 	{error, Error} ->
-	    error_logger:warning_report([
-					 "Could not do import",
-					 {import, File},
-					 {error, Error},
-					 {path, Path}
-					]),
+	    error_logger:error_report([
+				       "Could not do import",
+				       {import, File},
+				       {error, Error},
+				       {path, Path}
+				      ]),
 	    parse_imports(Tail, Path, [Head | Acc])
     end;
 parse_imports([Head | Tail], Path, Acc) ->
@@ -384,17 +384,27 @@ collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
     {ListName,FieldsOut} = lists:keyfind(ListName,1,CollectedMsg),
     {ListName,Extensions} = lists:keyfind(ListName,1,Collected#collected.extensions),
     
+    FunNotInReservedRange = fun(Id) -> not(19000 =< Id andalso Id =< 19999) end,
+    FunInRange = fun(Id,From,max) -> From =< Id andalso Id =< 16#1fffffff;
+		    (Id,From,To) -> From =< Id andalso Id =< To
+		 end,
     
     ExtendedFieldsOut = lists:append(FieldsOut,
 			     lists:foldl(
 			       fun ({Id, _, _, FieldName, _} = Input, TmpAcc) ->
-				       case lists:any(fun({From,max}) -> From =< Id;
-							 ({From,To}) -> From =< Id andalso Id =< To
+				       case lists:any(fun({From,To}) -> FunNotInReservedRange(Id) 
+									    andalso FunInRange(Id,From,To)
 						      end,Extensions) of 
 					   true ->
 					       [Input | TmpAcc];
 					   _ ->
-					       error_logger:error_msg("Extended field ~p (id ~p) to ~p not in any valid range ~p~n",[FieldName,Id,Name,Extensions]),
+					       error_logger:error_report(["Extended field not in valid range",
+									  {message, Name},
+									  {field_id,Id},
+									  {field_name,FieldName},
+									  {defined_ranges,Extensions},
+									  {reserved_range,{19000,19999}},
+									  {max,16#1fffffff}]),
 					       throw(out_of_range)
 				       end;
 				   (_, TmpAcc) -> TmpAcc

@@ -242,6 +242,12 @@ parse_extend_out_of_range_test_() ->
     Error = (catch protobuffs_compile:scan_file(Path, [{imports_dir, [DataDir]}])),
     [?_assertEqual(out_of_range, Error)].
 
+parse_extend_in_reserved_range_test_() ->
+    DataDir = "../test/erlang_protobuffs_SUITE_data",
+    Path = filename:absname(filename:join([DataDir,"extend_in_reserved_range.proto"])),
+    Error = (catch protobuffs_compile:scan_file(Path, [{imports_dir, [DataDir]}])),
+    [?_assertEqual(out_of_range, Error)].
+
 %%--------------------------------------------------------------------
 %% Help functions
 %%--------------------------------------------------------------------

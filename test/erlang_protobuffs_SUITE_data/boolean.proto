@@ -1,0 +1,4 @@
+message Message {
+  optional bool  booly = 1 [default=false];
+  required int32 age   = 2 [default=25];
+}

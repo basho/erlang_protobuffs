@@ -55,9 +55,7 @@ decode functions for the messages defined.
 ## CAVEATS
 
 Support for parsing proto files and creating code from it is volatile and
-should be considered alpha software at best. It currently only supports flat
-messages, simple types (ints, strings, etc) and will break on ENUM types and
-any sort of nesting. Please do not use this in production.
+should be considered alpha software at best. Please do not use this in production.
 
 ## no_debug_info
 
@@ -66,6 +64,16 @@ with debug info. This is because pokemon_pb serves as a template for generated
 _pb modules. Running protobuffs_compile:scan_file/1 reads the erlang forms from
 the pokemon_pb.beam file and expands and alters those forms to create the generated
 module.
+
+## Building with rebar
+To compile
+    %>./rebar compile
+
+To run all tests
+    %>./rebar eunit
+    %>./rebar ct
+
+Se rebar doc for more information.
 
 ## CREDITS
 

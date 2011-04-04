@@ -24,10 +24,13 @@
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(pokemon_pb).
 -export([encode_pikachu/1, decode_pikachu/1]).
--compile([export_all]).
+-export([encode/1]).
 -record(pikachu, {abc, def}).
 
 %% ENCODE
+encode(Record) ->
+    encode(element(1, Record), Record).
+
 encode_pikachu(Record) when is_record(Record, pikachu) ->
     encode(pikachu, Record).
 
@@ -44,6 +47,9 @@ with_default(Val, _) -> Val.
 pack(_, optional, undefined, _, _) -> [];
 
 pack(_, repeated, undefined, _, _) -> [];
+
+pack(_, repeated_packed, undefined, _, _) -> [];
+pack(_, repeated_packed, [], _, _) -> [];
     
 pack(FNum, required, undefined, Type, _) ->
     exit({error, {required_field_is_undefined, FNum, Type}});
@@ -54,12 +60,28 @@ pack(_, repeated, [], _, Acc) ->
 pack(FNum, repeated, [Head|Tail], Type, Acc) ->
     pack(FNum, repeated, Tail, Type, [pack(FNum, optional, Head, Type, [])|Acc]);
 
+pack(FNum, repeated_packed, Data, Type, _) ->
+    protobuffs:encode_packed(FNum, Data, Type);
+
 pack(FNum, _, Data, _, _) when is_tuple(Data) ->
     [RecName|_] = tuple_to_list(Data),
     protobuffs:encode(FNum, encode(RecName, Data), bytes);
 
-pack(FNum, _, Data, Type, _) ->
-    protobuffs:encode(FNum, Data, Type).
+pack(FNum, _, Data, Type, _) when Type=:=bool;Type=:=int32;Type=:=uint32;
+				  Type=:=int64;Type=:=uint64;Type=:=sint32;
+				  Type=:=sint64;Type=:=fixed32;Type=:=sfixed32;
+				  Type=:=fixed64;Type=:=sfixed64;Type=:=string;
+				  Type=:=bytes;Type=:=float;Type=:=double ->
+    protobuffs:encode(FNum, Data, Type);
+
+pack(FNum, _, Data, Type, _) when is_atom(Data) ->
+    protobuffs:encode(FNum, enum_to_int(Type,Data), enum).
+
+enum_to_int(pikachu,value) ->
+    1.
+
+int_to_enum(_,Val) ->
+    Val.
 
 %% DECODE
 decode_pikachu(Bytes) when is_binary(Bytes) ->
@@ -72,29 +94,36 @@ decode(pikachu, Bytes) when is_binary(Bytes) ->
     
 decode(<<>>, _, Acc) -> Acc;
 decode(Bytes, Types, Acc) ->
-    {{FNum, WireType}, Rest} = protobuffs:read_field_num_and_wire_type(Bytes),
+    {ok, FNum} = protobuffs:next_field_num(Bytes),
     case lists:keysearch(FNum, 1, Types) of
         {value, {FNum, Name, Type, Opts}} ->
             {Value1, Rest1} = 
                 case lists:member(is_record, Opts) of
                     true ->
-                        {V, R} = protobuffs:decode_value(Rest, WireType, bytes),
+                        {{FNum, V}, R} = protobuffs:decode(Bytes, bytes),
                         RecVal = decode(list_to_atom(string:to_lower(atom_to_list(Type))), V),
                         {RecVal, R};
                     false ->
-                        {V, R} = protobuffs:decode_value(Rest, WireType, Type),
-                        {unpack_value(V, Type), R}
+			case lists:member(repeated_packed, Opts) of
+			    true ->
+				{{FNum, V}, R} = protobuffs:decode_packed(Bytes, Type),
+				{V, R};
+			    false ->
+				{{FNum, V}, R} = protobuffs:decode(Bytes, Type),
+				{unpack_value(V, Type), R}
+			end
+                        
                 end,
             case lists:member(repeated, Opts) of
                 true ->
                     case lists:keytake(FNum, 1, Acc) of
                         {value, {FNum, Name, List}, Acc1} ->
-                            decode(Rest1, Types, [{FNum, Name, lists:reverse([Value1|lists:reverse(List)])}|Acc1]);
+                            decode(Rest1, Types, [{FNum, Name, lists:reverse([int_to_enum(Type,Value1)|lists:reverse(List)])}|Acc1]);
                         false ->
-                            decode(Rest1, Types, [{FNum, Name, [Value1]}|Acc])
+                            decode(Rest1, Types, [{FNum, Name, [int_to_enum(Type,Value1)]}|Acc])
                     end;
                 false ->
-                    decode(Rest1, Types, [{FNum, Name, Value1}|Acc])
+		    decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
             end;
         false ->
             exit({error, {unexpected_field_index, FNum}})

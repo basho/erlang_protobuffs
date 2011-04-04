@@ -7,6 +7,7 @@ message Person {
 	required int32 age = 4;
 	repeated string hobbies = 5;
 	repeated Location locations = 6;
+	repeated uint32 ids = 7;
 }
 
 message Location {

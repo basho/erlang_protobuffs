@@ -24,7 +24,7 @@
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(pokemon_pb).
 -export([encode_pikachu/1, decode_pikachu/1]).
--export([encode/1]).
+-export([encode/1, decode/2, iolist/2]).
 -record(pikachu, {abc, def}).
 
 %% ENCODE

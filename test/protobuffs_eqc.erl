@@ -7,6 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(protobuffs_eqc).
 
+-ifdef(EQC).
 -include_lib("eqc/include/eqc.hrl").
 
 -compile(export_all).
@@ -376,3 +377,4 @@ prop_protobuffs_extend() ->
 		Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Extend)),
 		compare_messages(Extend, Decoded)
 	    end).
+-endif.

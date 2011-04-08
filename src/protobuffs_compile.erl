@@ -424,7 +424,9 @@ collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
     NewCollected = Collected#collected{msg=lists:keyreplace(ListName,1,CollectedMsg,{ListName,ExtendedFieldsOut})},
     collect_full_messages(Tail, NewCollected);
 %% Skip anything we don't understand
-collect_full_messages([_|Tail], Acc) ->
+collect_full_messages([Skip|Tail], Acc) ->
+    error_logger:warning_report(["Unkown, skipping",
+				 {skip,Skip}]), 
     collect_full_messages(Tail, Acc);
 collect_full_messages([], Collected) ->
     Collected.

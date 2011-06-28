@@ -24,6 +24,7 @@
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
 -export([scan_file/1, scan_file/2, generate_source/1, generate_source/2]).
+-export([parse/1]).
 
 -record(collected,{enum=[], msg=[], extensions=[]}).
 
@@ -148,22 +149,28 @@ output_source (Basename, Messages, Enums, Options) ->
     error_logger:info_msg("Writing src file to ~p~n",[SrcFile]),
     file:write_file(SrcFile, erl_prettypr:format(erl_syntax:form_list (Forms1))).
 
-%% @hidden
 parse(FileName) ->
     {ok, InFile} = file:open(FileName, [read]),
-    Acc = loop(InFile,[]),
-    file:close(InFile),
-    protobuffs_parser:parse(Acc).
+    try
+	Tokens = tokenize_file(InFile),
+	protobuffs_parser:parse(Tokens)
+    after
+	file:close(InFile)
+    end.
 
 %% @hidden
-loop(InFile,Acc) ->
+tokenize_file(InFile) ->
+    tokenize_file(InFile, []).
+
+%% @hidden
+tokenize_file(InFile, Acc) ->
     case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
         {ok,Token,_EndLine} ->
-            loop(InFile,Acc ++ [Token]);
+            tokenize_file(InFile,[Token | Acc]);
         {error,token} ->
-            exit(scanning_error);    
+            error(scanning_error);    
         {eof,_} ->
-            Acc
+            lists:reverse(Acc)
     end.
 
 %% @hidden

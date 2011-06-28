@@ -24,7 +24,7 @@
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
 -export([scan_file/1, scan_file/2, generate_source/1, generate_source/2]).
--export([parse/1, parse_text/1]).
+-export([parse/1, parse_text/1, resolve/1, is_scalar_type/1]).
 
 -record(collected,{enum=[], msg=[], extensions=[]}).
 
@@ -52,6 +52,11 @@ scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Collected = collect_full_messages(Parsed), 
     Messages = resolve_types(Collected#collected.msg,Collected#collected.enum),
     output(Basename, Messages, Collected#collected.enum, Options).
+
+
+resolve(Parsed) ->
+    Collected = collect_full_messages(Parsed), 
+    resolve_types(Collected#collected.msg,Collected#collected.enum).
 
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
@@ -357,25 +362,10 @@ collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
 		   false -> [Name]
 	       end,
     
-    FieldsOut = lists:foldl(
-		  fun ({_,_,_,_,_} = Input, TmpAcc) -> [Input | TmpAcc];
-		      (_, TmpAcc) -> TmpAcc
-		  end, [], Fields),
-    
-    Enums = lists:foldl(
-	      fun ({enum,C,D}, TmpAcc) -> [{enum, [C | ListName], D} | TmpAcc];
-		  (_, TmpAcc) -> TmpAcc
-	      end, [], Fields),
-    
-    Extensions = lists:foldl(
-		   fun ({extensions, From, To}, TmpAcc) -> [{From,To}|TmpAcc];
-		       (_, TmpAcc) -> TmpAcc
-		   end, [], Fields),
-			   
-    SubMessages = lists:foldl(
-		    fun ({message, C, D}, TmpAcc) -> [{message, [C | ListName], D} | TmpAcc];
-			(_, TmpAcc) -> TmpAcc
-		    end, [], Fields),
+    FieldsOut   = [Input || {_,_,_,_,_}=Input <- Fields],
+    Enums       = [{enum, [C | ListName], D} || {enum,C,D} <- Fields],
+    Extensions  = [{From,To} || {extensions, From, To} <- Fields],
+    SubMessages = [{message, [C | ListName], D} || {message, C, D} <- Fields],
 
     NewCollected = Collected#collected{
 		     msg=[{ListName, FieldsOut} | Collected#collected.msg],
@@ -539,7 +529,6 @@ replace_atom(List, Find, Replace) when is_list(List) ->
 replace_atom(Other, _Find, _Replace) ->
     Other.
 
-%% @hidden
 is_scalar_type ("double") -> true;
 is_scalar_type ("float") -> true;
 is_scalar_type ("int32") -> true;

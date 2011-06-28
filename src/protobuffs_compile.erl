@@ -24,7 +24,7 @@
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
 -export([scan_file/1, scan_file/2, generate_source/1, generate_source/2]).
--export([parse/1]).
+-export([parse/1, parse_text/1]).
 
 -record(collected,{enum=[], msg=[], extensions=[]}).
 
@@ -158,6 +158,10 @@ parse(FileName) ->
 	file:close(InFile)
     end.
 
+parse_text(Text) ->
+    Tokens = tokenize_text(Text),
+    protobuffs_parser:parse(Tokens).
+
 %% @hidden
 tokenize_file(InFile) ->
     tokenize_file(InFile, []).
@@ -171,6 +175,17 @@ tokenize_file(InFile, Acc) ->
             error(scanning_error);    
         {eof,_} ->
             lists:reverse(Acc)
+    end.
+
+%% @hidden
+tokenize_text(Text) ->
+    case protobuffs_scanner:tokens([], Text ++ [$\  | eof]) of
+        {done, {ok,Tokens,_EndLine}, eof} ->
+            Tokens;
+	{done, {error, {_,_,Reason}, LineNo}, _} ->
+            error({scanning_error, Reason, {line,LineNo}});
+        _ ->
+            error(scanning_error)
     end.
 
 %% @hidden

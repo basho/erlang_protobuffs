@@ -38,11 +38,11 @@ encode(pikachu, Record) ->
     iolist_to_binary(iolist(pikachu, Record)).
 
 iolist(pikachu, Record) ->
-    [pack(1, required, with_default(Record#pikachu.abc, none), string, [])].
+    [pack(1, required, with_default(Record#pikachu.abc, none, required), string, [])].
 
-with_default(undefined, none) -> undefined;
-with_default(undefined, Default) -> Default;
-with_default(Val, _) -> Val.
+with_default(Value, Default, optional) when Value==Default -> undefined; % PB default.
+with_default(undefined, Default, required) when Default/=none -> Default; % Erlang default.
+with_default(Value, _, _) -> Value.
 
 pack(_, optional, undefined, _, _) -> [];
 

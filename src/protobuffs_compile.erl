@@ -177,7 +177,7 @@ tokenize_file(InFile, Acc) ->
         {ok,Token,_EndLine} ->
             tokenize_file(InFile,[Token | Acc]);
         {error,token} ->
-            error(scanning_error);    
+            error(scanning_error);
         {eof,_} ->
             lists:reverse(Acc)
     end.
@@ -280,7 +280,8 @@ filter_iolist_clause({MsgName, Fields}, {clause,L,_Args,Guards,_Content}) ->
 					      [{record_field,L,
 						{var,L,'Record'},atomize(MsgName),
 						{atom,L,atomize(SName)}},
-					       erl_parse:abstract(Default)]},
+					       erl_parse:abstract(Default),
+					       {atom,L,Tag}]},
 					     {atom,L,atomize(SType)},
 					     {nil,L}]},
 		      Acc}

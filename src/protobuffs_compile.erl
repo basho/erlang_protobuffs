@@ -502,20 +502,15 @@ write_header_include_file(Basename, Messages) ->
 
 %% @hidden
 generate_field_definitions(Fields) ->
-    generate_field_definitions(Fields, []).
+    [lists:flatten(generate_field_definition(Field)) || Field <- Fields].
 
 %% @hidden
-generate_field_definitions([], Acc) ->
-    lists:reverse(Acc);
-generate_field_definitions([{Name, required, _} | Tail], Acc) ->
-    Head = lists:flatten(io_lib:format("~s = erlang:error({required, ~s})", [Name, Name])),
-    generate_field_definitions(Tail, [Head | Acc]);
-generate_field_definitions([{Name, _, none} | Tail], Acc) ->
-    Head = lists:flatten(io_lib:format("~s", [Name])),
-    generate_field_definitions(Tail, [Head | Acc]);
-generate_field_definitions([{Name, optional, Default} | Tail], Acc) ->
-    Head = lists:flatten(io_lib:format("~s = ~p", [Name, Default])),
-    generate_field_definitions(Tail, [Head | Acc]).
+generate_field_definition({Name, required, _}) ->
+    io_lib:format("~s = erlang:error({required, ~s})", [Name, Name]);
+generate_field_definition({Name, _, none}) ->
+    io_lib:format("~s", [Name]);
+generate_field_definition({Name, optional, Default}) ->
+    io_lib:format("~s = ~p", [Name, Default]).
 
 %% @hidden
 atomize(String) ->

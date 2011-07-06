@@ -249,7 +249,7 @@ parse_extend_in_reserved_range_test_() ->
     [?_assertEqual(out_of_range, Error)].
 
 
-should_encode_to_empty_test_() ->
+defaults_should_encode_to_empty_test_() ->
     DataDir = "../test/erlang_protobuffs_SUITE_data",
     Path = filename:absname(filename:join([DataDir,"hasdefault.proto"])),
     ok = protobuffs_compile:scan_file(Path),
@@ -262,6 +262,17 @@ should_encode_to_empty_test_() ->
     [?_assertEqual(<<>>, hasdefault_pb:encode_optionalwithdefault(R))
      || R <- [EncodeToEmpty1 | EncodeToEmpties]].
     
+empty_should_decode_to_defaults_test_() ->
+    DataDir = "../test/erlang_protobuffs_SUITE_data",
+    Path = filename:absname(filename:join([DataDir,"hasdefault.proto"])),
+    ok = protobuffs_compile:scan_file(Path),
+
+    RecordWithDefaults = {optionalwithdefault,
+			  1.0, 2.0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+			  true, "test"},
+    [?_assertEqual(RecordWithDefaults,
+		   hasdefault_pb:decode(optionalwithdefault, <<>>))].
+
 absent_list_should_decode_to_nil_test_() ->
     DataDir = "../test/erlang_protobuffs_SUITE_data",
     Path = filename:absname(filename:join([DataDir,"addressbook.proto"])),

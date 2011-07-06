@@ -210,8 +210,14 @@ filter_forms(Msgs, Enums, [{attribute,L,export,[{encode_pikachu,1},{decode_pikac
 
 filter_forms(Msgs, Enums, [{attribute,L,record,{pikachu,_}}|Tail], Basename, Acc) ->
     Records = [begin
-		   OutFields = [string:to_lower(A) || {_, _, _, A, _} <- lists:keysort(1, Fields)],
-		   Frm_Fields = [{record_field,L,{atom,L,list_to_atom(OutField)}}|| OutField <- OutFields],
+		   OutFields = [{string:to_lower(A), default_for(K,D)} || {_, K, _, A, D} <- lists:keysort(1, Fields)],
+		   Frm_Fields = [begin
+				     RF = {record_field,L,{atom,L,list_to_atom(OutFieldName)}},
+				     if Default == none -> RF;
+					true -> erlang:append_element(RF, erl_parse:abstract(Default))
+				     end
+				 end
+				 || {OutFieldName,Default} <- OutFields],
 		   {attribute, L, record, {atomize(Name), Frm_Fields}}
 	       end || {Name, Fields} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Records ++ Acc);
@@ -507,10 +513,16 @@ generate_field_definitions(Fields) ->
 %% @hidden
 generate_field_definition({Name, required, _}) ->
     io_lib:format("~s = erlang:error({required, ~s})", [Name, Name]);
-generate_field_definition({Name, _, none}) ->
-    io_lib:format("~s", [Name]);
-generate_field_definition({Name, optional, Default}) ->
-    io_lib:format("~s = ~p", [Name, Default]).
+generate_field_definition({Name, Kind, Default}) ->
+    case default_for(Kind, Default) of
+	none -> io_lib:format("~s", [Name]);
+	DefaultValue -> io_lib:format("~s = ~p", [Name, DefaultValue])
+    end.
+
+default_for(repeated, none) -> [];
+default_for(repeated_packed, none) -> [];
+default_for(optional, Default) -> Default;
+default_for(_,_) -> none.
 
 %% @hidden
 atomize(String) ->

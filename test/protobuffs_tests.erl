@@ -262,6 +262,12 @@ should_encode_to_empty_test_() ->
     [?_assertEqual(<<>>, hasdefault_pb:encode_optionalwithdefault(R))
      || R <- [EncodeToEmpty1 | EncodeToEmpties]].
     
+absent_list_should_decode_to_nil_test_() ->
+    DataDir = "../test/erlang_protobuffs_SUITE_data",
+    Path = filename:absname(filename:join([DataDir,"addressbook.proto"])),
+    ok = protobuffs_compile:scan_file(Path),
+
+    [?_assertEqual({addressbook, []}, addressbook_pb:decode(addressbook, <<>>))].
 
 %%--------------------------------------------------------------------
 %% Help functions

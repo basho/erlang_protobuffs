@@ -65,3 +65,7 @@ inner_option_test_() ->
     Parsed = protobuffs_parser:parse(Result),
     [?_assertMatch({ok,[{message, "Foo", [{option,message_set_wire_format,true}]}]}, Parsed)].
 
+empty_message_test_() ->
+    {ok,Result,1} = protobuffs_scanner:string("message Empty {}"),
+    Parsed = protobuffs_parser:parse(Result),
+    [?_assertMatch({ok,[{message, "Empty", []}]}, Parsed)].

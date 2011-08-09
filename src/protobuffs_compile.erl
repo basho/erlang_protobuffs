@@ -482,7 +482,7 @@ write_header_include_file(Basename, Messages) ->
 		 io:format(FileRef, FormatString, WriteFields),
 		 io:format(FileRef, "~n}).~n~n", []);
 	     true ->
-		 ok
+		 io:format(FileRef, "-record(~s, {}).~n~n", [string:to_lower(Name)])
 	 end
      end || {Name, Fields} <- Messages],
     file:close(FileRef).

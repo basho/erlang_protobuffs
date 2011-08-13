@@ -40,6 +40,11 @@ enum_test_() ->
     Parsed = protobuffs_parser:parse(Result),
     [?_assertMatch({ok,[{enum, "MyEnum", [{'VALUE0',0},{'VALUE1',1}]}]},Parsed)].
 
+enum_negative_test_() ->
+    {ok,Result,1} = protobuffs_scanner:string("enum MyEnum { VALUE0 = 0; VALUE1 = -1; VALUE2 = 2147483648; VALUE3 = -2147483647;}"),
+    Parsed = protobuffs_parser:parse(Result),
+    [?_assertMatch({ok,[{enum, "MyEnum", [{'VALUE0',0},{'VALUE1',-1},{'VALUE2',2147483648},{'VALUE3',-2147483647}]}]},Parsed)].
+
 service_test_() ->
     {ok,Result,1} = protobuffs_scanner:string("service SearchService { rpc Search (SearchRequest) returns (SearchResponse);}"),
     Parsed = protobuffs_parser:parse(Result),

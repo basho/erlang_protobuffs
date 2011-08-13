@@ -46,7 +46,7 @@ value() ->
 	   {sint32(),int32},
 	   {sint64(),int64},
 	   {bool(),bool},
-	   {uint32(),enum},
+	   {sint32(),enum},
 	   {string(),string},
 	   {binary(),bytes}]).
 

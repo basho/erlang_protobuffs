@@ -98,7 +98,10 @@ parse_enum_test_() ->
     {enum, "Values", Values} = lists:keyfind(enum,1,EnumMsg),
     [?_assertMatch({1,optional,"Values","value",none},lists:keyfind(1,1,EnumMsg)),
      ?_assertMatch({'value1',1},lists:keyfind('value1',1,Values)),
-     ?_assertMatch({'value2',2},lists:keyfind('value2',1,Values))].
+     ?_assertMatch({'value2',2},lists:keyfind('value2',1,Values)),
+     ?_assertMatch({'value3',-1},lists:keyfind('value3',1,Values)),
+     ?_assertMatch({'value4',-2147483647},lists:keyfind('value4',1,Values)),
+     ?_assertMatch({'value5',2147483648},lists:keyfind('value5',1,Values))].
 
 parse_enum_outside_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/enum_outside.proto"),

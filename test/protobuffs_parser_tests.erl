@@ -70,3 +70,7 @@ inner_option_test_() ->
     Parsed = protobuffs_parser:parse(Result),
     [?_assertMatch({ok,[{message, "Foo", [{option,message_set_wire_format,true}]}]}, Parsed)].
 
+nested_message_test_() ->
+	{ok,Result,1} = protobuffs_scanner:string("message Test { required Nested nested = 1; message Nested { } }"),
+    Parsed = protobuffs_parser:parse(Result),
+	[?_assertMatch({ok,[{message, "Test",[{1, required, "Nested", "nested", none}, {message, "Nested", []}]}]},Parsed)].

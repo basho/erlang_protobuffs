@@ -77,7 +77,8 @@ parse_has_default_test_() ->
      ?_assertMatch({11,required,"sfixed32","int9",9},lists:keyfind(11,1,Messages)),
      ?_assertMatch({12,required,"sfixed64","int10",10},lists:keyfind(12,1,Messages)),
      ?_assertMatch({13,required,"bool","val1",true},lists:keyfind(13,1,Messages)),
-     ?_assertMatch({14,required,"string","str1","test"},lists:keyfind(14,1,Messages))].
+     ?_assertMatch({14,required,"string","str1","test"},lists:keyfind(14,1,Messages)),
+     ?_assertMatch({15,required,"string","str2",""},lists:keyfind(15,1,Messages))].
 
 parse_simple_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/simple.proto"),

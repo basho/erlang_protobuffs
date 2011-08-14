@@ -24,7 +24,7 @@ sint64() ->
     choose(-16#8000000000000000,16#7fffffffffffffff).
 
 string() ->
-    non_empty(list(char())).
+    list(char()).
 
 value() ->
     oneof([{real(),double},
@@ -163,6 +163,7 @@ prop_protobuffs_has_default() ->
 	     default(undefined, sint32()),
 	     default(undefined, sint64()),
 	     default(undefined, bool()),
+	     default(undefined, string()),
 	     default(undefined, string())}},
 	    begin
 		Decoded = hasdefault_pb:decode_withdefault(hasdefault_pb:encode_withdefault(Withdefault)),

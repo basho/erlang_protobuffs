@@ -45,6 +45,7 @@ parse_empty_file_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/empty.proto"),
     io:format("Test path ~p~n",[Path]),
     [{message, "Empty", Messages}] = parse(Path),
+    {message, "EmptyMessage", _EmptyMessage} = lists:keyfind("EmptyMessage",2,Messages),
     [?_assertMatch({1,optional,"double","real1",none},lists:keyfind(1,1,Messages)),
      ?_assertMatch({2,optional,"float","real2",none},lists:keyfind(2,1,Messages)),
      ?_assertMatch({3,optional,"int32","int1",none},lists:keyfind(3,1,Messages)),
@@ -59,7 +60,8 @@ parse_empty_file_test_() ->
      ?_assertMatch({12,optional,"sfixed64","int10",none},lists:keyfind(12,1,Messages)),
      ?_assertMatch({13,optional,"bool","val1",none},lists:keyfind(13,1,Messages)),
      ?_assertMatch({14,optional,"string","str1",none},lists:keyfind(14,1,Messages)),
-     ?_assertMatch({15,optional,"bytes","bit1",none},lists:keyfind(15,1,Messages))].
+     ?_assertMatch({15,optional,"bytes","bit1",none},lists:keyfind(15,1,Messages)),
+     ?_assertMatch({16,optional,"EmptyMessage","msg",none},lists:keyfind(16,1,Messages))].
 
 parse_has_default_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/hasdefault.proto"),

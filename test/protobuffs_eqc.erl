@@ -135,7 +135,8 @@ prop_protobuffs_empty() ->
 		    default(undefined, sint64()),
 		    default(undefined, bool()),
 		    default(undefined, string()),
-		    default(undefined, binary())}},
+		    default(undefined, binary()),
+		    default(undefined, {empty_emptymessage})}},
 	    begin
 		Decoded = empty_pb:decode_empty(empty_pb:encode_empty(Empty)),
 		compare_messages(Empty,Decoded)

@@ -45,6 +45,7 @@ parse_empty_file_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/empty.proto"),
     io:format("Test path ~p~n",[Path]),
     [{message, "Empty", Messages}] = parse(Path),
+    {message, "EmptyMessage", _EmptyMessage} = lists:keyfind("EmptyMessage",2,Messages),
     [?_assertMatch({1,optional,"double","real1",none},lists:keyfind(1,1,Messages)),
      ?_assertMatch({2,optional,"float","real2",none},lists:keyfind(2,1,Messages)),
      ?_assertMatch({3,optional,"int32","int1",none},lists:keyfind(3,1,Messages)),
@@ -59,7 +60,8 @@ parse_empty_file_test_() ->
      ?_assertMatch({12,optional,"sfixed64","int10",none},lists:keyfind(12,1,Messages)),
      ?_assertMatch({13,optional,"bool","val1",none},lists:keyfind(13,1,Messages)),
      ?_assertMatch({14,optional,"string","str1",none},lists:keyfind(14,1,Messages)),
-     ?_assertMatch({15,optional,"bytes","bit1",none},lists:keyfind(15,1,Messages))].
+     ?_assertMatch({15,optional,"bytes","bit1",none},lists:keyfind(15,1,Messages)),
+     ?_assertMatch({16,optional,"EmptyMessage","msg",none},lists:keyfind(16,1,Messages))].
 
 parse_has_default_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/hasdefault.proto"),
@@ -77,7 +79,8 @@ parse_has_default_test_() ->
      ?_assertMatch({11,required,"sfixed32","int9",9},lists:keyfind(11,1,Messages)),
      ?_assertMatch({12,required,"sfixed64","int10",10},lists:keyfind(12,1,Messages)),
      ?_assertMatch({13,required,"bool","val1",true},lists:keyfind(13,1,Messages)),
-     ?_assertMatch({14,required,"string","str1","test"},lists:keyfind(14,1,Messages))].
+     ?_assertMatch({14,required,"string","str1","test"},lists:keyfind(14,1,Messages)),
+     ?_assertMatch({15,required,"string","str2",""},lists:keyfind(15,1,Messages))].
 
 parse_simple_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/simple.proto"),
@@ -98,7 +101,10 @@ parse_enum_test_() ->
     {enum, "Values", Values} = lists:keyfind(enum,1,EnumMsg),
     [?_assertMatch({1,optional,"Values","value",none},lists:keyfind(1,1,EnumMsg)),
      ?_assertMatch({'value1',1},lists:keyfind('value1',1,Values)),
-     ?_assertMatch({'value2',2},lists:keyfind('value2',1,Values))].
+     ?_assertMatch({'value2',2},lists:keyfind('value2',1,Values)),
+     ?_assertMatch({'value3',-1},lists:keyfind('value3',1,Values)),
+     ?_assertMatch({'value4',-2147483647},lists:keyfind('value4',1,Values)),
+     ?_assertMatch({'value5',2147483648},lists:keyfind('value5',1,Values))].
 
 parse_enum_outside_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/enum_outside.proto"),

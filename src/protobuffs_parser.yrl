@@ -16,6 +16,7 @@ g_header -> g_var g_var '=' g_value ';'				: {'$1', '$2', '$4'}.
 
 g_message -> g_var g_var '{' g_elements '}'			: {'$1', safe_string('$2'), '$4'}.
 g_message -> g_var g_var '{' g_rpcs '}'				: {'$1', safe_string('$2'), '$4'}.
+g_message -> g_var g_var '{' '}'					: {'$1', safe_string('$2'), []}.
 
 g_rpcs -> g_rpc							: ['$1'].
 g_rpcs -> g_rpc g_rpcs						: ['$1' | '$2'].

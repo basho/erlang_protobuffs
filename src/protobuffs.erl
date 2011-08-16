@@ -90,7 +90,7 @@ encode_internal(FieldID, false, bool) ->
 encode_internal(FieldID, true, bool) ->
     encode_internal(FieldID, 1, int32);
 encode_internal(FieldID, Integer, enum) ->
-    encode_internal(FieldID, Integer, uint32);
+    encode_internal(FieldID, Integer, int32);
 encode_internal(FieldID, Integer, int32) when Integer >= -16#80000000, Integer < 0 ->
     encode_internal(FieldID, Integer, int64);
 encode_internal(FieldID, Integer, int64) when Integer >= -16#8000000000000000, Integer < 0 ->
@@ -299,7 +299,7 @@ decode_value(Value, WireType, ExpectedType) ->
 %% @hidden
 -spec typecast(Value :: any(), Type :: field_type()) ->
 		      any().
-typecast(Value, SignedType) when SignedType =:= int32; SignedType =:= int64 ->
+typecast(Value, SignedType) when SignedType =:= int32; SignedType =:= int64; SignedType =:= enum ->
     if
         Value band 16#8000000000000000 =/= 0 -> Value - 16#10000000000000000;
         true -> Value

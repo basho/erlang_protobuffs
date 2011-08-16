@@ -24,7 +24,7 @@ sint64() ->
     choose(-16#8000000000000000,16#7fffffffffffffff).
 
 string() ->
-    non_empty(list(char())).
+    list(char()).
 
 value() ->
     oneof([{real(),double},
@@ -46,7 +46,7 @@ value() ->
 	   {sint32(),int32},
 	   {sint64(),int64},
 	   {bool(),bool},
-	   {uint32(),enum},
+	   {sint32(),enum},
 	   {string(),string},
 	   {binary(),bytes}]).
 
@@ -135,7 +135,8 @@ prop_protobuffs_empty() ->
 		    default(undefined, sint64()),
 		    default(undefined, bool()),
 		    default(undefined, string()),
-		    default(undefined, binary())}},
+		    default(undefined, binary()),
+		    default(undefined, {empty_emptymessage})}},
 	    begin
 		Decoded = empty_pb:decode_empty(empty_pb:encode_empty(Empty)),
 		compare_messages(Empty,Decoded)
@@ -163,6 +164,7 @@ prop_protobuffs_has_default() ->
 	     default(undefined, sint32()),
 	     default(undefined, sint64()),
 	     default(undefined, bool()),
+	     default(undefined, string()),
 	     default(undefined, string())}},
 	    begin
 		Decoded = hasdefault_pb:decode_withdefault(hasdefault_pb:encode_withdefault(Withdefault)),

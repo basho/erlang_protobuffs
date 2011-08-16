@@ -14,5 +14,6 @@ message WithDefault {
   required sfixed64 int10 = 12 [default = 10];
   required bool val1 = 13 [default = true];
   required string str1 = 14 [default = "test"];
+  required string str2 = 15 [default = ""];
 }
 

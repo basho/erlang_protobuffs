@@ -273,7 +273,7 @@ filter_decode_clause(Msgs, {MsgName, Fields}, {clause,L,_Args,Guards,[_,B,C]}) -
 				 {FNum,Tag,SType,SName,_} <- Fields]),
     Cons = lists:foldl(
 	     fun({FNum, FName, Type, Opts}, Acc) ->
-		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
+             {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,list_to_atom(string:to_lower(atom_to_list(FName)))},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
 	     end, {nil,L}, Types),
     A = {match,L,{var,L,'Types'},Cons},
     C1 = replace_atom(C, pikachu, atomize(MsgName)),

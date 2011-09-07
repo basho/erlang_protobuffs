@@ -125,7 +125,8 @@ all() ->
      parse_special_words_test_case,
      parse_import_test_case,
      parse_single_test_case,
-     parse_extend_test_case].
+     parse_extend_test_case,
+     proper_test_case].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase() -> Info
@@ -172,6 +173,8 @@ parse_single_test_case() ->
     [].
 parse_extend_test_case() ->
     [].
+proper_test_case() ->
+    [].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase(Config0) ->
@@ -185,6 +188,9 @@ parse_extend_test_case() ->
 protobuffs_test_case(Config) ->
     NumTests = ?config(num_tests, Config),
     true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs())).
+
+proper_test_case(Config) ->
+    true = proper:quickcheck(proper_protobuffs:prop_protobuffs()).
 
 protobuffs_packed_test_case(Config) ->
     NumTests = ?config(num_tests, Config),

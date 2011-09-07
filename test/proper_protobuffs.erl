@@ -89,5 +89,5 @@ value() ->
 	   {sint64(),int64},
 	   {bool(),bool},
 	   {sint32(),enum},
-	   {list(byte()),string},
+	   {string(),string},
 	   {binary(),bytes}]).

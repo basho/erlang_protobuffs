@@ -7,6 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(protobuffs_tests).
 
+-include_lib("proper/include/proper.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 %%--------------------------------------------------------------------
@@ -253,6 +254,9 @@ parse_extend_in_reserved_range_test_() ->
     Path = filename:absname(filename:join([DataDir,"extend_in_reserved_range.proto"])),
     Error = (catch protobuffs_compile:scan_file(Path, [{imports_dir, [DataDir]}])),
     [?_assertEqual(out_of_range, Error)].
+
+proper_protobuff_test() ->
+    ?assertEqual([],proper:check_specs(protobuffs,[long_result])).
 
 %%--------------------------------------------------------------------
 %% Help functions

@@ -104,13 +104,13 @@ encode_internal(FieldID, Integer, uint64) when Integer band 16#ffffffffffffffff 
     encode_varint_field(FieldID, Integer);
 encode_internal(FieldID, Integer, bool) when Integer band 1 =:= 1 ->
     encode_varint_field(FieldID, Integer);
-encode_internal(FieldID, Integer, sint32) when Integer >= -16#80000000, Integer < 0 ->
+encode_internal(FieldID, Integer, sint32) when is_integer(Integer), Integer >= -16#80000000, Integer < 0 ->
     encode_varint_field(FieldID, bnot (Integer bsl 1));
-encode_internal(FieldID, Integer, sint64) when Integer >= -16#8000000000000000, Integer < 0 ->
+encode_internal(FieldID, Integer, sint64) when is_integer(Integer), Integer >= -16#8000000000000000, Integer < 0 ->
     encode_varint_field(FieldID, bnot (Integer bsl 1));
-encode_internal(FieldID, Integer, sint32) when Integer >= 0, Integer =< 16#7fffffff ->
+encode_internal(FieldID, Integer, sint32) when is_integer(Integer), Integer >= 0, Integer =< 16#7fffffff ->
     encode_varint_field(FieldID, Integer bsl 1);
-encode_internal(FieldID, Integer, sint64) when Integer >= 0, Integer =< 16#7fffffffffffffff ->
+encode_internal(FieldID, Integer, sint64) when is_integer(Integer), Integer >= 0, Integer =< 16#7fffffffffffffff ->
     encode_varint_field(FieldID, Integer bsl 1);
 encode_internal(FieldID, Integer, fixed32) when Integer band 16#ffffffff =:= Integer ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<Integer:32/little-integer>>];
@@ -147,7 +147,9 @@ encode_internal(FieldID, nan, double) ->
 encode_internal(FieldID, infinity, double) ->
     [encode_field_tag(FieldID, ?TYPE_64BIT), <<0:48,16#F0,16#7F>>];
 encode_internal(FieldID, '-infinity', double) ->
-    [encode_field_tag(FieldID, ?TYPE_64BIT), <<0:48,16#F0,16#FF>>].
+    [encode_field_tag(FieldID, ?TYPE_64BIT), <<0:48,16#F0,16#FF>>];
+encode_internal(_,_,_) ->
+    erlang:error(badarg).
 
 
 %% @hidden
@@ -167,11 +169,27 @@ encode_packed_internal([Value|Tail], ExpectedType, Acc) ->
 %%--------------------------------------------------------------------
 -spec read_field_num_and_wire_type(Bytes :: binary()) ->
 					  {{non_neg_integer(), encoded_field_type()}, binary()}.
-read_field_num_and_wire_type(Bytes) ->
+read_field_num_and_wire_type(<<_:8,_/binary>> = Bytes) ->
     {Tag, Rest} = decode_varint(Bytes),
     FieldID = Tag bsr 3,
-    WireType = Tag band 7,
-    {{FieldID, WireType}, Rest}.
+    case Tag band 7 of
+	?TYPE_VARINT ->
+	    {{FieldID, ?TYPE_VARINT}, Rest};
+	?TYPE_64BIT ->
+	    {{FieldID, ?TYPE_64BIT}, Rest};
+	?TYPE_STRING ->
+	    {{FieldID, ?TYPE_STRING}, Rest};
+	?TYPE_START_GROUP ->
+	    {{FieldID, ?TYPE_START_GROUP}, Rest};
+	?TYPE_END_GROUP ->
+	    {{FieldID, ?TYPE_END_GROUP}, Rest};
+	?TYPE_32BIT ->
+	    {{FieldID, ?TYPE_32BIT}, Rest};
+	_Else ->
+	    erlang:error(badarg)
+    end;
+read_field_num_and_wire_type(_) ->
+    erlang:error(badarg).
     
 %%--------------------------------------------------------------------
 %% @doc Decode a singel value from a protobuffs data structure
@@ -191,11 +209,15 @@ decode(Bytes, ExpectedType) ->
 -spec decode_packed(Bytes :: binary(), ExpectedType :: field_type()) ->
 			   {{non_neg_integer(), any()}, binary()}.
 decode_packed(Bytes, ExpectedType) ->
-    {{FieldID, ?TYPE_STRING}, Rest} = read_field_num_and_wire_type(Bytes),
-    {Length, Rest1} = decode_varint(Rest),
-    {Packed,Rest2} = split_binary(Rest1, Length),
-    Values = decode_packed_values(Packed, ExpectedType, []),
-    {{FieldID, Values},Rest2}.
+    case read_field_num_and_wire_type(Bytes) of
+	{{FieldID, ?TYPE_STRING}, Rest} ->
+	    {Length, Rest1} = decode_varint(Rest),
+	    {Packed,Rest2} = split_binary(Rest1, Length),
+	    Values = decode_packed_values(Packed, ExpectedType, []),
+	    {{FieldID, Values},Rest2};
+	_Else ->
+	    erlang:error(badarg)
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Returns the next field number id from a protobuffs data structure
@@ -292,8 +314,8 @@ decode_value(<<0:48, 240:8, 255:8, Rest/binary>>, ?TYPE_64BIT, double) ->
     {'-infinity', Rest};
 decode_value(<<_:48, 2#1111:4, _:4, _:1, 2#1111111:7, Rest/binary>>, ?TYPE_64BIT, double) ->
     {nan, Rest};
-decode_value(Value, WireType, ExpectedType) ->
-    exit({error, {unexpected_value, WireType, ExpectedType, Value}}).
+decode_value(_,_,_) ->
+    erlang:error(badarg).
 
 %% @hidden
 -spec typecast(Value :: any(), Type :: field_type()) ->
@@ -358,4 +380,6 @@ decode_varint(<<0:1, I:7, Rest/binary>>, Acc) ->
             end, 0, Acc1),
     {Result, Rest};
 decode_varint(<<1:1, I:7, Rest/binary>>, Acc) ->
-    decode_varint(Rest, [I | Acc]).
+    decode_varint(Rest, [I | Acc]);
+decode_varint(_,_) ->
+    erlang:error(badarg).

@@ -8,10 +8,10 @@
 
 -include_lib("proper/include/proper.hrl").
 
--export([prop_protobuffs/0]).
+-export([prop_protobuffs/0,prop_protobuffs_packed/0, test_file/1]).
 
 prop_protobuffs() ->
-    ?FORALL({FieldID,{Value,Type}},{?SUCHTHAT(I, uint32(),I =< 16#3fffffff ),value()},
+    ?FORALL({FieldID,{Value,Type}},{choose(0,16#3fffffff),value()},
 	    begin
 		case Type of
 		    float ->
@@ -22,6 +22,64 @@ prop_protobuffs() ->
 			Encoded = protobuffs:encode(FieldID,Value,Type),
 			{{FieldID,Value},<<>>} == protobuffs:decode(Encoded,Type)
 		end
+	    end).
+
+prop_protobuffs_packed() ->
+    ?FORALL({FieldID,{Values,Type}},{choose(0,16#3fffffff),
+				     oneof([{non_empty(list(uint32())),uint32},
+					    {non_empty(list(uint64())),uint64},
+					    {non_empty(list(sint32())),sint32},
+					    {non_empty(list(sint64())),sint64},
+					    {non_empty(list(sint32())),int32},
+					    {non_empty(list(sint64())),int64},
+					    {non_empty(list(bool())),bool},
+					    {non_empty(list(real())),double},
+					    {non_empty(list(real())),float}])},
+	    begin
+		case Type of
+		    float ->
+			Encoded = protobuffs:encode_packed(FieldID,Values,Type),
+			{{FieldID,DecodedValues},<<>>} = protobuffs:decode_packed(Encoded,Type),
+			lists:all(fun({Expected,Result}) -> fuzzy_match(Expected,Result,3) end, lists:zip(Values,DecodedValues));
+		    _Else ->
+			Encoded = protobuffs:encode_packed(FieldID,Values,Type),
+			Decoded = protobuffs:decode_packed(Encoded,Type),
+			{{FieldID,Values},<<>>} == Decoded
+		end
+	    end).
+
+proper_test_protobuffs() ->
+    proper:check_specs(protpbuffs).
+
+test_file(File) ->
+    Expected = {empty,default(undefined, real()),
+		default(undefined, real()),
+		default(undefined, sint32()),
+		default(undefined, sint64()),
+		default(undefined, uint32()),
+		default(undefined, uint64()),
+		default(undefined, sint32()),
+		default(undefined, sint64()),
+		default(undefined, uint32()),
+		default(undefined, uint64()),
+		default(undefined, sint32()),
+		default(undefined, sint64()),
+		default(undefined, bool()),
+		default(undefined, string()),
+		default(undefined, binary()),
+		default(undefined, {empty_emptymessage})},
+
+    error_logger:info_msg("testing ~p",[File]),
+    protobuffs_compile:scan_file(File),
+    Name = filename:basename(File, ".proto"),
+    NamePB = list_to_atom(Name ++"_pb"),
+    NameDecode = list_to_atom("decode_"++Name),
+    NameEncode = list_to_atom("encode_"++Name), 
+    ?FORALL({Message},
+	    {Expected},
+	    begin
+		Decoded = NamePB:NameDecode(NamePB:NameEncode(Message)),
+		compare_messages(Message,Decoded)
 	    end).
 
 compare_messages(ExpectedMsg,Msg) ->

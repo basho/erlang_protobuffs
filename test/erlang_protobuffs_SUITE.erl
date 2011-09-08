@@ -126,7 +126,9 @@ all() ->
      parse_import_test_case,
      parse_single_test_case,
      parse_extend_test_case,
-     proper_test_case].
+     proper_test_case,
+     proper_packed_test_case,
+     proper_proto_file_test_case].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase() -> Info
@@ -175,6 +177,10 @@ parse_extend_test_case() ->
     [].
 proper_test_case() ->
     [].
+proper_packed_test_case() ->
+    [].
+proper_proto_file_test_case() ->
+    [].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase(Config0) ->
@@ -189,12 +195,21 @@ protobuffs_test_case(Config) ->
     NumTests = ?config(num_tests, Config),
     true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs())).
 
-proper_test_case(Config) ->
-    true = proper:quickcheck(proper_protobuffs:prop_protobuffs()).
+proper_test_case(_Config) ->
+    proper:check_specs(protobuffs).
 
 protobuffs_packed_test_case(Config) ->
     NumTests = ?config(num_tests, Config),
     true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_packed())).
+
+proper_packed_test_case(_Config) ->
+    true = proper:quickcheck(proper_protobuffs:prop_protobuffs_packed()).
+
+proper_proto_file_test_case(Config) ->
+    DataDir = ?config(data_dir, Config),
+    Path = filename:absname(filename:join([DataDir,"proto"])),
+    {ok,Files} = file:list_dir(Path),
+    lists:foreach(fun (File) -> proper_protobuffs:test_file(filename:join([Path,File])) end, [F || F <- Files, string:right(F,5) == "proto"]).
 
 parse_empty_test_case(Config) -> 
     DataDir = ?config(data_dir, Config),

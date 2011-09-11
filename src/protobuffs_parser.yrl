@@ -46,12 +46,8 @@ g_default -> '[' g_var '=' g_value ']' 				: {'$2', '$4'}.
 Erlang code.
 safe_string(A) -> make_safe(atom_to_list(A)).
 
-reserved_words() ->
-  ["after", "and", "andalso", "band", "begin", "bnot", "bor", "bsl", "bsr", "bxor", "case", "catch", "cond", "div", "end", "fun",
-   "if", "let", "not", "of", "or", "orelse", "query", "receive", "rem", "try", "when", "xor"].
-
 make_safe(String) ->
-  case lists:any(fun(Elem) -> string:equal(String,Elem) end, reserved_words()) of 
+  case erl_scan:reserved_word(list_to_atom(String)) of 
     true -> "pb_"++String;
     false -> String
   end.

@@ -23,7 +23,7 @@
 %% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
--export([scan_file/1, scan_file/2, generate_source/1, generate_source/2]).
+-export([scan_file/1, scan_file/2, scan_string/1, scan_string/2, generate_source/1, generate_source/2]).
 
 -record(collected,{enum=[], msg=[], extensions=[]}).
 
@@ -35,6 +35,11 @@
 scan_file(ProtoFile) ->
     scan_file(ProtoFile,[]).
 
+-spec scan_string(String :: string(), BaseName :: string()) ->
+			 ok | {error, _}.
+scan_string(String,BaseName) ->
+    scan_string(String,BaseName,[]).
+
 %%--------------------------------------------------------------------
 %% @doc Generats a built .beam file and header file .hrl
 %%      Considerd option properties: output_include_dir, 
@@ -45,13 +50,19 @@ scan_file(ProtoFile) ->
 		       ok | {error, _}.
 scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
-    {ok,FirstParsed} = parse(ProtoFile),
+    {ok,String} = parse_file(ProtoFile),
+    scan_string(String,Basename,Options).
+    
+-spec scan_string(String :: string(), Basename :: string(), Options :: list()) ->
+			 ok | {error, _}. 
+scan_string(String,Basename,Options) ->
+    {ok,FirstParsed} = parse_string(String),
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
     Parsed = parse_imports(FirstParsed, ImportPaths),
     Collected = collect_full_messages(Parsed), 
     Messages = resolve_types(Collected#collected.msg,Collected#collected.enum),
     output(Basename, Messages, Collected#collected.enum, Options).
-
+    
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
 %%--------------------------------------------------------------------
@@ -70,7 +81,8 @@ generate_source(ProtoFile) ->
 			     ok | {error, _}.
 generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
-    {ok,FirstParsed} = parse(ProtoFile),
+    {ok,String} = parse_file(ProtoFile),
+    {ok,FirstParsed} = parse_string(String),
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
     Parsed = parse_imports(FirstParsed, ImportPaths),
     Collected = collect_full_messages(Parsed), 
@@ -88,7 +100,8 @@ parse_imports([{import, File} = Head | Tail], Path, Acc) ->
     case file:path_open(Path, File, [read]) of
 	{ok, F, Fullname} ->
 	    file:close(F),
-	    {ok,FirstParsed} = parse(Fullname),
+	    {ok,String} = parse_file(Fullname),
+	    {ok,FirstParsed} = parse_string(String),
 	    Parsed = lists:append(FirstParsed, Tail),
 	    parse_imports(Parsed, Path, [Head | Acc]);
 	{error, Error} ->
@@ -149,22 +162,25 @@ output_source (Basename, Messages, Enums, Options) ->
     file:write_file(SrcFile, erl_prettypr:format(erl_syntax:form_list (Forms1))).
 
 %% @hidden
-parse(FileName) ->
+parse_file(FileName) ->
     {ok, InFile} = file:open(FileName, [read]),
-    Acc = loop(InFile,[]),
+    String = parse_file(InFile,[]),
     file:close(InFile),
-    protobuffs_parser:parse(Acc).
+    {ok,String}.
 
 %% @hidden
-loop(InFile,Acc) ->
+parse_file(InFile,Acc) ->
     case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
         {ok,Token,_EndLine} ->
-            loop(InFile,Acc ++ [Token]);
+            parse_file(InFile,Acc ++ [Token]);
         {error,token} ->
             exit(scanning_error);    
         {eof,_} ->
             Acc
     end.
+
+parse_string(String) ->
+    protobuffs_parser:parse(String).
 
 %% @hidden
 filter_forms(Msgs, Enums, [{attribute,L,file,{_,_}}|Tail], Basename, Acc) ->

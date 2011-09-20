@@ -17,7 +17,7 @@
 %% Info = [tuple()]
 %% @end
 %%--------------------------------------------------------------------
-suite() -> [{timetrap, {seconds, 30}}].
+suite() -> [{timetrap, {seconds, 60}}].
 
 %%--------------------------------------------------------------------
 %% @spec init_per_suite(Config0) ->
@@ -98,17 +98,7 @@ groups() -> [].
 %% @end
 %%--------------------------------------------------------------------
 all() ->
-    [protobuffs_test_case, protobuffs_packed_test_case,
-     parse_empty_test_case, parse_has_default_test_case,
-     parse_simple_test_case, parse_nested1_test_case,
-     parse_nested2_test_case, parse_nested3_test_case,
-     parse_nested4_test_case, parse_nested5_test_case,
-     parse_enum_test_case, parse_enum_outside_test_case,
-     parse_extensions_test_case, parse_addressbook_test_case,
-     parse_repeater_test_case,
-     parse_packed_repeated_test_case,
-     parse_special_words_test_case, parse_import_test_case,
-     parse_single_test_case, parse_extend_test_case].
+    [protobuffs_test_case, protobuffs_packed_test_case, test_proto_files].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase() -> Info
@@ -119,41 +109,7 @@ protobuffs_test_case() -> [].
 
 protobuffs_packed_test_case() -> [].
 
-parse_empty_test_case() -> [].
-
-parse_has_default_test_case() -> [].
-
-parse_simple_test_case() -> [].
-
-parse_nested1_test_case() -> [].
-
-parse_nested2_test_case() -> [].
-
-parse_nested3_test_case() -> [].
-
-parse_nested4_test_case() -> [].
-
-parse_nested5_test_case() -> [].
-
-parse_enum_test_case() -> [].
-
-parse_enum_outside_test_case() -> [].
-
-parse_extensions_test_case() -> [].
-
-parse_addressbook_test_case() -> [].
-
-parse_repeater_test_case() -> [].
-
-parse_packed_repeated_test_case() -> [].
-
-parse_special_words_test_case() -> [].
-
-parse_import_test_case() -> [].
-
-parse_single_test_case() -> [].
-
-parse_extend_test_case() -> [].
+test_proto_files() -> [].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase(Config0) ->
@@ -174,182 +130,29 @@ protobuffs_packed_test_case(Config) ->
     true = proper:quickcheck(proper:numtests(NumTests,
 					     protobuffs_proper:proper_protobuffs_packed())).
 
-parse_empty_test_case(Config) ->
+test_proto_files(Config) ->
     DataDir = (?config(data_dir, Config)),
     NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "empty.proto"])),
-    test_server:format("Testcase ~p, parse file ~p~n",
-		       [self(), Path]),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_empty())).
-
-parse_has_default_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "hasdefault.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_has_default())).
-
-parse_simple_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "simple.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_simple())).
-
-parse_nested1_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "nested1.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_nested1())).
-
-parse_nested2_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "nested2.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_nested2())).
-
-parse_nested3_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "nested3.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_nested3())).
-
-parse_nested4_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "nested4.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_nested4())).
-
-parse_nested5_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "nested5.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_nested5_1())),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_nested5_2())).
-
-parse_enum_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "enum.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_enum())).
-
-parse_enum_outside_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "enum_outside.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_enum_outside())).
-
-parse_extensions_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "extensions.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_extentions())).
-
-parse_service_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "service.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_extentions())).
-
-parse_addressbook_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "addressbook.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_addressbook())).
-
-parse_repeater_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "repeater.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_repeater())).
-
-parse_packed_repeated_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "packed_repeated.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_packed_repeated())).
-
-parse_special_words_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "special_words.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_special_words())).
-
-parse_import_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "import.proto"])),
-    protobuffs_compile:scan_file(Path,
-				 [{imports_dir, [DataDir]}]),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_import())).
-
-parse_single_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "single.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_single())).
-
-parse_extend_test_case(Config) ->
-    DataDir = (?config(data_dir, Config)),
-    NumTests = (?config(num_tests, Config)),
-    Path = filename:absname(filename:join([DataDir,
-					   "extend.proto"])),
-    protobuffs_compile:scan_file(Path,
-				 [{imports_dir, [DataDir]}]),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_extend())).
+    ProtoFiles = filelib:wildcard(filename:join([DataDir,"proto","*.proto"])),
+    
+    TestProtoFile = fun(ProtoFile,Acc) ->
+			    Path = filename:absname(ProtoFile),
+			    Message = filename:basename(ProtoFile,".proto"),
+			    test_server:format("Testcase ~p, parse file ~p~n",
+					       [self(), Path]),
+			    protobuffs_compile:scan_file(
+			      Path,
+			      [{imports_dir, [filename:join([DataDir,"proto"]),
+					      filename:join([DataDir,"proto","import"])]}]),
+			    test_server:format("Testcase ~p, testing message ~p~n",
+					       [self(), Message]),
+			    Test = list_to_atom("proper_protobuffs_"++Message),
+			    Acc andalso proper:quickcheck(
+					  proper:numtests(
+					    NumTests,
+					    protobuffs_proper:Test()),[quiet])
+		    end,
+    lists:foldl(TestProtoFile,true,ProtoFiles).
 
 %%---------------------------------------------------------------------
 %% Help flies
@@ -364,8 +167,8 @@ parse(FileName) ->
 loop(InFile, Acc) ->
     case io:request(InFile,
 		    {get_until, prompt, protobuffs_scanner, token, [1]})
-	of
-      {ok, Token, _EndLine} -> loop(InFile, Acc ++ [Token]);
-      {error, token} -> exit(scanning_error);
-      {eof, _} -> Acc
+    of
+	{ok, Token, _EndLine} -> loop(InFile, Acc ++ [Token]);
+	{error, token} -> exit(scanning_error);
+	{eof, _} -> Acc
     end.

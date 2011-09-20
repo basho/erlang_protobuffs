@@ -23,7 +23,7 @@
 %% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
--export([scan_file/1, scan_file/2, scan_string/1, scan_string/2, generate_source/1, generate_source/2]).
+-export([scan_file/1, scan_file/2, scan_string/2, scan_string/3, generate_source/1, generate_source/2]).
 
 -record(collected,{enum=[], msg=[], extensions=[]}).
 

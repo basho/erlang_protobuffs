@@ -95,24 +95,23 @@ proper_protobuffs_packed() ->
 		    {non_empty(list(real())), double},
 		    {non_empty(list(real())), float}])},
 	    begin
-	      case Type of
-		float ->
-		    Encoded = protobuffs:encode_packed(FieldID, Values,
-						       Type),
-		    {{FieldID, DecodedValues}, <<>>} =
-			protobuffs:decode_packed(Encoded, Type),
-		    lists:all(fun ({Expected, Result}) ->
-				      <<Expected32:32/little-float>> =
-					  <<Expected:32/little-float>>,
-				      Expected32 =:= Result
-			      end,
-			      lists:zip(Values, DecodedValues));
-		_Else ->
-		    Encoded = protobuffs:encode_packed(FieldID, Values,
-						       Type),
-		    Decoded = protobuffs:decode_packed(Encoded, Type),
-		    {{FieldID, Values}, <<>>} == Decoded
-	      end
+		case Type of
+		    float ->
+			Encoded = protobuffs:encode_packed(FieldID, Values, Type),
+			{{FieldID, DecodedValues}, <<>>} =
+			    protobuffs:decode_packed(Encoded, Type),
+			lists:all(fun ({Expected, Result}) ->
+					  <<Expected32:32/little-float>> =
+					      <<Expected:32/little-float>>,
+					  Expected32 =:= Result
+				  end,
+				  lists:zip(Values, DecodedValues));
+		    _Else ->
+			Encoded = protobuffs:encode_packed(FieldID, Values,
+							   Type),
+			Decoded = protobuffs:decode_packed(Encoded, Type),
+			{{FieldID, Values}, <<>>} == Decoded
+		end
 	    end).
 
 proper_protobuffs_empty() ->
@@ -146,7 +145,7 @@ check_with_default(undefined, Result, Default, Fun) ->
 check_with_default(Expected, Result, _Default, Fun) ->
     Fun(Expected, Result).
 
-proper_protobuffs_has_default() ->
+proper_protobuffs_hasdefault() ->
     ?FORALL({Withdefault},
 	    {{withdefault, default(undefined, real()),
 	      default(undefined, real()),
@@ -258,21 +257,19 @@ proper_protobuffs_nested4() ->
 first_inner() ->
     {first_inner, default(undefined, bool())}.
 
-proper_protobuffs_nested5_1() ->
-    ?FORALL({Inner},
-	    {default({first, undefined}, {first, first_inner()})},
+proper_protobuffs_nested5() ->
+    ?FORALL(Inner,
+	    oneof([default({first, undefined}, {first, first_inner()}),
+		    {second, first_inner()}]),
 	    begin
-	      Decoded =
-		  nested5_pb:decode_first(nested5_pb:encode_first(Inner)),
-	      compare_messages(Inner, Decoded)
-	    end).
-
-proper_protobuffs_nested5_2() ->
-    ?FORALL({Inner}, {{second, first_inner()}},
-	    begin
-	      Decoded =
-		  nested5_pb:decode_second(nested5_pb:encode_second(Inner)),
-	      compare_messages(Inner, Decoded)
+		case element(1,Inner) of
+		    first ->
+			Decoded = nested5_pb:decode_first(nested5_pb:encode_first(Inner)),
+			compare_messages(Inner, Decoded);
+		    second ->
+			Decoded = nested5_pb:decode_second(nested5_pb:encode_second(Inner)),
+			compare_messages(Inner, Decoded)
+		end
 	    end).
 
 enum_value() -> oneof([value1, value2]).
@@ -299,7 +296,7 @@ proper_protobuffs_enum_outside() ->
 	      compare_messages(Middle, Decoded)
 	    end).
 
-proper_protobuffs_extentions() ->
+proper_protobuffs_extensions() ->
     ?FORALL({Middle},
 	    {default({extendable}, {maxtendable})},
 	    begin
@@ -384,7 +381,7 @@ proper_protobuffs_import() ->
 single() -> {message, uint32()}.
 
 proper_protobuffs_single() ->
-    ?FORALL({Single}, {single()},
+    ?FORALL(Single, single(),
 	    begin
 	      Decoded =
 		  single_pb:decode_message(single_pb:encode_message(Single)),
@@ -392,11 +389,29 @@ proper_protobuffs_single() ->
 	    end).
 
 proper_protobuffs_extend() ->
-    ?FORALL({Extend},
-	    {default({extendable, sint32()},
-		     {extendable, undefined})},
+    ?FORALL(Extend,
+	    default({extendable, sint32()},
+		    {extendable, undefined}),
 	    begin
-	      Decoded =
-		  extend_pb:decode_extendable(extend_pb:encode_extendable(Extend)),
-	      compare_messages(Extend, Decoded)
+		Decoded =
+		    extend_pb:decode_extendable(extend_pb:encode_extendable(Extend)),
+		compare_messages(Extend, Decoded)
+	    end).
+
+proper_protobuffs_service() ->
+    %Don't handel service tag for the moment testing no errors and that the messages works
+    ?FORALL(Service,
+	    oneof([{serchresponse, default(undefined,string())},
+		   {serchrequest, default(undefined,string())}]),
+	    begin
+		case element(1,Service) of
+		    serchresponse -> 
+			Decoded = service_pb:decode_serchresponse(
+				    service_pb:encode_searchresponce(Service)),
+			compare_messages(Service, Decoded);
+		    serchrequest ->
+			Decoded = service_pb:decode_serchrequest(
+				    service_pb:encode_serchrequest(Service)),
+			compare_messages(Service, Decoded)
+		end
 	    end).

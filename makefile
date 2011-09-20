@@ -1,6 +1,6 @@
 REBAR=`which rebar` || ./rebar
 
-all: deps compile
+all: get-deps compile
 
 get-deps:
 	@$(REBAR) get-deps
@@ -8,9 +8,13 @@ get-deps:
 compile: get-deps
 	@$(REBAR) compile
 
-test: compile
-	@$(REBAR) skip_deps=true eunit
+ct:
 	@$(REBAR) skip_deps=true ct
+
+eunit:
+	@$(REBAR) skip_deps=true eunit
+
+test: eunit ct
 
 clean:
 	@$(REBAR) clean

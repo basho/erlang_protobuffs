@@ -64,7 +64,7 @@ decode_test4_test_() ->
 
 parse_empty_file_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/empty.proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/empty.proto"),
     io:format("Test path ~p~n", [Path]),
     [{message, "Empty", Messages}] = parse(Path),
     {message, "EmptyMessage", _EmptyMessage} =
@@ -105,8 +105,7 @@ parse_empty_file_test_() ->
 
 parse_has_default_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/hasdefau"
-			 "lt.proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/hasdefault.proto"),
     [{message, "WithDefault", Messages}] = parse(Path),
     [?_assertMatch({1, required, "double", "real1", 1.0},
 		   (lists:keyfind(1, 1, Messages))),
@@ -141,8 +140,7 @@ parse_has_default_test_() ->
 
 parse_simple_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/simple.p"
-			 "roto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/simple.proto"),
     [{package, "simple"}, {message, "Person", Person},
      {message, "Location", Location}] =
 	parse(Path),
@@ -165,7 +163,7 @@ parse_simple_test_() ->
 
 parse_enum_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/enum.proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/enum.proto"),
     [{message, "EnumMsg", EnumMsg}] = parse(Path),
     {enum, "Values", Values} = lists:keyfind(enum, 1,
 					     EnumMsg),
@@ -184,8 +182,7 @@ parse_enum_test_() ->
 
 parse_enum_outside_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/enum_out"
-			 "side.proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/enum_outside.proto"),
     [{enum, "EnumList", Enums},
      {message, "EnumUser", EnumUser}] =
 	parse(Path),
@@ -199,8 +196,7 @@ parse_enum_outside_test_() ->
 
 parse_extensions_test() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/extensio"
-			 "ns.proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/extensions.proto"),
     [{message, "Extendable", Extendable},
      {message, "MaxTendable", MaxTendable}] =
 	parse(Path),
@@ -211,8 +207,7 @@ parse_extensions_test() ->
 
 parse_service_test() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/service."
-			 "proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/service.proto"),
     [{service, "SearchService", [SearchService]}, _, _] =
 	parse(Path),
     [?_assertMatch({rpc, "Search", "SearchRequest",
@@ -221,8 +216,7 @@ parse_service_test() ->
 
 parse_nested1_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/nested1."
-			 "proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/nested1.proto"),
     [{message, "Person", Person}] = parse(Path),
     {message, "PhoneNumber", PhoneNumber} =
 	lists:keyfind("PhoneNumber", 2, Person),
@@ -248,8 +242,7 @@ parse_nested1_test_() ->
 
 parse_nested2_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/nested2."
-			 "proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/nested2.proto"),
     [{message, "Outer", Outer}] = parse(Path),
     {message, "MiddleAA", MiddleAA} =
 	lists:keyfind("MiddleAA", 2, Outer),
@@ -280,8 +273,7 @@ parse_nested2_test_() ->
 
 parse_nested3_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/nested3."
-			 "proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/nested3.proto"),
     [{message, "Outer", Outer}] = parse(Path),
     {message, "Middle", Middle} = lists:keyfind("Middle", 2,
 						Outer),
@@ -302,8 +294,7 @@ parse_nested3_test_() ->
 
 parse_nested4_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/nested4."
-			 "proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/nested4.proto"),
     [{message, "Outer", Outer}] = parse(Path),
     {message, "Middle", Middle} = lists:keyfind("Middle", 2,
 						Outer),
@@ -324,8 +315,7 @@ parse_nested4_test_() ->
 
 parse_nested5_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/nested5."
-			 "proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/nested5.proto"),
     Parsed = parse(Path),
     {message, "First", First} = lists:keyfind("First", 2,
 					      Parsed),
@@ -343,8 +333,7 @@ parse_nested5_test_() ->
 
 parse_addressbook_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/addressb"
-			 "ook.proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/addressbook.proto"),
     Parsed = parse(Path),
     {message, "Person", Person} = lists:keyfind("Person", 2,
 						Parsed),
@@ -379,8 +368,7 @@ parse_addressbook_test_() ->
 
 parse_repeater_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/repeater"
-			 ".proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/repeater.proto"),
     Parsed = parse(Path),
     {message, "Person", Person} = lists:keyfind("Person", 2,
 						Parsed),
@@ -409,8 +397,7 @@ parse_repeater_test_() ->
 
 parse_packed_repeated_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/packed_r"
-			 "epeated.proto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/packed_repeated.proto"),
     Parsed = parse(Path),
     {message, "Person", Person} = lists:keyfind("Person", 2,
 						Parsed),
@@ -440,8 +427,7 @@ parse_packed_repeated_test_() ->
 
 parse_imported_test_() ->
     Path =
-	filename:absname("../test/erlang_protobuffs_SUITE_data/import.p"
-			 "roto"),
+	filename:absname("../test/erlang_protobuffs_SUITE_data/proto/import.proto"),
     Parsed = parse(Path),
     [?_assertEqual(false,
 		   (lists:keyfind("Imported", 2, Parsed))),
@@ -449,19 +435,25 @@ parse_imported_test_() ->
 		   (lists:keyfind("Foo", 2, Parsed)))].
 
 parse_extend_out_of_range_test_() ->
-    DataDir = "../test/erlang_protobuffs_SUITE_data",
+    DataDir = "../test/erlang_protobuffs_SUITE_data/",
     Path = filename:absname(filename:join([DataDir,
 					   "extend_out_of_range.proto"])),
-    Error = (catch protobuffs_compile:scan_file(Path,
-						[{imports_dir, [DataDir]}])),
+    Error = (catch protobuffs_compile:scan_file(
+		     Path,
+		     [{imports_dir, 
+		       [filename:absname(filename:join([DataDir,"proto"])),
+			filename:absname(filename:join([DataDir,"proto","import"]))]}])),
     [?_assertEqual(out_of_range, Error)].
 
 parse_extend_in_reserved_range_test_() ->
-    DataDir = "../test/erlang_protobuffs_SUITE_data",
+    DataDir = "../test/erlang_protobuffs_SUITE_data/",
     Path = filename:absname(filename:join([DataDir,
 					   "extend_in_reserved_range.proto"])),
-    Error = (catch protobuffs_compile:scan_file(Path,
-						[{imports_dir, [DataDir]}])),
+    Error = (catch protobuffs_compile:scan_file(
+		     Path,
+		     [{imports_dir,
+		       [filename:absname(filename:join([DataDir,"proto"])),
+			filename:absname(filename:join([DataDir,"proto","import"]))]}])),
     [?_assertEqual(out_of_range, Error)].
 
 proper_protobuff_test() ->

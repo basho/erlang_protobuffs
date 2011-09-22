@@ -124,7 +124,10 @@ output(Basename, Messages, Enums, Options) ->
 	HeaderPath ->
 	    HeaderFile = filename:join(HeaderPath,Basename) ++ ".hrl"
     end,
-    DebugInfo = proplists:get_value(debug_info,Options,[]),
+    case proplists:get_bool(debug_info,Options) of
+	true -> DebugInfo = debug_info;
+	false -> DebugInfo = []
+    end,
     error_logger:info_msg("Writing header file to ~p~n",[HeaderFile]),
     ok = write_header_include_file(HeaderFile, Messages),
     PokemonBeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",

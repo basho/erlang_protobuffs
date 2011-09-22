@@ -124,12 +124,13 @@ output(Basename, Messages, Enums, Options) ->
 	HeaderPath ->
 	    HeaderFile = filename:join(HeaderPath,Basename) ++ ".hrl"
     end,
+    DebugInfo = proplists:get_value(debug_info,Options,[]),
     error_logger:info_msg("Writing header file to ~p~n",[HeaderFile]),
     ok = write_header_include_file(HeaderFile, Messages),
     PokemonBeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
     {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(PokemonBeamFile, [abstract_code]),
     Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
-    {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return, debug_info]),
+    {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return]++DebugInfo),
     case proplists:get_value(output_ebin_dir,Options) of
 	undefined ->
 	    BeamFile = Basename ++ ".beam";

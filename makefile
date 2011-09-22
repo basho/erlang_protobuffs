@@ -5,7 +5,7 @@ all: get-deps compile
 get-deps:
 	@$(REBAR) get-deps
 
-compile: get-deps
+compile:
 	@$(REBAR) compile
 
 ct:

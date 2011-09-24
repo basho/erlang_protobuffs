@@ -108,7 +108,7 @@ encode_internal(FieldID, Integer, int64) when is_integer(Integer),
     encode_varint_field(FieldID, Integer);
 encode_internal(FieldID, Integer, uint64) when Integer band 16#ffffffffffffffff =:= Integer ->
     encode_varint_field(FieldID, Integer);
-encode_internal(FieldID, Integer, bool) when Integer band 1 =:= 1 ->
+encode_internal(FieldID, Integer, bool) when Integer =:= 1; Integer =:= 0 ->
     encode_varint_field(FieldID, Integer);
 encode_internal(FieldID, Integer, sint32) when is_integer(Integer), 
 					       Integer >= -16#80000000, 
@@ -141,11 +141,9 @@ encode_internal(FieldID, String, string) when is_list(String) ->
 encode_internal(FieldID, String, string) when is_binary(String) ->
     encode_internal(FieldID, String, bytes);
 encode_internal(FieldID, String, bytes) when is_list(String) ->
-    encode_internal(FieldID, list_to_binary(String), bytes);
+    encode_internal(FieldID, unicode:characters_to_binary(String), bytes);
 encode_internal(FieldID, Bytes, bytes) when is_binary(Bytes) ->
     [encode_field_tag(FieldID, ?TYPE_STRING), encode_varint(size(Bytes)), Bytes];
-encode_internal(FieldID, String, bytes) when is_list(String) ->
-    encode_internal(FieldID, list_to_binary(String), bytes);
 encode_internal(FieldID, Float, float) when is_integer(Float) ->
     encode_internal(FieldID, Float + 0.0, float);
 encode_internal(FieldID, Float, float) when is_float(Float) ->
@@ -156,6 +154,8 @@ encode_internal(FieldID, infinity, float) ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<0:16,128:8,127:8>>];
 encode_internal(FieldID, '-infinity', float) ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<0:16,128:8,255:8>>];
+encode_internal(FieldID, Float, double) when is_integer(Float) ->
+    encode_internal(FieldID, Float + 0.0, double);
 encode_internal(FieldID, Float, double) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_64BIT), <<Float:64/little-float>>];
 encode_internal(FieldID, nan, double) ->
@@ -239,12 +239,11 @@ decode_packed(Bytes, ExpectedType) ->
 %% @doc Returns the next field number id from a protobuffs data structure
 %% @end
 %%--------------------------------------------------------------------
--spec next_field_num(Bytes :: binary()) ->
-			    {ok,non_neg_integer()}.
+-spec next_field_num(Bytes :: binary()) -> {ok,non_neg_integer()}.
 next_field_num(Bytes) ->
     {{FieldID,_WiredType}, _Rest} = read_field_num_and_wire_type(Bytes),
     {ok,FieldID}.
-    
+
 %% @hidden    
 -spec decode_packed_values(Bytes :: binary(),
 			   Type :: field_type(),
@@ -257,7 +256,7 @@ decode_packed_values(Bytes, bool, Acc) ->
     decode_packed_values(Rest, bool, [Value|Acc]);
 decode_packed_values(Bytes, enum, Acc) ->
     {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, enum),
-    decode_packed_values(Rest, bool, [Value|Acc]);
+    decode_packed_values(Rest, enum, [Value|Acc]);
 decode_packed_values(Bytes, int32, Acc) ->
     {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, int32),
     decode_packed_values(Rest, int32, [Value|Acc]);

@@ -25,9 +25,9 @@ utf8char() ->
 
 utf8string() -> list(utf8char()).
 
-%% proper_specs_test() ->
-%%     ?assertEqual([],
-%% 		 proper:check_specs(protobuffs, [long_result])).
+proper_specs_test() ->
+    ?assertEqual([],
+		 proper:check_specs(protobuffs, [long_result])).
 
 proper_module_test() ->
     ?assertEqual([],

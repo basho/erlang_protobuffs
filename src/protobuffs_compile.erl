@@ -286,18 +286,28 @@ expand_decode_function(Msgs, Line, Clause) ->
      [filter_decode_clause(Msgs, Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
-filter_decode_clause(Msgs, {MsgName, Fields}, {clause,L,_Args,Guards,[_,B,C]}) ->
+filter_decode_clause(Msgs, {MsgName, Fields}, {clause,L,_Args,Guards,[_,_,C,D]}) ->
     Types = lists:keysort(1, [{FNum, list_to_atom(SName), 
 			       atomize(SType), 
-			       decode_opts(Msgs, Tag, SType)} || 
-				 {FNum,Tag,SType,SName,_} <- Fields]),
+			       decode_opts(Msgs, Tag, SType), Def} ||
+				 {FNum,Tag,SType,SName,Def} <- Fields]),
     Cons = lists:foldl(
-	     fun({FNum, FName, Type, Opts}, Acc) ->
+	     fun({FNum, FName, Type, Opts, _Def}, Acc) ->
 		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
 	     end, {nil,L}, Types),
+    Defaults = lists:foldr(
+        fun
+            ({_FNum, _FName, _Type, _Opts, none}, Acc) ->
+                Acc;
+            ({FNum, FName, _Type, _Opts, Def}, Acc) ->
+                {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},erl_parse:abstract(Def)]},Acc}
+        end,
+        {nil,L},
+        Types),
     A = {match,L,{var,L,'Types'},Cons},
-    C1 = replace_atom(C, pikachu, atomize(MsgName)),
-    {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Bytes'}],Guards,[A,B,C1]}.
+    B = {match,L,{var,L,'Defaults'},Defaults},
+    D1 = replace_atom(D, pikachu, atomize(MsgName)),
+    {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Bytes'}],Guards,[A,B,C,D1]}.
 
 %% @hidden
 decode_opts(Msgs, Tag, Type) ->
@@ -522,7 +532,7 @@ generate_field_definitions([{Name, required, _} | Tail], Acc) ->
 generate_field_definitions([{Name, _, none} | Tail], Acc) ->
     Head = lists:flatten(io_lib:format("~s", [Name])),
     generate_field_definitions(Tail, [Head | Acc]);
-generate_field_definitions([{Name, optional, Default} | Tail], Acc) ->
+generate_field_definitions([{Name, _, Default} | Tail], Acc) ->
     Head = lists:flatten(io_lib:format("~s = ~p", [Name, Default])),
     generate_field_definitions(Tail, [Head | Acc]).
 

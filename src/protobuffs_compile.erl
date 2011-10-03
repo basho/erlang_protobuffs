@@ -24,6 +24,7 @@
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
 -export([scan_file/1, scan_file/2, generate_source/1, generate_source/2]).
+-export([parse/1, parse_text/1, resolve/1, is_scalar_type/1]).
 
 -record(collected,{enum=[], msg=[], extensions=[]}).
 
@@ -51,6 +52,11 @@ scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Collected = collect_full_messages(Parsed), 
     Messages = resolve_types(Collected#collected.msg,Collected#collected.enum),
     output(Basename, Messages, Collected#collected.enum, Options).
+
+
+resolve(Parsed) ->
+    Collected = collect_full_messages(Parsed), 
+    resolve_types(Collected#collected.msg,Collected#collected.enum).
 
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
@@ -148,22 +154,43 @@ output_source (Basename, Messages, Enums, Options) ->
     error_logger:info_msg("Writing src file to ~p~n",[SrcFile]),
     file:write_file(SrcFile, erl_prettypr:format(erl_syntax:form_list (Forms1))).
 
-%% @hidden
 parse(FileName) ->
     {ok, InFile} = file:open(FileName, [read]),
-    Acc = loop(InFile,[]),
-    file:close(InFile),
-    protobuffs_parser:parse(Acc).
+    try
+	Tokens = tokenize_file(InFile),
+	protobuffs_parser:parse(Tokens)
+    after
+	file:close(InFile)
+    end.
+
+parse_text(Text) ->
+    Tokens = tokenize_text(Text),
+    protobuffs_parser:parse(Tokens).
 
 %% @hidden
-loop(InFile,Acc) ->
+tokenize_file(InFile) ->
+    tokenize_file(InFile, []).
+
+%% @hidden
+tokenize_file(InFile, Acc) ->
     case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
         {ok,Token,_EndLine} ->
-            loop(InFile,Acc ++ [Token]);
+            tokenize_file(InFile,[Token | Acc]);
         {error,token} ->
-            exit(scanning_error);    
+            error(scanning_error);
         {eof,_} ->
-            Acc
+            lists:reverse(Acc)
+    end.
+
+%% @hidden
+tokenize_text(Text) ->
+    case protobuffs_scanner:tokens([], Text ++ [$\  | eof]) of
+        {done, {ok,Tokens,_EndLine}, eof} ->
+            Tokens;
+	{done, {error, {_,_,Reason}, LineNo}, _} ->
+            error({scanning_error, Reason, {line,LineNo}});
+        _ ->
+            error(scanning_error)
     end.
 
 %% @hidden
@@ -183,8 +210,14 @@ filter_forms(Msgs, Enums, [{attribute,L,export,[{encode_pikachu,1},{decode_pikac
 
 filter_forms(Msgs, Enums, [{attribute,L,record,{pikachu,_}}|Tail], Basename, Acc) ->
     Records = [begin
-		   OutFields = [string:to_lower(A) || {_, _, _, A, _} <- lists:keysort(1, Fields)],
-		   Frm_Fields = [{record_field,L,{atom,L,list_to_atom(OutField)}}|| OutField <- OutFields],
+		   OutFields = [{string:to_lower(A), default_for(K,D)} || {_, K, _, A, D} <- lists:keysort(1, Fields)],
+		   Frm_Fields = [begin
+				     RF = {record_field,L,{atom,L,list_to_atom(OutFieldName)}},
+				     if Default == none -> RF;
+					true -> erlang:append_element(RF, erl_parse:abstract(Default))
+				     end
+				 end
+				 || {OutFieldName,Default} <- OutFields],
 		   {attribute, L, record, {atomize(Name), Frm_Fields}}
 	       end || {Name, Fields} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Records ++ Acc);
@@ -253,7 +286,8 @@ filter_iolist_clause({MsgName, Fields}, {clause,L,_Args,Guards,_Content}) ->
 					      [{record_field,L,
 						{var,L,'Record'},atomize(MsgName),
 						{atom,L,atomize(SName)}},
-					       erl_parse:abstract(Default)]},
+					       erl_parse:abstract(Default),
+					       {atom,L,Tag}]},
 					     {atom,L,atomize(SType)},
 					     {nil,L}]},
 		      Acc}
@@ -335,25 +369,10 @@ collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
 		   false -> [Name]
 	       end,
     
-    FieldsOut = lists:foldl(
-		  fun ({_,_,_,_,_} = Input, TmpAcc) -> [Input | TmpAcc];
-		      (_, TmpAcc) -> TmpAcc
-		  end, [], Fields),
-    
-    Enums = lists:foldl(
-	      fun ({enum,C,D}, TmpAcc) -> [{enum, [C | ListName], D} | TmpAcc];
-		  (_, TmpAcc) -> TmpAcc
-	      end, [], Fields),
-    
-    Extensions = lists:foldl(
-		   fun ({extensions, From, To}, TmpAcc) -> [{From,To}|TmpAcc];
-		       (_, TmpAcc) -> TmpAcc
-		   end, [], Fields),
-			   
-    SubMessages = lists:foldl(
-		    fun ({message, C, D}, TmpAcc) -> [{message, [C | ListName], D} | TmpAcc];
-			(_, TmpAcc) -> TmpAcc
-		    end, [], Fields),
+    FieldsOut   = [Input || {_,_,_,_,_}=Input <- Fields],
+    Enums       = [{enum, [C | ListName], D} || {enum,C,D} <- Fields],
+    Extensions  = [{From,To} || {extensions, From, To} <- Fields],
+    SubMessages = [{message, [C | ListName], D} || {message, C, D} <- Fields],
 
     NewCollected = Collected#collected{
 		     msg=[{ListName, FieldsOut} | Collected#collected.msg],
@@ -489,20 +508,21 @@ write_header_include_file(Basename, Messages) ->
 
 %% @hidden
 generate_field_definitions(Fields) ->
-    generate_field_definitions(Fields, []).
+    [lists:flatten(generate_field_definition(Field)) || Field <- Fields].
 
 %% @hidden
-generate_field_definitions([], Acc) ->
-    lists:reverse(Acc);
-generate_field_definitions([{Name, required, _} | Tail], Acc) ->
-    Head = lists:flatten(io_lib:format("~s = erlang:error({required, ~s})", [Name, Name])),
-    generate_field_definitions(Tail, [Head | Acc]);
-generate_field_definitions([{Name, _, none} | Tail], Acc) ->
-    Head = lists:flatten(io_lib:format("~s", [Name])),
-    generate_field_definitions(Tail, [Head | Acc]);
-generate_field_definitions([{Name, optional, Default} | Tail], Acc) ->
-    Head = lists:flatten(io_lib:format("~s = ~p", [Name, Default])),
-    generate_field_definitions(Tail, [Head | Acc]).
+generate_field_definition({Name, required, _}) ->
+    io_lib:format("~s = erlang:error({required, ~s})", [Name, Name]);
+generate_field_definition({Name, Kind, Default}) ->
+    case default_for(Kind, Default) of
+	none -> io_lib:format("~s", [Name]);
+	DefaultValue -> io_lib:format("~s = ~p", [Name, DefaultValue])
+    end.
+
+default_for(repeated, none) -> [];
+default_for(repeated_packed, none) -> [];
+default_for(optional, Default) -> Default;
+default_for(_,_) -> none.
 
 %% @hidden
 atomize(String) ->
@@ -517,7 +537,6 @@ replace_atom(List, Find, Replace) when is_list(List) ->
 replace_atom(Other, _Find, _Replace) ->
     Other.
 
-%% @hidden
 is_scalar_type ("double") -> true;
 is_scalar_type ("float") -> true;
 is_scalar_type ("int32") -> true;

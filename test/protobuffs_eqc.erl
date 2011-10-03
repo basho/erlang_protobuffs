@@ -149,9 +149,10 @@ check_with_default(undefined,Result,Default,Fun) ->
 check_with_default(Expected,Result,_Default,Fun) ->
     Fun(Expected,Result).
 
-prop_protobuffs_has_default() ->
+prop_protobuffs_has_default1() ->
+    error_logger:info_msg("DB| EQC: line=~p\n", [?LINE]),
     ?FORALL({Withdefault},
-	    {{withdefault,default(undefined, real()),
+	    {{requiredwithdefault,default(undefined, real()),
 	     default(undefined, real()),
 	     default(undefined, sint32()),
 	     default(undefined, sint64()),
@@ -166,7 +167,29 @@ prop_protobuffs_has_default() ->
 	     default(undefined, bool()),
 	     default(undefined, string())}},
 	    begin
-		Decoded = hasdefault_pb:decode_withdefault(hasdefault_pb:encode_withdefault(Withdefault)),
+		Decoded = hasdefault_pb:decode_requiredwithdefault(hasdefault_pb:encode_requiredwithdefault(Withdefault)),
+		compare_messages(Withdefault,Decoded)
+	    end).
+
+prop_protobuffs_has_default2() ->
+    error_logger:info_msg("DB| EQC: line=~p\n", [?LINE]),
+    ?FORALL({Withdefault},
+	    {{optionalwithdefault,default(1.0, real()),
+	     default(2.0, real()),
+	     default(1, sint32()),
+	     default(2, sint64()),
+	     default(3, uint32()),
+	     default(4, uint64()),
+	     default(5, sint32()),
+	     default(6, sint64()),
+	     default(7, uint32()),
+	     default(8, uint64()),
+	     default(9, sint32()),
+	     default(10, sint64()),
+	     default(true, bool()),
+	     default("test", string())}},
+	    begin
+		Decoded = hasdefault_pb:decode_optionalwithdefault(hasdefault_pb:encode_optionalwithdefault(Withdefault)),
 		compare_messages(Withdefault,Decoded)
 	    end).
 
@@ -363,11 +386,13 @@ single() ->
     {message, uint32()}.
 
 prop_protobuffs_single() ->
+    MSpec = 
     ?FORALL({Single},
 	    {single()},
 	    begin
 		Decoded = single_pb:decode_message (single_pb:encode_message(Single)),
-		compare_messages (Single, Decoded)
+		Decoded2 = generic_decode (single_pb:encode_message(Single), "single", 'Message'),
+		compare_messages (Single, Decoded) andalso compare_messages (Single, Decoded2)
 	    end).
 
 prop_protobuffs_extend() ->
@@ -377,4 +402,13 @@ prop_protobuffs_extend() ->
 		Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Extend)),
 		compare_messages(Extend, Decoded)
 	    end).
+
+generic_decode_message(Bytes, ProtoFile, MsgName) ->
+    DataDir = "../test/erlang_protobuffs_SUITE_data",
+    PBSpec = protobuffs_generic:proto_file_to_spec(filename:join(DataDir, ProtoFile++".proto")),
+    MSpec = protobuffs_generic:msg_spec_for(PBSpec, MsgName),
+    Decoded = protobuffs_generic:decode(MSpec, Bytes),
+    error_logger:error_msg("DB| decoded ~p to ~p\n", [Bytes, Decoded]),
+    Decoded.
+
 -endif.

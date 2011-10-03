@@ -63,7 +63,7 @@ parse_empty_file_test_() ->
 
 parse_has_default_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/hasdefault.proto"),
-    [{message, "WithDefault", Messages}] = parse(Path),
+    [{message, "RequiredWithDefault", Messages},_] = parse(Path),
     [?_assertMatch({1,required,"double","real1",1.0},lists:keyfind(1,1,Messages)),
      ?_assertMatch({2,required,"float","real2",2.0},lists:keyfind(2,1,Messages)),
      ?_assertMatch({3,required,"int32","int1",1},lists:keyfind(3,1,Messages)),
@@ -248,23 +248,41 @@ parse_extend_in_reserved_range_test_() ->
     Error = (catch protobuffs_compile:scan_file(Path, [{imports_dir, [DataDir]}])),
     [?_assertEqual(out_of_range, Error)].
 
+
+defaults_should_encode_to_empty_test_() ->
+    DataDir = "../test/erlang_protobuffs_SUITE_data",
+    Path = filename:absname(filename:join([DataDir,"hasdefault.proto"])),
+    ok = protobuffs_compile:scan_file(Path),
+
+    EncodeToEmpty1 = {optionalwithdefault,
+		      1.0, 2.0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, true, "test"},
+    EncodeToEmpties = [setelement(N, EncodeToEmpty1, undefined)
+		       || N <- lists:seq(2,tuple_size(EncodeToEmpty1))],
+    error_logger:info_msg("should_encode_to_empty_test_: ~p\n", [[EncodeToEmpty1 | EncodeToEmpties]]),
+    [?_assertEqual(<<>>, hasdefault_pb:encode_optionalwithdefault(R))
+     || R <- [EncodeToEmpty1 | EncodeToEmpties]].
+    
+empty_should_decode_to_defaults_test_() ->
+    DataDir = "../test/erlang_protobuffs_SUITE_data",
+    Path = filename:absname(filename:join([DataDir,"hasdefault.proto"])),
+    ok = protobuffs_compile:scan_file(Path),
+
+    RecordWithDefaults = {optionalwithdefault,
+			  1.0, 2.0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+			  true, "test"},
+    [?_assertEqual(RecordWithDefaults,
+		   hasdefault_pb:decode(optionalwithdefault, <<>>))].
+
+absent_list_should_decode_to_nil_test_() ->
+    DataDir = "../test/erlang_protobuffs_SUITE_data",
+    Path = filename:absname(filename:join([DataDir,"addressbook.proto"])),
+    ok = protobuffs_compile:scan_file(Path),
+
+    [?_assertEqual({addressbook, []}, addressbook_pb:decode(addressbook, <<>>))].
+
 %%--------------------------------------------------------------------
 %% Help functions
 %%--------------------------------------------------------------------
 parse(FileName) ->
-    {ok, InFile} = file:open(FileName, [read]),
-    Acc = loop(InFile,[]),
-    file:close(InFile),
-    {ok,Parsed} = protobuffs_parser:parse(Acc),
+    {ok,Parsed} = protobuffs_compile:parse(FileName),
     Parsed.
-
-loop(InFile,Acc) ->
-    case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
-        {ok,Token,_EndLine} ->
-            loop(InFile,Acc ++ [Token]);
-        {error,token} ->
-            exit(scanning_error);    
-        {eof,_} ->
-            Acc
-    end.
-

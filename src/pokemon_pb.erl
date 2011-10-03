@@ -38,11 +38,11 @@ encode(pikachu, Record) ->
     iolist_to_binary(iolist(pikachu, Record)).
 
 iolist(pikachu, Record) ->
-    [pack(1, required, with_default(Record#pikachu.abc, none), string, [])].
+    [pack(1, required, with_default(Record#pikachu.abc, none, required), string, [])].
 
-with_default(undefined, none) -> undefined;
-with_default(undefined, Default) -> Default;
-with_default(Val, _) -> Val.
+with_default(Value, Default, optional) when Value==Default -> undefined; % PB default.
+with_default(undefined, Default, required) when Default/=none -> Default; % Erlang default.
+with_default(Value, _, _) -> Value.
 
 pack(_, optional, undefined, _, _) -> [];
 
@@ -118,7 +118,7 @@ decode(Bytes, Types, Acc) ->
                 true ->
                     case lists:keytake(FNum, 1, Acc) of
                         {value, {FNum, Name, List}, Acc1} ->
-                            decode(Rest1, Types, [{FNum, Name, lists:reverse([int_to_enum(Type,Value1)|lists:reverse(List)])}|Acc1]);
+                            decode(Rest1, Types, [{FNum, Name, List ++ [int_to_enum(Type,Value1)]} | Acc1]);
                         false ->
                             decode(Rest1, Types, [{FNum, Name, [int_to_enum(Type,Value1)]}|Acc])
                     end;

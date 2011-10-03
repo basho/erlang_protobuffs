@@ -252,19 +252,5 @@ parse_extend_in_reserved_range_test_() ->
 %% Help functions
 %%--------------------------------------------------------------------
 parse(FileName) ->
-    {ok, InFile} = file:open(FileName, [read]),
-    Acc = loop(InFile,[]),
-    file:close(InFile),
-    {ok,Parsed} = protobuffs_parser:parse(Acc),
+    {ok,Parsed} = protobuffs_compile:parse(FileName),
     Parsed.
-
-loop(InFile,Acc) ->
-    case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
-        {ok,Token,_EndLine} ->
-            loop(InFile,Acc ++ [Token]);
-        {error,token} ->
-            exit(scanning_error);    
-        {eof,_} ->
-            Acc
-    end.
-

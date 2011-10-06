@@ -23,7 +23,13 @@
 %% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
--export([scan_file/1, scan_file/2, scan_string/2, scan_string/3, generate_source/1, generate_source/2]).
+
+-ifdef(TEST).
+-compile(export_all).
+-else.
+-export([scan_file/1, scan_file/2, scan_string/2, scan_string/3, 
+	 generate_source/1, generate_source/2]).
+-endif.
 
 -record(collected,{enum=[], msg=[], extensions=[]}).
 
@@ -46,13 +52,17 @@ scan_string(String,BaseName) ->
 %%                                   output_ebin_dir,
 %%                                   imports_dir
 %%--------------------------------------------------------------------
--spec scan_file(ProtoFile :: string(), Options :: list()) ->
+-spec scan_file(ProtoFile :: string() | atom(), Options :: list()) ->
 		       ok | {error, _}.
 scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,String} = parse_file(ProtoFile),
+    scan_string(String,Basename,Options);
+scan_file(ProtoFile,Options) when is_atom(ProtoFile) ->
+    Basename = atom_to_list(ProtoFile) ++ "_pb",
+    {ok,String} = parse_file(atom_to_list(ProtoFile) ++ ".proto"),
     scan_string(String,Basename,Options).
-    
+
 -spec scan_string(String :: string(), Basename :: string(), Options :: list()) ->
 			 ok | {error, _}. 
 scan_string(String,Basename,Options) ->
@@ -68,8 +78,11 @@ scan_string(String,Basename,Options) ->
 %%--------------------------------------------------------------------
 -spec generate_source(ProtoFile :: string()) ->
 			     ok | {error, _}.
+generate_source(ProtoFile) when is_atom(ProtoFile) ->
+    generate_source(atom_to_list(ProtoFile),[]);
 generate_source(ProtoFile) ->
-    generate_source(ProtoFile,[]).
+    Basename = filename:basename(ProtoFile, ".proto"),
+    generate_source(Basename,[]).
 
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
@@ -80,7 +93,7 @@ generate_source(ProtoFile) ->
 -spec generate_source(ProtoFile :: string(), Options :: list()) ->
 			     ok | {error, _}.
 generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
-    Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
+    Basename = ProtoFile ++ "_pb",
     {ok,String} = parse_file(ProtoFile),
     {ok,FirstParsed} = parse_string(String),
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
@@ -97,7 +110,7 @@ parse_imports(Parsed, Path) ->
 parse_imports([], _Path, Acc) ->
     lists:reverse(Acc);
 parse_imports([{import, File} = Head | Tail], Path, Acc) ->
-    case file:path_open(Path, File, [read]) of
+    case protobuffs_file:path_open(Path, File, [read]) of
 	{ok, F, Fullname} ->
 	    file:close(F),
 	    {ok,String} = parse_file(Fullname),
@@ -124,16 +137,13 @@ output(Basename, Messages, Enums, Options) ->
 	HeaderPath ->
 	    HeaderFile = filename:join(HeaderPath,Basename) ++ ".hrl"
     end,
-    case proplists:get_bool(debug_info,Options) of
-	true -> DebugInfo = debug_info;
-	false -> DebugInfo = []
-    end,
+
     error_logger:info_msg("Writing header file to ~p~n",[HeaderFile]),
     ok = write_header_include_file(HeaderFile, Messages),
-    PokemonBeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
+    PokemonBeamFile = code:where_is_file("pokemon_pb.beam"),
     {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(PokemonBeamFile, [abstract_code]),
     Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
-    {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return]++DebugInfo),
+    {ok, _, Bytes, _Warnings} = protobuffs_file:compile_forms(Forms1, proplists:get_value(compile_flags,Options,[])),
     case proplists:get_value(output_ebin_dir,Options) of
 	undefined ->
 	    BeamFile = Basename ++ ".beam";
@@ -141,7 +151,7 @@ output(Basename, Messages, Enums, Options) ->
 	    BeamFile = filename:join(BeamPath,Basename) ++ ".beam"
     end,
     error_logger:info_msg("Writing beam file to ~p~n",[BeamFile]),
-    file:write_file(BeamFile, Bytes).
+    protobuffs_file:write_file(BeamFile, Bytes).
 
 %% @hidden
 output_source (Basename, Messages, Enums, Options) ->
@@ -163,18 +173,18 @@ output_source (Basename, Messages, Enums, Options) ->
 	    SrcFile = filename:join(SrcPath,Basename) ++ ".erl"
     end,
     error_logger:info_msg("Writing src file to ~p~n",[SrcFile]),
-    file:write_file(SrcFile, erl_prettypr:format(erl_syntax:form_list (Forms1))).
+    protobuffs_file:write_file(SrcFile, erl_prettypr:format(erl_syntax:form_list (Forms1))).
 
 %% @hidden
 parse_file(FileName) ->
-    {ok, InFile} = file:open(FileName, [read]),
+    {ok, InFile} = protobuffs_file:open(FileName, [read]),
     String = parse_file(InFile,[]),
     file:close(InFile),
     {ok,String}.
 
 %% @hidden
 parse_file(InFile,Acc) ->
-    case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
+    case protobuffs_file:request(InFile) of
         {ok,Token,_EndLine} ->
             parse_file(InFile,Acc ++ [Token]);
         {error,token} ->
@@ -493,21 +503,21 @@ resolve_types ([], _, _, Acc) ->
 
 %% @hidden
 write_header_include_file(Basename, Messages) ->
-    {ok, FileRef} = file:open(Basename, [write]),
+    {ok, FileRef} = protobuffs_file:open(Basename, [write]),
     [begin
 	 OutFields = [{string:to_lower(A), Optional, Default} || {_, Optional, _, A, Default} <- lists:keysort(1, Fields)],
 	 if
 	     OutFields /= [] ->
-		 io:format(FileRef, "-record(~s, {~n    ", [string:to_lower(Name)]),
+		 protobuffs_file:format(FileRef, "-record(~s, {~n    ", [string:to_lower(Name)]),
 		 WriteFields = generate_field_definitions(OutFields),
 		 FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
-		 io:format(FileRef, FormatString, WriteFields),
-		 io:format(FileRef, "~n}).~n~n", []);
+		 protobuffs_file:format(FileRef, FormatString, WriteFields),
+		 protobuffs_file:format(FileRef, "~n}).~n~n", []);
 	     true ->
 		 ok
 	 end
      end || {Name, Fields} <- Messages],
-    file:close(FileRef).
+    protobuffs_file:close(FileRef).
 
 %% @hidden
 generate_field_definitions(Fields) ->

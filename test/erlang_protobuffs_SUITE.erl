@@ -138,21 +138,33 @@ test_proto_files(Config) ->
     TestProtoFile = fun(ProtoFile,Acc) ->
 			    Path = filename:absname(ProtoFile),
 			    Message = filename:basename(ProtoFile,".proto"),
-			    test_server:format("Testcase ~p, parse file ~p~n",
+			    test_server:format("~n===Testcase ~p, testing message ~p===~n",
+					       [self(), Message]),
+			    test_server:format("Testcase ~p, parse file ~p",
 					       [self(), Path]),
 			    protobuffs_compile:scan_file(
 			      Path,
 			      [{imports_dir, [filename:join([DataDir,"proto"]),
 					      filename:join([DataDir,"proto","import"])]}]),
-			    test_server:format("Testcase ~p, testing message ~p~n",
-					       [self(), Message]),
 			    Test = list_to_atom("proper_protobuffs_"++Message),
-			    Acc andalso proper:quickcheck(
-					  proper:numtests(
-					    NumTests,
-					    protobuffs_proper:Test()),[quiet])
+			    Result = proper:quickcheck(
+				       proper:numtests(
+					 NumTests,
+					 protobuffs_proper:Test()),[long_result,
+								    {on_output, fun(".",_) -> ok;
+										   (S,F) -> test_server:format(S,F) 
+										end}]),
+			    case Result of
+				true -> test_server:format("Test ~p: ok~n~n~n",[Message]), 
+					Acc andalso true;
+				F -> test_server:format("Test ~p: Failed with ~p~n~n~n",[Message,Result]),
+				     false
+			    end
 		    end,
-    lists:foldl(TestProtoFile,true,ProtoFiles).
+    case lists:foldl(TestProtoFile,true,ProtoFiles) of
+	true -> ok;
+	_ -> ct:fail("One or more property test cases failed")
+    end.
 
 %%---------------------------------------------------------------------
 %% Help flies

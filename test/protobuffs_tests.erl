@@ -1,9 +1,9 @@
 %%%-------------------------------------------------------------------
 %%% File    : protobuffs_tests.erl
-%%% Author  : David AAberg <david_ab@RB-DAVIDAB01>
+%%% Author  : David AAberg <davabe@hotmail.com>
 %%% Description :
 %%%
-%%% Created :  2 Aug 2010 by David AAberg <david_ab@RB-DAVIDAB01>
+%%% Created :  2 Aug 2010 by David AAberg <davabe@hotmail.com>
 %%%-------------------------------------------------------------------
 -module(protobuffs_tests).
 

@@ -60,9 +60,7 @@ compare(A, B) when is_float(A), is_float(B) ->
        A32 =:= B32 -> true;
        true -> false
     end;
-compare(_, undefined) -> true;
-compare(undefined, _) -> true;
-compare(_, _) -> false.
+compare(A, B) -> error_logger:error_msg("~p =/= ~p~n",[A,B]), false.
 
 proper_protobuffs() ->
     ?FORALL({FieldID, {Value, Type}},
@@ -146,26 +144,37 @@ check_with_default(Expected, Result, _Default, Fun) ->
     Fun(Expected, Result).
 
 proper_protobuffs_hasdefault() ->
-    ?FORALL({Withdefault},
-	    {{withdefault, default(undefined, real()),
-	      default(undefined, real()),
-	      default(undefined, sint32()),
-	      default(undefined, sint64()),
-	      default(undefined, uint32()),
-	      default(undefined, uint64()),
-	      default(undefined, sint32()),
-	      default(undefined, sint64()),
-	      default(undefined, uint32()),
-	      default(undefined, uint64()),
-	      default(undefined, sint32()),
-	      default(undefined, sint64()),
-	      default(undefined, bool()),
-	      default(undefined, utf8string()),
-	      default(undefined, utf8string())}},
+    ?FORALL(Withdefault,
+	    {withdefault, 
+	     {default(undefined, real()),1.0},
+	     {default(undefined, real()),2.0},
+	     {default(undefined, sint32()),1},
+	     {default(undefined, sint64()),2},
+	     {default(undefined, uint32()),3},
+	     {default(undefined, uint64()),4},
+	     {default(undefined, sint32()),5},
+	     {default(undefined, sint64()),6},
+	     {default(undefined, uint32()),7},
+	     {default(undefined, uint64()),8},
+	     {default(undefined, sint32()),9},
+	     {default(undefined, sint64()),10},
+	     {default(undefined, bool()),true},
+	     {default(undefined, utf8string()),"test"},
+	     {default(undefined, utf8string()),""}},
 	    begin
-	      Decoded =
-		  hasdefault_pb:decode_withdefault(hasdefault_pb:encode_withdefault(Withdefault)),
-	      compare_messages(Withdefault, Decoded)
+		FunGetDefault = fun({undefined,Val}) -> Val;
+				   ({Val,_}) -> Val;
+				   (Val) -> Val end,
+		FunGetTestMsg = fun({Val,_}) -> Val;
+				   (Val) -> Val end,
+
+		Expected = list_to_tuple(
+			     lists:map(FunGetDefault,tuple_to_list(Withdefault))),
+		TestMsg = list_to_tuple(
+			    lists:map(FunGetTestMsg,tuple_to_list(Withdefault))),
+		Decoded =
+		    hasdefault_pb:decode_withdefault(hasdefault_pb:encode_withdefault(TestMsg)),
+		compare_messages(Expected, Decoded)
 	    end).
 
 location() ->
@@ -187,17 +196,17 @@ phone_type() ->
     {person_phonenumber_phonetype, Int32, Int32, Int32}.
 
 phone_number() ->
-    list({person_phonenumber, utf8string(),
-	  default(undefined, phone_type())}).
+    {person_phonenumber, utf8string(),
+     default(undefined, phone_type())}.
 
 proper_protobuffs_nested1() ->
-    ?FORALL({Person},
-	    {{person, utf8string(), sint32(),
-	      default(undefined, utf8string()), phone_number()}},
+    ?FORALL(Person,
+	    {person, utf8string(), sint32(),
+	     default(undefined, utf8string()), list(phone_number())},
 	    begin
-	      Decoded =
-		  nested1_pb:decode_person(nested1_pb:encode_person(Person)),
-	      compare_messages(Person, Decoded)
+		Decoded =
+		    nested1_pb:decode_person(nested1_pb:encode_person(Person)),
+		compare_messages(Person, Decoded)
 	    end).
 
 innerAA() ->
@@ -308,21 +317,20 @@ proper_protobuffs_extensions() ->
 	    end).
 
 address_phone_number() ->
-    list({person_phonenumber, utf8string(),
-	  default(undefined, oneof(['HOME', 'WORK', 'MOBILE']))}).
+    {person_phonenumber, utf8string(),
+     default(undefined, oneof(['HOME', 'WORK', 'MOBILE']))}.
 
-addressbook() ->
-    list({person, utf8string(), sint32(), utf8string(),
-	  default(undefined, address_phone_number())}).
+person() ->
+    {person, utf8string(), sint32(), default(undefined,utf8string()),
+     list(address_phone_number())}.
 
 proper_protobuffs_addressbook() ->
-    ?FORALL({Addressbook},
-	    {default({addressbook, undefined},
-		     {addressbook, addressbook()})},
+    ?FORALL(Addressbook,
+	    {addressbook, list(person())},
 	    begin
-	      Decoded =
-		  addressbook_pb:decode_addressbook(addressbook_pb:encode_addressbook(Addressbook)),
-	      compare_messages(Addressbook, Decoded)
+		Decoded = addressbook_pb:decode_addressbook(
+			    addressbook_pb:encode_addressbook(Addressbook)),
+		compare_messages(Addressbook, Decoded)
 	    end).
 
 repeater_location() ->
@@ -330,20 +338,20 @@ repeater_location() ->
 
 repeater_person() ->
     {person, utf8string(), utf8string(), utf8string(),
-     sint32(), default(undefined, list(utf8string())),
-     default(undefined, list(repeater_location())),
+     sint32(), list(utf8string()),
+     list(repeater_location()),
      list(uint32())}.
 
 proper_protobuffs_repeater() ->
-    ?FORALL({Repeater}, {repeater_person()},
+    ?FORALL(Repeater, repeater_person(),
 	    begin
-	      Decoded =
-		  repeater_pb:decode_person(repeater_pb:encode_person(Repeater)),
-	      compare_messages(Repeater, Decoded)
+		Decoded =
+		    repeater_pb:decode_person(repeater_pb:encode_person(Repeater)),
+		compare_messages(Repeater, Decoded)
 	    end).
 
 proper_protobuffs_packed_repeated() ->
-    ?FORALL({Repeater}, {repeater_person()},
+    ?FORALL(Repeater, repeater_person(),
 	    begin
 	      Decoded =
 		  packed_repeated_pb:decode_person(packed_repeated_pb:encode_person(Repeater)),
@@ -401,17 +409,17 @@ proper_protobuffs_extend() ->
 proper_protobuffs_service() ->
     %Don't handel service tag for the moment testing no errors and that the messages works
     ?FORALL(Service,
-	    oneof([{serchresponse, default(undefined,string())},
-		   {serchrequest, default(undefined,string())}]),
+	    oneof([{searchresponse, default(undefined,utf8string())},
+		   {searchrequest, default(undefined,utf8string())}]),
 	    begin
 		case element(1,Service) of
-		    serchresponse -> 
-			Decoded = service_pb:decode_serchresponse(
-				    service_pb:encode_searchresponce(Service)),
+		    searchresponse -> 
+			Decoded = service_pb:decode_searchresponse(
+				    service_pb:encode_searchresponse(Service)),
 			compare_messages(Service, Decoded);
-		    serchrequest ->
-			Decoded = service_pb:decode_serchrequest(
-				    service_pb:encode_serchrequest(Service)),
+		    searchrequest ->
+			Decoded = service_pb:decode_searchrequest(
+				    service_pb:encode_searchrequest(Service)),
 			compare_messages(Service, Decoded)
 		end
 	    end).

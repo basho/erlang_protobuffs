@@ -40,8 +40,8 @@ encode(pikachu, Record) ->
 iolist(pikachu, Record) ->
     [pack(1, required, with_default(Record#pikachu.abc, none), string, [])].
 
-with_default(undefined, none) -> undefined;
-with_default(undefined, Default) -> Default;
+with_default(Val, none) -> Val;
+with_default(Default, Default) -> undefined;
 with_default(Val, _) -> Val.
 
 pack(_, optional, undefined, _, _) -> [];
@@ -89,7 +89,8 @@ decode_pikachu(Bytes) when is_binary(Bytes) ->
     
 decode(pikachu, Bytes) when is_binary(Bytes) ->
     Types = [{1, abc, int32, []}, {2, def, double, []}],
-    Decoded = decode(Bytes, Types, []),
+    Defaults = [],
+    Decoded = decode(Bytes, Types, Defaults),
     to_record(pikachu, Decoded).
     
 decode(<<>>, _, Acc) -> Acc;
@@ -134,7 +135,7 @@ unpack_value(Binary, string) when is_binary(Binary) ->
 unpack_value(Value, _) -> Value.
     
 to_record(pikachu, DecodedTuples) ->
-    lists:foldl(
+    lists:foldr(
         fun({_FNum, Name, Val}, Record) ->
             set_record_field(record_info(fields, pikachu), Record, Name, Val)
         end, #pikachu{}, DecodedTuples).

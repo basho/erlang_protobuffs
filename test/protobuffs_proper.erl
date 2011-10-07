@@ -146,13 +146,13 @@ check_with_default(Expected, Result, _Default, Fun) ->
 proper_protobuffs_hasdefault() ->
     ?FORALL(Withdefault,
 	    {withdefault, 
-	     {default(undefined, real()),1.0},
-	     {default(undefined, real()),2.0},
-	     {default(undefined, sint32()),1},
-	     {default(undefined, sint64()),2},
-	     {default(undefined, uint32()),3},
-	     {default(undefined, uint64()),4},
-	     {default(undefined, sint32()),5},
+	     {real(),1.0},
+	     {real(),2.0},
+	     {sint32(),1},
+	     {sint64(),2},
+	     {uint32(),3},
+	     {uint64(),4},
+	     {sint32(),5},
 	     {default(undefined, sint64()),6},
 	     {default(undefined, uint32()),7},
 	     {default(undefined, uint64()),8},
@@ -317,8 +317,7 @@ proper_protobuffs_extensions() ->
 	    end).
 
 address_phone_number() ->
-    {person_phonenumber, utf8string(),
-     default(undefined, oneof(['HOME', 'WORK', 'MOBILE']))}.
+    {person_phonenumber, utf8string(),oneof(['HOME', 'WORK', 'MOBILE'])}.
 
 person() ->
     {person, utf8string(), sint32(), default(undefined,utf8string()),

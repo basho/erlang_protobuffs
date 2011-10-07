@@ -42,7 +42,7 @@ packed_test_() ->
     String = "message Test { repeated float values "
 	     "= 1 [packed=true]; }",
     Expected = [{message, "Test",
-		 [{1, repeated_packed, "float", "values", none}]}],
+		 [{1, repeated_packed, "float", "values", []}]}],
     parse_test(String, Expected).
 
 enum_test_() ->

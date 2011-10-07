@@ -272,7 +272,15 @@ filter_encode_clause({MsgName, _Fields}, {clause,L,_Args,Guards,_Content}) ->
 expand_iolist_function(Msgs, Line, Clause) ->
     {function,Line,iolist,2,[filter_iolist_clause(Msg, Clause) || Msg <- Msgs]}.
 
-filter_iolist_clause({MsgName, Fields}, {clause,L,_Args,Guards,_Content}) ->
+filter_iolist_clause({MsgName, Fields0}, {clause,L,_Args,Guards,_Content}) ->
+    Fields = [
+        case Tag of
+        optional ->
+            Field;
+        _ ->
+            {FNum,Tag,SType,SName,none}
+        end
+        || {FNum,Tag,SType,SName,_} = Field <- Fields0 ],
     Cons = lists:foldl(
 	     fun({FNum,Tag,SType,SName,Default}, Acc) ->
 		     {cons,L,

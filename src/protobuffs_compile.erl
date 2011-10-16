@@ -205,7 +205,7 @@ filter_forms(Msgs, Enums, [{attribute,L,module,pokemon_pb}|Tail], Basename, Acc)
 
 filter_forms(Msgs, Enums, [{attribute,L,export,[{encode_pikachu,1},{decode_pikachu,1}]}|Tail], Basename, Acc) ->
     Exports = lists:foldl(
-		fun({Name,_}, Acc1) ->
+		fun({Name,_,_}, Acc1) ->
 			[{list_to_atom("encode_" ++ string:to_lower(Name)),1},
 			 {list_to_atom("decode_" ++ string:to_lower(Name)),1} | Acc1]
 		end, [], Msgs),
@@ -216,13 +216,13 @@ filter_forms(Msgs, Enums, [{attribute,L,record,{pikachu,_}}|Tail], Basename, Acc
 		   OutFields = [string:to_lower(A) || {_, _, _, A, _} <- lists:keysort(1, Fields)],
 		   Frm_Fields = [{record_field,L,{atom,L,list_to_atom(OutField)}}|| OutField <- OutFields],
 		   {attribute, L, record, {atomize(Name), Frm_Fields}}
-	       end || {Name, Fields} <- Msgs],
+	       end || {Name, Fields,_Extends} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Records ++ Acc);
 
 filter_forms(Msgs, Enums, [{function,L,encode_pikachu,1,[Clause]}|Tail], Basename, Acc) ->
     Functions = [begin
 		     {function,L,list_to_atom("encode_" ++ string:to_lower(Name)),1,[replace_atom(Clause, pikachu, atomize(Name))]} 
-		 end || {Name, _} <- Msgs],
+		 end || {Name, _, _} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Functions ++ Acc);
 
 filter_forms(Msgs, Enums, [{function,L,encode,2,[Clause]}|Tail], Basename, Acc) ->
@@ -238,7 +238,7 @@ filter_forms(Msgs, Enums, [{function,L,decode_pikachu,1,[Clause]}|Tail], Basenam
 		      list_to_atom("decode_" ++ string:to_lower(Name)),
 		      1,
 		      [replace_atom(Clause, pikachu, atomize(Name))]} 
-		 end || {Name, _} <- Msgs],
+		 end || {Name, _, _} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Functions ++ Acc);
 
 filter_forms(Msgs, Enums, [{function,L,decode,2,[Clause]}|Tail], Basename, Acc) ->
@@ -263,7 +263,7 @@ expand_encode_function(Msgs, Line, Clause) ->
     {function,Line,encode,2,[filter_encode_clause(Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
-filter_encode_clause({MsgName, _Fields}, {clause,L,_Args,Guards,_Content}) ->
+filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,_Content}) ->
     ToBin = {call,L,{atom,L,iolist_to_binary},[{call,L,
                                                 {atom,L,iolist},
                                                 [{atom,L,atomize(MsgName)},{var,L,'Record'}]}]},
@@ -272,7 +272,7 @@ filter_encode_clause({MsgName, _Fields}, {clause,L,_Args,Guards,_Content}) ->
 expand_iolist_function(Msgs, Line, Clause) ->
     {function,Line,iolist,2,[filter_iolist_clause(Msg, Clause) || Msg <- Msgs]}.
 
-filter_iolist_clause({MsgName, Fields0}, {clause,L,_Args,Guards,_Content}) ->
+filter_iolist_clause({MsgName, Fields0, _Extends0}, {clause,L,_Args,Guards,_Content}) ->
     Fields = [
         case Tag of
         optional ->
@@ -304,7 +304,7 @@ expand_decode_function(Msgs, Line, Clause) ->
      [filter_decode_clause(Msgs, Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
-filter_decode_clause(Msgs, {MsgName, Fields}, {clause,L,_Args,Guards,[_,_,C,D]}) ->
+filter_decode_clause(Msgs, {MsgName, Fields, _Extends}, {clause,L,_Args,Guards,[_,_,C,D]}) ->
     Types = lists:keysort(1, [{FNum, list_to_atom(SName), 
 			       atomize(SType), 
 			       decode_opts(Msgs, Tag, SType), Def} ||
@@ -342,7 +342,7 @@ expand_to_record_function(Msgs, Line, Clause) ->
     {function,Line,to_record,2,[filter_to_record_clause(Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
-filter_to_record_clause({MsgName, _}, {clause,L,[_Param1,Param2],Guards,[Fold]}) ->
+filter_to_record_clause({MsgName, _, _}, {clause,L,[_Param1,Param2],Guards,[Fold]}) ->
     Fold1 = replace_atom(Fold, pikachu, atomize(MsgName)),
     {clause,L,[{atom,L,atomize(MsgName)},Param2],Guards,[Fold1]}.
 
@@ -403,8 +403,13 @@ collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
 			(_, TmpAcc) -> TmpAcc
 		    end, [], Fields),
 
+    ExtendedFields = case Extensions of
+        [] -> disallowed;
+        _ -> []
+    end,
+
     NewCollected = Collected#collected{
-		     msg=[{ListName, FieldsOut} | Collected#collected.msg],
+		     msg=[{ListName, FieldsOut, ExtendedFields} | Collected#collected.msg],
 		     extensions=[{ListName,Extensions} | Collected#collected.extensions]
 		    },
     collect_full_messages(Tail ++ SubMessages ++ Enums, NewCollected);
@@ -440,7 +445,7 @@ collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
 	       end,
 
     CollectedMsg = Collected#collected.msg,
-    {ListName,FieldsOut} = lists:keyfind(ListName,1,CollectedMsg),
+    {ListName,FieldsOut,ExtendFields} = lists:keyfind(ListName,1,CollectedMsg),
     {ListName,Extensions} = lists:keyfind(ListName,1,Collected#collected.extensions),
     
     FunNotInReservedRange = fun(Id) -> not(19000 =< Id andalso Id =< 19999) end,
@@ -469,7 +474,11 @@ collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
 				   (_, TmpAcc) -> TmpAcc
 			       end, [], ExtendedFields)
 			     ),
-    NewCollected = Collected#collected{msg=lists:keyreplace(ListName,1,CollectedMsg,{ListName,ExtendedFieldsOut})},
+    NewExtends = case ExtendFields of
+        disallowed -> disallowed;
+        _ -> ExtendFields ++ ExtendedFieldsOut
+    end,
+    NewCollected = Collected#collected{msg=lists:keyreplace(ListName,1,CollectedMsg,{ListName,FieldsOut,NewExtends})},
     collect_full_messages(Tail, NewCollected);
 %% Skip anything we don't understand
 collect_full_messages([Skip|Tail], Acc) ->
@@ -481,9 +490,8 @@ collect_full_messages([], Collected) ->
 
 %% @hidden
 resolve_types (Data, Enums) -> resolve_types (Data, Data, Enums, []).
-resolve_types ([{TypePath, Fields} | Tail], AllPaths, Enums, Acc) ->
-    FieldsOut = lists:foldl(
-		  fun (Input, TmpAcc) ->
+resolve_types ([{TypePath, Fields,Extended} | Tail], AllPaths, Enums, Acc) ->
+    FolderFun = fun (Input, TmpAcc) ->
 			  case Input of
 			      {Index, Rules, Type, Identifier, Other} ->
 				  case is_scalar_type (Type) of
@@ -514,8 +522,16 @@ resolve_types ([{TypePath, Fields} | Tail], AllPaths, Enums, Acc) ->
 				  end;
 			      _ -> TmpAcc
 			  end
-		  end, [], Fields),
-    resolve_types (Tail, AllPaths, Enums, [{type_path_to_type (TypePath), lists:reverse (FieldsOut) } | Acc]);
+		end,
+    FieldsOut = lists:foldl(FolderFun, [], Fields),
+    ExtendedOut = case Extended of
+        disallowed ->
+            disallowed;
+        _ ->
+            MidExtendOut = lists:foldl(FolderFun, [], Extended),
+            lists:reverse(MidExtendOut)
+    end,
+    resolve_types (Tail, AllPaths, Enums, [{type_path_to_type (TypePath), lists:reverse (FieldsOut), ExtendedOut } | Acc]);
 resolve_types ([], _, _, Acc) ->
     Acc.
 
@@ -534,7 +550,7 @@ write_header_include_file(Basename, Messages) ->
 	     true ->
 		 ok
 	 end
-     end || {Name, Fields} <- Messages],
+     end || {Name, Fields, _Extends} <- Messages],
     protobuffs_file:close(FileRef).
 
 %% @hidden
@@ -624,10 +640,10 @@ find_type ([], _KnownTypes) ->
     false;
 find_type ([Type | TailTypes], KnownTypes) ->
     case lists:keysearch (Type, 1, KnownTypes) of
-	false ->
-	    find_type (TailTypes, KnownTypes);
-	{value, {RealType, _}} ->
-	    RealType
+        false ->
+            find_type (TailTypes, KnownTypes);
+        {value, {RealType, _, _}} ->
+            RealType
     end.
 
 %% @hidden

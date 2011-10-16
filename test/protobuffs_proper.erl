@@ -307,7 +307,7 @@ proper_protobuffs_enum_outside() ->
 
 proper_protobuffs_extensions() ->
     ?FORALL({Middle},
-	    {default({extendable}, {maxtendable})},
+	    {default({extendable, dict:new()}, {maxtendable, dict:new()})},
 	    begin
 	      DecodeFunc = list_to_atom("decode_" ++
 					  atom_to_list(element(1, Middle))),

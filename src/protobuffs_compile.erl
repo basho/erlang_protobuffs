@@ -315,7 +315,7 @@ expand_decode_function(Msgs, Line, Clause) ->
      [filter_decode_clause(Msgs, Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
-filter_decode_clause(Msgs, {MsgName, Fields, _Extends}, {clause,L,_Args,Guards,[_,_,C,D]}) ->
+filter_decode_clause(Msgs, {MsgName, Fields, Extends}, {clause,L,_Args,Guards,[_,_,C,D]}) ->
     Types = lists:keysort(1, [{FNum, list_to_atom(SName), 
 			       atomize(SType), 
 			       decode_opts(Msgs, Tag, SType), Def} ||
@@ -324,6 +324,10 @@ filter_decode_clause(Msgs, {MsgName, Fields, _Extends}, {clause,L,_Args,Guards,[
 	     fun({FNum, FName, Type, Opts, _Def}, Acc) ->
 		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
 	     end, {nil,L}, Types),
+    ExtendDefault = case Extends of
+        disallowed -> {nil,L};
+        _ -> erl_parse:abstract([{false, '$extensions', dict:new()}])
+    end,
     Defaults = lists:foldr(
         fun
             ({_FNum, _FName, _Type, _Opts, none}, Acc) ->
@@ -331,7 +335,7 @@ filter_decode_clause(Msgs, {MsgName, Fields, _Extends}, {clause,L,_Args,Guards,[
             ({FNum, FName, _Type, _Opts, Def}, Acc) ->
                 {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},erl_parse:abstract(Def)]},Acc}
         end,
-        {nil,L},
+        ExtendDefault,
         Types),
     A = {match,L,{var,L,'Types'},Cons},
     B = {match,L,{var,L,'Defaults'},Defaults},

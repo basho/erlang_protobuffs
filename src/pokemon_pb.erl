@@ -25,7 +25,7 @@
 -module(pokemon_pb).
 -export([encode_pikachu/1, decode_pikachu/1]).
 -export([encode/1]).
--record(pikachu, {abc, def}).
+-record(pikachu, {abc, def, '$extensions' = dict:new()}).
 
 %% ENCODE
 encode(Record) ->
@@ -35,7 +35,12 @@ encode_pikachu(Record) when is_record(Record, pikachu) ->
     encode(pikachu, Record).
 
 encode(pikachu, Record) ->
-    iolist_to_binary(iolist(pikachu, Record)).
+    iolist_to_binary(iolist(pikachu, Record) ++ encode_extensions(Record)).
+
+encode_extensions(#pikachu{'$extensions' = Extends}) ->
+    [pack(Key, Optionalness, Data, Type, Accer) ||
+        {Key, {Optionalness, Data, Type, Accer}} <- dict:to_list(Extends)];
+encode_extensions(_) -> [].
 
 iolist(pikachu, Record) ->
     [pack(1, required, with_default(Record#pikachu.abc, none), string, [])].

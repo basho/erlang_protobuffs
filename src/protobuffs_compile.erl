@@ -214,9 +214,13 @@ filter_forms(Msgs, Enums, [{attribute,L,export,[{encode_pikachu,1},{decode_pikac
 filter_forms(Msgs, Enums, [{attribute,L,record,{pikachu,_}}|Tail], Basename, Acc) ->
     Records = [begin
 		   OutFields = [string:to_lower(A) || {_, _, _, A, _} <- lists:keysort(1, Fields)],
-		   Frm_Fields = [{record_field,L,{atom,L,list_to_atom(OutField)}}|| OutField <- OutFields],
+       ExtendField = case Extends of
+           disallowed -> [];
+           _ -> [{record_field,L,{atom,L,'$extensions'}}]
+       end,
+		   Frm_Fields = [{record_field,L,{atom,L,list_to_atom(OutField)}}|| OutField <- OutFields] ++ ExtendField,
 		   {attribute, L, record, {atomize(Name), Frm_Fields}}
-	       end || {Name, Fields,_Extends} <- Msgs],
+	       end || {Name, Fields,Extends} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Records ++ Acc);
 
 filter_forms(Msgs, Enums, [{function,L,encode_pikachu,1,[Clause]}|Tail], Basename, Acc) ->
@@ -227,6 +231,13 @@ filter_forms(Msgs, Enums, [{function,L,encode_pikachu,1,[Clause]}|Tail], Basenam
 
 filter_forms(Msgs, Enums, [{function,L,encode,2,[Clause]}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [expand_encode_function(Msgs, L, Clause)|Acc]);
+
+filter_forms(Msgs, Enums, [{function,L,encode_extensions,1,[EncodeClause,Catchall]}|Tail], Basename, Acc) ->
+    NewEncodeClauses = [replace_atom(EncodeClause, pikachu, atomize(Name)) ||
+        {Name, _Fields, Extens} <- Msgs, Extens =/= disallowed],
+    NewClauses = NewEncodeClauses ++ [Catchall],
+    NewFunction = {function,L,encode_extensions,1,NewClauses},
+    filter_forms(Msgs, Enums, Tail, Basename, [NewFunction | Acc]);
 
  filter_forms(Msgs, Enums, [{function,L,iolist,2,[Clause]}|Tail], Basename, Acc) ->
      filter_forms(Msgs, Enums, Tail, Basename, [expand_iolist_function(Msgs, L, Clause)|Acc]);

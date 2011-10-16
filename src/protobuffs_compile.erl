@@ -556,18 +556,18 @@ write_header_include_file(Basename, Messages) ->
     [begin
 	 OutFields = [{string:to_lower(A), Optional, Default} || {_, Optional, _, A, Default} <- lists:keysort(1, Fields)],
 		 protobuffs_file:format(FileRef, "-record(~s, {~n    ", [string:to_lower(Name)]),
-		 WriteFields = generate_field_definitions(OutFields),
-		 FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
-		 protobuffs_file:format(FileRef, FormatString, WriteFields),
-     case Extends of
-         disallowed -> ok;
+		 WriteFields0 = generate_field_definitions(OutFields),
+     WriteFields = case Extends of
+         disallowed -> WriteFields0;
          _ ->
              ExtenStr = case OutFields of
-                 [] -> "~n    '$extensions' = dict:new()";
-                 _ -> ",~n    '$extensions' = dict:new()"
+                 [] -> "'$extensions' = dict:new()";
+                 _ -> "'$extensions' = dict:new()"
              end,
-             protobuffs_file:format(FileRef,ExtenStr,[])
+							WriteFields0 ++ [ExtenStr]
      end,
+		 FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
+		 protobuffs_file:format(FileRef, FormatString, WriteFields),
 		 protobuffs_file:format(FileRef, "~n}).~n~n", [])
      end || {Name, Fields, Extends} <- Messages],
     protobuffs_file:close(FileRef).

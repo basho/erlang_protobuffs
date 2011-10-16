@@ -397,7 +397,7 @@ proper_protobuffs_single() ->
 
 proper_protobuffs_extend() ->
     ?FORALL(Extend,
-	    default({extendable, dict:from_list([{126, {extend_pb, sint32()}}])},
+	    default({extendable, dict:from_list([{126, {optional, sint32(), sint32, []}}])},
 		    {extendable, dict:new()}),
 	    begin
 		Decoded =

@@ -274,10 +274,28 @@ filter_forms(Msgs, Enums, [{function,L,decode_extensions,1,[Clause]}|Tail],Basen
             filter_forms(Msgs, Enums, Tail,Basename,[NewHead|Acc])
     end;
 
+filter_forms(Msgs, Enums, [{function,L,extension_size,1,[RecClause,CatchAll]}|Tail],Basename, Acc) ->
+    NewRecClauses = filter_extension_size(Msgs, RecClause, []),
+    NewClauses = lists:reverse([CatchAll | NewRecClauses]),
+    NewHead = {function,L,extension_size,1,NewClauses},
+    filter_forms(Msgs, Enums, Tail, Basename, [NewHead|Acc]);
+    
 filter_forms(Msgs, Enums, [Form|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [Form|Acc]);
 
 filter_forms(_, _, [], _, Acc) -> lists:reverse(Acc).
+
+%% @hidden
+filter_extension_size([], _RecClause, Acc) ->
+    % the non-reversal is intentional.
+    Acc;
+filter_extension_size([{MsgName,_,disallowed}|Tail],Clause,Acc) ->
+    filter_extension_size(Tail,Clause,Acc);
+filter_extension_size([{MsgName,_,_}|Tail],Clause,Acc) ->
+    {clause,L,[OldArg],G,Body} = Clause,
+    NewClause = {clause,L,[replace_atom(OldArg,pikachu,atomize(MsgName))],G,Body},
+    NewAcc = [NewClause | Acc],
+    filter_extension_size(Tail,Clause,NewAcc).
 
 %% @hidden
 filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,Content}) ->

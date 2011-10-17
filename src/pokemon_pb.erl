@@ -132,7 +132,15 @@ decode(Bytes, Types, Acc) ->
 		    decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
             end;
         false ->
-            exit({error, {unexpected_field_index, FNum}})
+            case lists:keysearch('$extensions', 2, Acc) of
+                {value,{_,_,Dict}} ->
+                    {{FNum, V}, R} = protobuffs:decode(Bytes, raw),
+                    NewDict = dict:store(FNum, V, Dict),
+                    NewAcc = lists:keyreplace('$extensions', 2, Acc, {false, '$extensions', NewDict}),
+                    decode(R, Types, NewAcc);
+                _ ->
+                    exit({error, {unexpected_field_index, FNum}})
+            end
     end.
     
 unpack_value(Binary, string) when is_binary(Binary) ->

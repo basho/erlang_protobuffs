@@ -289,15 +289,42 @@ filter_forms(Msgs, Enums, [{function,L,has_extension,2,[FilterClause,CatchallCla
 filter_forms(Msgs, Enums, [{function,L,get_extension,2,[AtomClause,IntClause,Catchall]}|Tail],Basename,Acc) ->
     NewAtomClauses = filter_get_extension_atom(Msgs,AtomClause,[]),
     NewRecClauses = filter_get_extension_integer(Msgs, IntClause, NewAtomClauses),
-    %NewRecClauses = NewAtomClauses,
     NewClauses = lists:reverse([Catchall | NewRecClauses]),
     NewHead = {function,L,get_extension,2,NewClauses},
     filter_forms(Msgs,Enums, Tail, Basename, [NewHead | Acc]);
+
+filter_forms(Msgs, Enums, [{function,L,set_extension,3,[RecClause,Catchall]}|Tail],Basename, Acc) ->
+    NewRecClauses = filter_set_extension(Msgs, RecClause, []),
+    NewClauses = lists:reverse([Catchall | NewRecClauses]),
+    NewHead = {function,L,set_extension,3,NewClauses},
+    filter_forms(Msgs,Enums,Tail,Basename,[NewHead|Acc]);
 
 filter_forms(Msgs, Enums, [Form|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [Form|Acc]);
 
 filter_forms(_, _, [], _, Acc) -> lists:reverse(Acc).
+
+%% @hidden
+filter_set_extension([],_,Acc) ->
+    Acc;
+filter_set_extension([{_,_,disallowed}|Tail],Clause,Acc) ->
+    filter_set_extension(Tail,Clause,Acc);
+filter_set_extension([{MsgName,_,Extends}|Tail],Clause,Acc) ->
+    {clause,L,[OldRecArg,_OldAtomArg,ValueArg],Gs,[OldSet,OldReturn]} = Clause,
+    {match,L,{record,L,_,RecArgFields},RecVar} = OldRecArg,
+    {match,L2,NewReturn,OldDictStore} = OldSet,
+    {call,L2,DictStore,_StoreArgs} = OldDictStore,
+    {tuple,L3,[Ok, OldReturnRec]} = OldReturn,
+    {record,L3,ReturnRecVar,OldName,Fields} = OldReturnRec,
+    Folder = fun({Id, Rule, Type, Name, Opts}, Facc) ->
+        FClause = {clause,L,[{match,L,{record,L,atomize(MsgName),RecArgFields},RecVar},{atom,L,atomize(Name)},ValueArg],Gs,[
+            {match,L2,NewReturn,{call,L2,DictStore,[{integer,L2,Id},{tuple,L2,[erl_parse:abstract(Rule),erl_parse:abstract(Type),ValueArg,erl_parse:abstract(Opts)]}]}},
+            {tuple,L3,[Ok,{record,L3,ReturnRecVar,atomize(MsgName),Fields}]}
+        ]},
+        [FClause | Facc]
+    end,
+    NewAcc = lists:foldl(Folder, Acc, Extends),
+    filter_set_extension(Tail,Clause,NewAcc).
 
 %% @hidden
 filter_get_extension_atom([],_AtomClause,Acc) ->

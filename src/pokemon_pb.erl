@@ -239,5 +239,8 @@ get_extension(#pikachu{'$extensions' = Extensions}, Int) when is_integer(Int) ->
 get_extension(_Record, _FieldName) ->
     undefined.
 
-set_extension(Record, _FieldName, Value) ->
-    {ok, Record}.
+set_extension(#pikachu{'$extensions' = Extensions} = Record, fieldname, Value) ->
+    NewExtends = dict:store(1, {rule, Value, type, []}),
+    {ok, Record#pikachu{'$extensions' = NewExtends}};
+set_extension(Record, _, _) ->
+    {error, Record}.

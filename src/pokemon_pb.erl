@@ -220,6 +220,8 @@ extension_size(#pikachu{'$extensions' = Extensions}) ->
 extension_size(_) ->
     0.
 
+has_extension(#pikachu{'$extensions' = Extensions}, FieldKey) ->
+    dict:is_key(FieldKey, Extensions);
 has_extension(_Record, _FieldName) ->
     false.
 

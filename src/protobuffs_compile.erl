@@ -279,12 +279,41 @@ filter_forms(Msgs, Enums, [{function,L,extension_size,1,[RecClause,CatchAll]}|Ta
     NewClauses = lists:reverse([CatchAll | NewRecClauses]),
     NewHead = {function,L,extension_size,1,NewClauses},
     filter_forms(Msgs, Enums, Tail, Basename, [NewHead|Acc]);
+
+filter_forms(Msgs, Enums, [{function,L,has_extension,2,[FilterClause,CatchallClause]}|Tail],Basename,Acc) ->
+    NewRecClauses = filter_has_extension(Msgs, FilterClause, []),
+    NewClauses = lists:reverse([CatchallClause | NewRecClauses]),
+    NewHead = {function,L,has_extension,2,NewClauses},
+    filter_forms(Msgs, Enums, Tail, Basename, [NewHead | Acc]);
     
 filter_forms(Msgs, Enums, [Form|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [Form|Acc]);
 
 filter_forms(_, _, [], _, Acc) -> lists:reverse(Acc).
 
+%% @hidden
+filter_has_extension([], _, Acc) ->
+    % non-reverseal is intentional.
+    Acc;
+filter_has_extension([{Msg,_,disallowed}|Tail], Clause, Acc) ->
+    filter_has_extension(Tail, Clause, Acc);
+filter_has_extension([{MsgName,_,Extends}|Tail], Clause, Acc) ->
+    {clause,L,[OldRecArg,_],G,[Body]} = Clause,
+		{call, L1, {remote,L1,Dict,IsKey},[_Key,DictArg]} = Body,
+    RecArg = replace_atom(OldRecArg,pikachu,atomize(MsgName)),
+    Folder = fun({ID, Rules, Type, Name, Other}, FoldAcc) ->
+        AtomClause = {clause,L,[RecArg,{atom,L,atomize(Name)}],G,[
+            {call,L,{remote,L,Dict,IsKey},[{atom,L,atomize(Name)},DictArg]}
+        ]},
+        IntClause = {clause,L,[RecArg,{integer,L,ID}],G,[
+            {call,L,{remote,L,Dict,IsKey},[{integer,L,ID},DictArg]}
+        ]},
+        [AtomClause,IntClause|FoldAcc]
+    end,
+    NewClauses = lists:foldl(Folder, [], Extends),
+    NewAcc = lists:append(Acc,NewClauses),
+    filter_has_extension(Tail,Clause,NewAcc).
+    
 %% @hidden
 filter_extension_size([], _RecClause, Acc) ->
     % the non-reversal is intentional.

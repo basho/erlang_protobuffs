@@ -24,6 +24,8 @@
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(pokemon_pb).
 -export([encode_pikachu/1, decode_pikachu/1]).
+-export([has_extension/2, extension_size/1, get_extension/2,
+    set_extension/3]).
 -export([encode/1]).
 -record(pikachu, {abc, def, '$extensions' = dict:new()}).
 
@@ -212,3 +214,15 @@ list_index(Target, List) -> list_index(Target, List, 1).
 list_index(Target, [Target|_], Index) -> Index;
 list_index(Target, [_|Tail], Index) -> list_index(Target, Tail, Index+1);
 list_index(_, [], _) -> 0.
+
+extension_size(_) ->
+    0.
+
+has_extension(_Record, _FieldName) ->
+    false.
+
+get_extension(_Record, _FieldName) ->
+    undefined.
+
+set_extension(Record, _FieldName, Value) ->
+    {ok, Record}.

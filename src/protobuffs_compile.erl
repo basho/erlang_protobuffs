@@ -264,14 +264,20 @@ filter_forms(Msgs, Enums, [{function,L,enum_to_int,2,[Clause]}|Tail], Basename, 
 filter_forms(Msgs, Enums, [{function,L,int_to_enum,2,[Clause]}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [expand_int_to_enum_function(Enums, L, Clause)|Acc]);
 
+filter_forms(Msgs, Enums, [{function,L,decode_extensions,1,[Clause]}|Tail],Basename, Acc) ->
+    NewClauses = filter_decode_extensions_clause(Msgs, Msgs, Clause, []),
+		case NewClauses of
+        [] ->
+            filter_forms(Msgs, Enums, Tail,Basename,Acc);
+        _ ->
+            NewHead = {function,L,decode_extensions,1,NewClauses},
+            filter_forms(Msgs, Enums, Tail,Basename,[NewHead|Acc])
+    end;
+
 filter_forms(Msgs, Enums, [Form|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [Form|Acc]);
 
 filter_forms(_, _, [], _, Acc) -> lists:reverse(Acc).
-
-%% @hidden
-expand_encode_function(Msgs, Line, Clause) ->
-    {function,Line,encode,2,[filter_encode_clause(Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
 filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,Content}) ->
@@ -346,6 +352,42 @@ filter_decode_clause(Msgs, {MsgName, Fields, Extends}, {clause,L,_Args,Guards,[_
     {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Bytes'}],Guards,[A,B,C,D1]}.
 
 %% @hidden
+filter_decode_extensions_clause(_,[],_,Acc) ->
+    lists:reverse(Acc);
+filter_decode_extensions_clause(Msgs,[{_,_,disallowed}|Tail],Clause,Acc) ->
+    filter_decode_extensions_clause(Msgs,Tail,Clause,Acc);
+filter_decode_extensions_clause(Msgs,[{MsgName,_,Extends}|Tail],Clause,Acc) ->
+    {clause,L,_,_,_} = Clause,
+    Types = lists:keysort(1, [{FNum, list_to_atom(SName), 
+			       atomize(SType), 
+			       decode_opts(Msgs, Tag, SType), Def} ||
+				 {FNum,Tag,SType,SName,Def} <- Extends]),
+    Cons = lists:foldl(
+	     fun({FNum, FName, Type, Opts, _Def}, Acc) ->
+		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
+	     end, {nil,L}, Types),
+%    Defaults = lists:foldr(
+%        fun
+%            ({_FNum, _FName, _Type, _Opts, none}, Acc) ->
+%                Acc;
+%            ({FNum, FName, _Type, _Opts, Def}, Acc) ->
+%                {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},erl_parse:abstract(Def)]},Acc}
+%        end,
+%        {nil, L},
+%        Types),
+    A = {match,L,{var,L,'Types'},Cons},
+    %B = {match,L,{var,L,'Defaults'},Defaults},
+    %D1 = replace_atom(D, pikachu, atomize(MsgName)),
+		{clause,L,[Arg],Guards,[_,B,C]} = Clause,
+		NewBody = [A,B,replace_atom(C,pikachu,atomize(MsgName))],
+		NewClause = {clause,L,[replace_atom(Arg, pikachu, atomize(MsgName))],Guards,NewBody},
+    filter_decode_extensions_clause(Msgs,Tail,Clause,[NewClause|Acc]).
+
+%% @hidden
+expand_encode_function(Msgs, Line, Clause) ->
+    {function,Line,encode,2,[filter_encode_clause(Msg, Clause) || Msg <- Msgs]}.
+
+%% @hidden
 decode_opts(Msgs, Tag, Type) ->
     Opts0 = if Tag == repeated -> [repeated]; Tag == repeated_packed -> [repeated_packed]; true -> [] end,
     case lists:keymember(Type, 1, Msgs) of
@@ -360,9 +402,17 @@ expand_to_record_function(Msgs, Line, Clause) ->
     {function,Line,to_record,2,[filter_to_record_clause(Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
-filter_to_record_clause({MsgName, _, _}, {clause,L,[_Param1,Param2],Guards,[Fold]}) ->
+filter_to_record_clause({MsgName, _, Extends}, {clause,L,[_Param1,Param2],Guards,[Fold,DecodeExtends]}) ->
     Fold1 = replace_atom(Fold, pikachu, atomize(MsgName)),
-    {clause,L,[{atom,L,atomize(MsgName)},Param2],Guards,[Fold1]}.
+    ReturnLine = case Extends of
+        disallowed ->
+            {var,L,'Record1'};
+        _ ->
+            {ok, Tokens, _} = erl_scan:string("decode_extensions(Record1)."),
+	          {ok, [Abstract]} = erl_parse:parse_exprs(Tokens),
+            Abstract
+    end,
+    {clause,L,[{atom,L,atomize(MsgName)},Param2],Guards,[Fold1,ReturnLine]}.
 
 %% @hidden
 expand_enum_to_int_function([], Line, Clause) ->

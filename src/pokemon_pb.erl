@@ -134,7 +134,9 @@ decode(Bytes, Types, Acc) ->
         false ->
             case lists:keysearch('$extensions', 2, Acc) of
                 {value,{_,_,Dict}} ->
-                    {{FNum, V}, R} = protobuffs:decode(Bytes, raw),
+                    {{FNum, _V}, R} = protobuffs:decode(Bytes, raw),
+                    Diff = size(Bytes) - size(R),
+                    <<V:Diff/binary,_/binary>> = Bytes,
                     NewDict = dict:store(FNum, V, Dict),
                     NewAcc = lists:keyreplace('$extensions', 2, Acc, {false, '$extensions', NewDict}),
                     decode(R, Types, NewAcc);
@@ -148,11 +150,59 @@ unpack_value(Binary, string) when is_binary(Binary) ->
 unpack_value(Value, _) -> Value.
     
 to_record(pikachu, DecodedTuples) ->
-    lists:foldr(
+    Record1 = lists:foldr(
         fun({_FNum, Name, Val}, Record) ->
             set_record_field(record_info(fields, pikachu), Record, Name, Val)
-        end, #pikachu{}, DecodedTuples).
-        
+        end, #pikachu{}, DecodedTuples),
+    decode_extensions(Record1).
+
+decode_extensions(#pikachu{'$extensions' = Extensions} = Record) ->
+    Types = [],
+    NewExtensions = decode_extensions(Types, dict:to_list(Extensions), []),
+    Record#pikachu{'$extensions' = NewExtensions}.
+
+decode_extensions(Types, [], Acc) ->
+    dict:from_list(Acc);
+decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
+    NewAcc = case lists:keysearch(Fnum, 1, Types) of
+        {value, {Fnum, Name, Type, Opts}} ->
+            {Value1, Rest1} = 
+                case lists:member(is_record, Opts) of
+                    true ->
+                        {{FNum, V}, R} = protobuffs:decode(Bytes, bytes),
+                        RecVal = decode(list_to_atom(string:to_lower(atom_to_list(Type))), V),
+                        {RecVal, R};
+                    false ->
+                        case lists:member(repeated_packed, Opts) of
+                            true ->
+                                {{FNum, V}, R} = protobuffs:decode_packed(Bytes, Type),
+                                {V, R};
+                            false ->
+                                {{FNum, V}, R} = protobuffs:decode(Bytes, Type),
+                                {unpack_value(V, Type), R}
+                        end
+                end,
+            case lists:member(repeated, Opts) of
+                true ->
+                    case lists:keytake(FNum, 1, Acc) of
+                        {value, {FNum, Name, List}, Acc1} ->
+                            decode(Rest1, Types, [{FNum, Name, lists:reverse([int_to_enum(Type,Value1)|lists:reverse(List)])}|Acc1]);
+                        false ->
+                            decode(Rest1, Types, [{FNum, Name, [int_to_enum(Type,Value1)]}|Acc])
+                    end;
+                false ->
+                    [{Fnum, {optional, Value1, Type, Opts}} | Acc]
+            end;
+        false ->
+            Acc
+    end,
+    decode_extensions(Types, Tail, NewAcc).
+
+set_record_field(Fields, Record, '$extensions', Value) ->
+		Decodable = [],
+    NewValue = decode_extensions(element(1, Record), Decodable, dict:to_list(Value)),
+		Index = list_index('$extensions', Fields),
+		erlang:setelement(Index+1,Record,NewValue);
 set_record_field(Fields, Record, Field, Value) ->
     Index = list_index(Field, Fields),
     erlang:setelement(Index+1, Record, Value).

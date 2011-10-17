@@ -1,5 +1,5 @@
 import "extensions.proto";
 
 extend Extendable {
-  optional int32 bar = 126;
+  optional sint32 bar = 126;
 }

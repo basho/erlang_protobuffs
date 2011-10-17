@@ -285,11 +285,50 @@ filter_forms(Msgs, Enums, [{function,L,has_extension,2,[FilterClause,CatchallCla
     NewClauses = lists:reverse([CatchallClause | NewRecClauses]),
     NewHead = {function,L,has_extension,2,NewClauses},
     filter_forms(Msgs, Enums, Tail, Basename, [NewHead | Acc]);
-    
+
+filter_forms(Msgs, Enums, [{function,L,get_extension,2,[AtomClause,IntClause,Catchall]}|Tail],Basename,Acc) ->
+    NewAtomClauses = filter_get_extension_atom(Msgs,AtomClause,[]),
+    NewRecClauses = filter_get_extension_integer(Msgs, IntClause, NewAtomClauses),
+    %NewRecClauses = NewAtomClauses,
+    NewClauses = lists:reverse([Catchall | NewRecClauses]),
+    NewHead = {function,L,get_extension,2,NewClauses},
+    filter_forms(Msgs,Enums, Tail, Basename, [NewHead | Acc]);
+
 filter_forms(Msgs, Enums, [Form|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [Form|Acc]);
 
 filter_forms(_, _, [], _, Acc) -> lists:reverse(Acc).
+
+%% @hidden
+filter_get_extension_atom([],_AtomClause,Acc) ->
+    Acc;
+filter_get_extension_atom([{_,_,disallowed}|Tail],Clause,Acc) ->
+    filter_get_extension_atom(Tail,Clause,Acc);
+filter_get_extension_atom([{Msg,_,Extends}|Tail],Clause,Acc) ->
+    {clause,L,[RecArg,_OldAtom],[RecG],[OldSubcall]} = Clause,
+    [{call,L,Guard,[Garg1,_RecName]}] = RecG,
+    {call,L1,Subname,[RecVar,_OldInt]} = OldSubcall,
+    NewG = [{call,L,Guard,[Garg1,{atom,L,atomize(Msg)}]}],
+    NewClauses = [
+        {clause,L,[RecArg,{atom,L,atomize(FName)}],[NewG],[
+          {call,L1,Subname,[RecVar,{integer,L1,FId}]}
+        ]} ||
+      {FId, _, _, FName, _} <- Extends],
+    NewAcc = lists:append(NewClauses,Acc),
+    filter_get_extension_atom(Tail,Clause,NewAcc).
+ 
+%% @hidden
+filter_get_extension_integer([],_,Acc) ->
+    Acc;
+filter_get_extension_integer([{_,_,disallowed}|Tail],IntClause,Acc) ->
+    filter_get_extension_integer(Tail,IntClause,Acc);
+filter_get_extension_integer([{Msg,_,Extends}|Tail],IntClause,Acc) ->
+    {clause,L,[{record,L,Pikachu,Fields},IntArg],Gs,Body} = IntClause,
+    NewRecName = replace_atom(Pikachu, pikachu, atomize(Msg)),
+    NewRecArg = {record,L,NewRecName,Fields},
+    NewClause = {clause,L,[NewRecArg,IntArg],Gs,Body},
+    NewAcc = [NewClause|Acc],
+    filter_get_extension_integer(Tail,IntClause,NewAcc).
 
 %% @hidden
 filter_has_extension([], _, Acc) ->

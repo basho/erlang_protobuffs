@@ -225,6 +225,17 @@ has_extension(#pikachu{'$extensions' = Extensions}, FieldKey) ->
 has_extension(_Record, _FieldName) ->
     false.
 
+get_extension(Record, fieldatom) when is_record(Record, pikachu) ->
+    get_extension(Record, 1);
+get_extension(#pikachu{'$extensions' = Extensions}, Int) when is_integer(Int) ->
+    case dict:find(Int, Extensions) of
+        {ok, {_Rule, Value, _Type, _Opts}} ->
+            {ok, Value};
+        {ok, Binary} ->
+            {raw, Binary};
+         error ->
+             undefined
+     end;
 get_extension(_Record, _FieldName) ->
     undefined.
 

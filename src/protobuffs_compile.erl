@@ -274,10 +274,13 @@ expand_encode_function(Msgs, Line, Clause) ->
     {function,Line,encode,2,[filter_encode_clause(Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
-filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,_Content}) ->
-    ToBin = {call,L,{atom,L,iolist_to_binary},[{call,L,
-                                                {atom,L,iolist},
-                                                [{atom,L,atomize(MsgName)},{var,L,'Record'}]}]},
+filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,Content}) ->
+    ToBin = {call,L,{atom,L,iolist_to_binary},[
+        {op,L,'++',
+            {call,L, {atom,L,iolist}, [{atom,L,atomize(MsgName)},{var,L,'Record'}]},
+            {call,L, {atom,L,encode_extensions}, [{var,L,'Record'}]}
+        }
+    ]},
     {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Record'}],Guards,[ToBin]}.
 
 expand_iolist_function(Msgs, Line, Clause) ->

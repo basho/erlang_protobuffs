@@ -264,15 +264,10 @@ filter_forms(Msgs, Enums, [{function,L,enum_to_int,2,[Clause]}|Tail], Basename, 
 filter_forms(Msgs, Enums, [{function,L,int_to_enum,2,[Clause]}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [expand_int_to_enum_function(Enums, L, Clause)|Acc]);
 
-filter_forms(Msgs, Enums, [{function,L,decode_extensions,1,[Clause]}|Tail],Basename, Acc) ->
+filter_forms(Msgs, Enums, [{function,L,decode_extensions,1,[Clause,Catchall]}|Tail],Basename, Acc) ->
     NewClauses = filter_decode_extensions_clause(Msgs, Msgs, Clause, []),
-		case NewClauses of
-        [] ->
-            filter_forms(Msgs, Enums, Tail,Basename,Acc);
-        _ ->
-            NewHead = {function,L,decode_extensions,1,NewClauses},
-            filter_forms(Msgs, Enums, Tail,Basename,[NewHead|Acc])
-    end;
+    NewHead = {function,L,decode_extensions,1,NewClauses ++ [Catchall]},
+    filter_forms(Msgs, Enums, Tail,Basename,[NewHead|Acc]);
 
 filter_forms(Msgs, Enums, [{function,L,extension_size,1,[RecClause,CatchAll]}|Tail],Basename, Acc) ->
     NewRecClauses = filter_extension_size(Msgs, RecClause, []),

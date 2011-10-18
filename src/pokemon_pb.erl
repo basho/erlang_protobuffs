@@ -26,6 +26,7 @@
 -export([encode_pikachu/1, decode_pikachu/1]).
 -export([has_extension/2, extension_size/1, get_extension/2,
     set_extension/3]).
+-export([decode_extensions/1]).
 -export([encode/1]).
 -record(pikachu, {abc, def, '$extensions' = dict:new()}).
 
@@ -161,7 +162,9 @@ to_record(pikachu, DecodedTuples) ->
 decode_extensions(#pikachu{'$extensions' = Extensions} = Record) ->
     Types = [],
     NewExtensions = decode_extensions(Types, dict:to_list(Extensions), []),
-    Record#pikachu{'$extensions' = NewExtensions}.
+    Record#pikachu{'$extensions' = NewExtensions};
+decode_extensions(Record) ->
+    Record.
 
 decode_extensions(Types, [], Acc) ->
     dict:from_list(Acc);

@@ -136,7 +136,7 @@ decode(Bytes, Types, Acc) ->
         false ->
             case lists:keysearch('$extensions', 2, Acc) of
                 {value,{_,_,Dict}} ->
-                    {{FNum, _V}, R} = protobuffs:decode(Bytes, raw),
+                    {{FNum, _V}, R} = protobuffs:decode(Bytes, bytes),
                     Diff = size(Bytes) - size(R),
                     <<V:Diff/binary,_/binary>> = Bytes,
                     NewDict = dict:store(FNum, V, Dict),

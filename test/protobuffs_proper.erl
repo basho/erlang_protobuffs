@@ -455,6 +455,16 @@ proper_protobuffs_extend_has_enum() ->
           compare({ok, Extend}, Out)
       end).
 
+proper_protobuffs_extend_has_message() ->
+    ?FORALL(Extend, {maxtendable, dict:new()},
+      begin
+          Input = {extendable, dict:new()},
+          {ok, Encodable} = extend_pb:set_extension(Input, bin, Extend),
+          Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
+          Out = extend_pb:get_extension(Decoded, bin),
+          compare({ok, Extend}, Out)
+      end).
+
 proper_protobuffs_service() ->
     %Don't handel service tag for the moment testing no errors and that the messages works
     ?FORALL(Service,

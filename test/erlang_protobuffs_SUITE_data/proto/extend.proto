@@ -3,6 +3,7 @@ import "extensions.proto";
 extend Extendable {
   optional sint32 bar = 126;
   optional ExtendEnum baz = 127;
+  optional MaxTendable bin = 128;
 }
 
 enum ExtendEnum {

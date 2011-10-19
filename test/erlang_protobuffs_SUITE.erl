@@ -183,7 +183,8 @@ test_extendable_messages(Config) ->
         proper_protobuffs_extend_degraded,
         proper_protobuffs_extend_assign,
         proper_protobuffs_extend_get,
-        proper_protobuffs_extend_has_enum
+        proper_protobuffs_extend_has_enum,
+        proper_protobuffs_extend_has_message
     ],
     Folder = fun(Testname,Acc) ->
         test_server:format("~n===Extensions Testcase ~p===~n",[Testname]),

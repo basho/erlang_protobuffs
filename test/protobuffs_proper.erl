@@ -434,6 +434,18 @@ proper_protobuffs_assign_encode() ->
           compare_messages(Expected,Output)
       end).
 
+proper_protobuffs_extend_get() ->
+    ?FORALL(Extend, sint32(),
+      begin
+          Input = {extendable, dict:new()},
+          Encodable = {extendable, dict:from_list([{126,{optional,Extend,sint32,[]}}])},
+          {ok, Middle} = extend_pb:set_extension(Input, bar, Extend),
+          Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Middle)),
+          Output = extend_pb:get_extension(Decoded, bar),
+          compare({ok, Extend},Output)
+      end).
+
+
 proper_protobuffs_service() ->
     %Don't handel service tag for the moment testing no errors and that the messages works
     ?FORALL(Service,

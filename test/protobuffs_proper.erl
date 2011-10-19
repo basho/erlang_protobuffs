@@ -445,6 +445,15 @@ proper_protobuffs_extend_get() ->
           compare({ok, Extend},Output)
       end).
 
+proper_protobuffs_extend_has_enum() ->
+    ?FORALL(Extend, oneof(['FOO', 'BAR']),
+      begin
+          Input = {extendable, dict:new()},
+          {ok, Encodable} = extend_pb:set_extension(Input, baz, Extend),
+          Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
+          Out = extend_pb:get_extension(Decoded, baz),
+          compare({ok, Extend}, Out)
+      end).
 
 proper_protobuffs_service() ->
     %Don't handel service tag for the moment testing no errors and that the messages works

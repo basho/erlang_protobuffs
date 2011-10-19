@@ -312,7 +312,7 @@ filter_set_extension([{MsgName,_,Extends}|Tail],Clause,Acc) ->
     {tuple,L3,[Ok, OldReturnRec]} = OldReturn,
     {record,L3,ReturnRecVar,OldName,Fields} = OldReturnRec,
     Folder = fun({Id, Rule, StrType, Name, Opts}, Facc) ->
-        Type = list_to_atom(StrType),
+        Type = atomize(StrType),
         FClause = {clause,L,[{match,L,{record,L,atomize(MsgName),RecArgFields},RecVar},{atom,L,atomize(Name)},ValueArg],Gs,[
             {match,L2,NewReturn,{call,L2,DictStore,[{integer,L2,Id},{tuple,L2,[erl_parse:abstract(Rule),ValueArg,erl_parse:abstract(Type),erl_parse:abstract(Opts)]},StoreVar]}},
             {tuple,L3,[Ok,{record,L3,ReturnRecVar,atomize(MsgName),Fields}]}

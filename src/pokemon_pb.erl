@@ -113,15 +113,14 @@ decode(Bytes, Types, Acc) ->
                         RecVal = decode(list_to_atom(string:to_lower(atom_to_list(Type))), V),
                         {RecVal, R};
                     false ->
-			case lists:member(repeated_packed, Opts) of
-			    true ->
-				{{FNum, V}, R} = protobuffs:decode_packed(Bytes, Type),
-				{V, R};
-			    false ->
-				{{FNum, V}, R} = protobuffs:decode(Bytes, Type),
-				{unpack_value(V, Type), R}
-			end
-                        
+                        case lists:member(repeated_packed, Opts) of
+                            true ->
+                            {{FNum, V}, R} = protobuffs:decode_packed(Bytes, Type),
+                            {V, R};
+                            false ->
+                            {{FNum, V}, R} = protobuffs:decode(Bytes, Type),
+                            {unpack_value(V, Type), R}
+                        end
                 end,
             case lists:member(repeated, Opts) of
                 true ->
@@ -132,7 +131,7 @@ decode(Bytes, Types, Acc) ->
                             decode(Rest1, Types, [{FNum, Name, [int_to_enum(Type,Value1)]}|Acc])
                     end;
                 false ->
-		    decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
+		                decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
             end;
         false ->
             case lists:keysearch('$extensions', 2, Acc) of
@@ -196,7 +195,7 @@ decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
                             decode(Rest1, Types, [{FNum, Name, [int_to_enum(Type,Value1)]}|Acc])
                     end;
                 false ->
-                    [{Fnum, {optional, Value1, Type, Opts}} | Acc]
+                    [{Fnum, {optional, int_to_enum(Type,Value1), Type, Opts}} | Acc]
             end;
         false ->
             [{Fnum, Bytes} | Acc]

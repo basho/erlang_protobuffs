@@ -2,4 +2,10 @@ import "extensions.proto";
 
 extend Extendable {
   optional sint32 bar = 126;
+  optional ExtendEnum baz = 127;
+}
+
+enum ExtendEnum {
+  FOO = 1;
+  BAR = 2;
 }

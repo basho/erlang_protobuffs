@@ -180,7 +180,8 @@ test_extendable_messages(Config) ->
       protobuffs_compile:scan_file(Path,Options)
     end || X <- ["extend.proto","extensions.proto"]],
     Tests = [
-        proper_protobuffs_extend_degraded
+        proper_protobuffs_extend_degraded,
+        proper_protobuffs_extend_assign
     ],
     Folder = fun(Testname,Acc) ->
         test_server:format("~n===Extensions Testcase ~p===~n",[Testname]),

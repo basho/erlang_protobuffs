@@ -243,7 +243,7 @@ get_extension(_Record, _FieldName) ->
     undefined.
 
 set_extension(#pikachu{'$extensions' = Extensions} = Record, fieldname, Value) ->
-    NewExtends = dict:store(1, {rule, Value, type, []}),
+    NewExtends = dict:store(1, {rule, Value, type, []}, Extensions),
     {ok, Record#pikachu{'$extensions' = NewExtends}};
 set_extension(Record, _, _) ->
     {error, Record}.

@@ -308,12 +308,13 @@ filter_set_extension([{MsgName,_,Extends}|Tail],Clause,Acc) ->
     {clause,L,[OldRecArg,_OldAtomArg,ValueArg],Gs,[OldSet,OldReturn]} = Clause,
     {match,L,{record,L,_,RecArgFields},RecVar} = OldRecArg,
     {match,L2,NewReturn,OldDictStore} = OldSet,
-    {call,L2,DictStore,_StoreArgs} = OldDictStore,
+    {call,L2,DictStore,[_StoreKey,_StoreVal,StoreVar]} = OldDictStore,
     {tuple,L3,[Ok, OldReturnRec]} = OldReturn,
     {record,L3,ReturnRecVar,OldName,Fields} = OldReturnRec,
-    Folder = fun({Id, Rule, Type, Name, Opts}, Facc) ->
+    Folder = fun({Id, Rule, StrType, Name, Opts}, Facc) ->
+        Type = list_to_atom(StrType),
         FClause = {clause,L,[{match,L,{record,L,atomize(MsgName),RecArgFields},RecVar},{atom,L,atomize(Name)},ValueArg],Gs,[
-            {match,L2,NewReturn,{call,L2,DictStore,[{integer,L2,Id},{tuple,L2,[erl_parse:abstract(Rule),erl_parse:abstract(Type),ValueArg,erl_parse:abstract(Opts)]}]}},
+            {match,L2,NewReturn,{call,L2,DictStore,[{integer,L2,Id},{tuple,L2,[erl_parse:abstract(Rule),ValueArg,erl_parse:abstract(Type),erl_parse:abstract(Opts)]},StoreVar]}},
             {tuple,L3,[Ok,{record,L3,ReturnRecVar,atomize(MsgName),Fields}]}
         ]},
         [FClause | Facc]

@@ -199,7 +199,7 @@ decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
                     [{Fnum, {optional, Value1, Type, Opts}} | Acc]
             end;
         false ->
-            Acc
+            [{Fnum, Bytes} | Acc]
     end,
     decode_extensions(Types, Tail, NewAcc).
 

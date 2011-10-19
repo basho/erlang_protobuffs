@@ -98,7 +98,8 @@ groups() -> [].
 %% @end
 %%--------------------------------------------------------------------
 all() ->
-    [protobuffs_test_case, protobuffs_packed_test_case, test_proto_files].
+    [protobuffs_test_case, protobuffs_packed_test_case, test_proto_files,
+      test_extendable_messages].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase() -> Info
@@ -165,6 +166,44 @@ test_proto_files(Config) ->
 	true -> ok;
 	_ -> ct:fail("One or more property test cases failed")
     end.
+
+test_extendable_messages(Config) ->
+    DataDir = (?config(data_dir, Config)),
+    NumTests = (?config(num_tests, Config)),
+    ProtoFiles = [begin
+      Filename = filename:join([DataDir,"proto",X]),
+      Path = filename:absname(Filename),
+      Options = [{imports_dir, [
+          filename:join([DataDir,"proto"]),
+          filename:join([DataDir,"proto","import"])
+      ]}],
+      protobuffs_compile:scan_file(Path,Options)
+    end || X <- ["extend.proto","extensions.proto"]],
+    Tests = [
+        proper_protobuffs_extend_degraded
+    ],
+    Folder = fun(Testname,Acc) ->
+        test_server:format("~n===Extensions Testcase ~p===~n",[Testname]),
+        Result = proper:quickcheck(proper:numtests(NumTests, protobuffs_proper:Testname()),[
+          long_result,
+          {on_output, fun(".",_) -> ok;
+             (S,F) -> test_server:format(S,F)
+           end}
+        ]),
+        case Result of
+            true ->
+               test_server:format("Test ~p:  ok~n~n~n",[Testname]),
+               Acc andalso true;
+             _ ->
+               test_server:format("Test ~p:  Failed with ~p~n~n~n",[Testname,Result]),
+               false
+         end
+     end,
+     BigRes = lists:foldl(Folder,true,Tests),
+     case BigRes of
+         true -> ok;
+         _ -> ct:fail("One or more extension tests failed")
+     end.
 
 %%---------------------------------------------------------------------
 %% Help flies

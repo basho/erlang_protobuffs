@@ -400,10 +400,20 @@ proper_protobuffs_extend() ->
 	    default({extendable, dict:from_list([{126, {optional, sint32(), sint32, []}}])},
 		    {extendable, dict:new()}),
 	    begin
-		Decoded =
+      Decoded =
 		    extend_pb:decode_extendable(extend_pb:encode_extendable(Extend)),
-		compare_messages(Extend, Decoded)
+      compare_messages(Extend, Decoded)
 	    end).
+
+proper_protobuffs_extend_degraded() ->
+    ?FORALL(Extend,
+      default({extendable, dict:from_list([{126, {optional, sint32(), sint32, []}}])},{extendable,dict:new()}),
+      begin
+          Encoded = extend_pb:encode_extendable(Extend),
+          DegradedDecoded = extensions_pb:decode_extendable(Encoded),
+          Decoded = extend_pb:decode_extensions(DegradedDecoded),
+          compare_messages(Extend,Decoded)
+      end).
 
 proper_protobuffs_service() ->
     %Don't handel service tag for the moment testing no errors and that the messages works

@@ -456,12 +456,22 @@ proper_protobuffs_extend_has_enum() ->
       end).
 
 proper_protobuffs_extend_has_message() ->
-    ?FORALL(Extend, {maxtendable, dict:new()},
+    ?FORALL(Extend, default({maxtendable, dict:new()}, {maxtendable, dict:from_list([{505, {optional, utf8string(), string, []}}])}),
       begin
           Input = {extendable, dict:new()},
           {ok, Encodable} = extend_pb:set_extension(Input, bin, Extend),
           Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
           Out = extend_pb:get_extension(Decoded, bin),
+          compare({ok, Extend}, Out)
+      end).
+
+proper_protobuffs_extend_has_string() ->
+    ?FORALL(Extend, utf8string(),
+      begin
+          Input = {extendable,dict:new()},
+          {ok, Encodable} = extend_pb:set_extension(Input, stringy, Extend),
+          Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
+          Out = extend_pb:get_extension(Decoded, stringy),
           compare({ok, Extend}, Out)
       end).
 

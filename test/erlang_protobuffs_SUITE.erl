@@ -98,8 +98,8 @@ groups() -> [].
 %% @end
 %%--------------------------------------------------------------------
 all() ->
-    [protobuffs_test_case, protobuffs_packed_test_case, test_proto_files,
-      test_extendable_messages].
+    [protobuffs_test_case, protobuffs_packed_test_case,
+     test_proto_files, test_extendable_messages].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase() -> Info
@@ -134,81 +134,94 @@ protobuffs_packed_test_case(Config) ->
 test_proto_files(Config) ->
     DataDir = (?config(data_dir, Config)),
     NumTests = (?config(num_tests, Config)),
-    ProtoFiles = filelib:wildcard(filename:join([DataDir,"proto","*.proto"])),
-    
-    TestProtoFile = fun(ProtoFile,Acc) ->
+    ProtoFiles = filelib:wildcard(filename:join([DataDir,
+						 "proto", "*.proto"])),
+    TestProtoFile = fun (ProtoFile, Acc) ->
 			    Path = filename:absname(ProtoFile),
-			    Message = filename:basename(ProtoFile,".proto"),
+			    Message = filename:basename(ProtoFile, ".proto"),
 			    test_server:format("~n===Testcase ~p, testing message ~p===~n",
 					       [self(), Message]),
 			    test_server:format("Testcase ~p, parse file ~p",
 					       [self(), Path]),
-			    protobuffs_compile:scan_file(
-			      Path,
-			      [{imports_dir, [filename:join([DataDir,"proto"]),
-					      filename:join([DataDir,"proto","import"])]}]),
-			    Test = list_to_atom("proper_protobuffs_"++Message),
-			    Result = proper:quickcheck(
-				       proper:numtests(
-					 NumTests,
-					 protobuffs_proper:Test()),[long_result,
-								    {on_output, fun(".",_) -> ok;
-										   (S,F) -> test_server:format(S,F) 
-										end}]),
+			    protobuffs_compile:scan_file(Path,
+							 [{imports_dir,
+							   [filename:join([DataDir,
+									   "proto"]),
+							    filename:join([DataDir,
+									   "proto",
+									   "import"])]}]),
+			    Test = list_to_atom("proper_protobuffs_" ++
+						  Message),
+			    Result = proper:quickcheck(proper:numtests(NumTests,
+								       protobuffs_proper:Test()),
+						       [long_result,
+							{on_output,
+							 fun (".", _) -> ok;
+							     (S, F) ->
+								 test_server:format(S,
+										    F)
+							 end}]),
 			    case Result of
-				true -> test_server:format("Test ~p: ok~n~n~n",[Message]), 
-					Acc andalso true;
-				F -> test_server:format("Test ~p: Failed with ~p~n~n~n",[Message,Result]),
-				     false
+			      true ->
+				  test_server:format("Test ~p: ok~n~n~n",
+						     [Message]),
+				  Acc andalso true;
+			      F ->
+				  test_server:format("Test ~p: Failed with ~p~n~n~n",
+						     [Message, Result]),
+				  false
 			    end
 		    end,
-    case lists:foldl(TestProtoFile,true,ProtoFiles) of
-	true -> ok;
-	_ -> ct:fail("One or more property test cases failed")
+    case lists:foldl(TestProtoFile, true, ProtoFiles) of
+      true -> ok;
+      _ -> ct:fail("One or more property test cases failed")
     end.
 
 test_extendable_messages(Config) ->
     DataDir = (?config(data_dir, Config)),
     NumTests = (?config(num_tests, Config)),
     ProtoFiles = [begin
-      Filename = filename:join([DataDir,"proto",X]),
-      Path = filename:absname(Filename),
-      Options = [{imports_dir, [
-          filename:join([DataDir,"proto"]),
-          filename:join([DataDir,"proto","import"])
-      ]}],
-      protobuffs_compile:scan_file(Path,Options)
-    end || X <- ["extend.proto","extensions.proto"]],
-    Tests = [
-        proper_protobuffs_extend_degraded,
-        proper_protobuffs_extend_assign,
-        proper_protobuffs_extend_get,
-        proper_protobuffs_extend_has_enum,
-        proper_protobuffs_extend_has_message,
-        proper_protobuffs_extend_has_string
-    ],
-    Folder = fun(Testname,Acc) ->
-        test_server:format("~n===Extensions Testcase ~p===~n",[Testname]),
-        Result = proper:quickcheck(proper:numtests(NumTests, protobuffs_proper:Testname()),[
-          long_result,
-          {on_output, fun(".",_) -> ok;
-             (S,F) -> test_server:format(S,F)
-           end}
-        ]),
-        case Result of
-            true ->
-               test_server:format("Test ~p:  ok~n~n~n",[Testname]),
-               Acc andalso true;
-             _ ->
-               test_server:format("Test ~p:  Failed with ~p~n~n~n",[Testname,Result]),
-               false
-         end
-     end,
-     BigRes = lists:foldl(Folder,true,Tests),
-     case BigRes of
-         true -> ok;
-         _ -> ct:fail("One or more extension tests failed")
-     end.
+		    Filename = filename:join([DataDir, "proto", X]),
+		    Path = filename:absname(Filename),
+		    Options = [{imports_dir,
+				[filename:join([DataDir, "proto"]),
+				 filename:join([DataDir, "proto", "import"])]}],
+		    protobuffs_compile:scan_file(Path, Options)
+		  end
+		  || X <- ["extend.proto", "extensions.proto"]],
+    Tests = [proper_protobuffs_extend_degraded,
+	     proper_protobuffs_extend_assign,
+	     proper_protobuffs_extend_get,
+	     proper_protobuffs_extend_has_enum,
+	     proper_protobuffs_extend_has_message,
+	     proper_protobuffs_extend_has_string],
+    Folder = fun (Testname, Acc) ->
+		     test_server:format("~n===Extensions Testcase ~p===~n",
+					[Testname]),
+		     Result = proper:quickcheck(proper:numtests(NumTests,
+								protobuffs_proper:Testname()),
+						[long_result,
+						 {on_output,
+						  fun (".", _) -> ok;
+						      (S, F) ->
+							  test_server:format(S,
+									     F)
+						  end}]),
+		     case Result of
+		       true ->
+			   test_server:format("Test ~p:  ok~n~n~n", [Testname]),
+			   Acc andalso true;
+		       _ ->
+			   test_server:format("Test ~p:  Failed with ~p~n~n~n",
+					      [Testname, Result]),
+			   false
+		     end
+	     end,
+    BigRes = lists:foldl(Folder, true, Tests),
+    case BigRes of
+      true -> ok;
+      _ -> ct:fail("One or more extension tests failed")
+    end.
 
 %%---------------------------------------------------------------------
 %% Help flies
@@ -223,8 +236,8 @@ parse(FileName) ->
 loop(InFile, Acc) ->
     case io:request(InFile,
 		    {get_until, prompt, protobuffs_scanner, token, [1]})
-    of
-	{ok, Token, _EndLine} -> loop(InFile, Acc ++ [Token]);
-	{error, token} -> exit(scanning_error);
-	{eof, _} -> Acc
+	of
+      {ok, Token, _EndLine} -> loop(InFile, Acc ++ [Token]);
+      {error, token} -> exit(scanning_error);
+      {eof, _} -> Acc
     end.

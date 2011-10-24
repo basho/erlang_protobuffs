@@ -60,7 +60,8 @@ compare(A, B) when is_float(A), is_float(B) ->
        A32 =:= B32 -> true;
        true -> false
     end;
-compare(A, B) -> error_logger:error_msg("~p =/= ~p~n",[A,B]), false.
+compare(A, B) ->
+    error_logger:error_msg("~p =/= ~p~n", [A, B]), false.
 
 proper_protobuffs() ->
     ?FORALL({FieldID, {Value, Type}},
@@ -93,23 +94,24 @@ proper_protobuffs_packed() ->
 		    {non_empty(list(real())), double},
 		    {non_empty(list(real())), float}])},
 	    begin
-		case Type of
-		    float ->
-			Encoded = protobuffs:encode_packed(FieldID, Values, Type),
-			{{FieldID, DecodedValues}, <<>>} =
-			    protobuffs:decode_packed(Encoded, Type),
-			lists:all(fun ({Expected, Result}) ->
-					  <<Expected32:32/little-float>> =
-					      <<Expected:32/little-float>>,
-					  Expected32 =:= Result
-				  end,
-				  lists:zip(Values, DecodedValues));
-		    _Else ->
-			Encoded = protobuffs:encode_packed(FieldID, Values,
-							   Type),
-			Decoded = protobuffs:decode_packed(Encoded, Type),
-			{{FieldID, Values}, <<>>} == Decoded
-		end
+	      case Type of
+		float ->
+		    Encoded = protobuffs:encode_packed(FieldID, Values,
+						       Type),
+		    {{FieldID, DecodedValues}, <<>>} =
+			protobuffs:decode_packed(Encoded, Type),
+		    lists:all(fun ({Expected, Result}) ->
+				      <<Expected32:32/little-float>> =
+					  <<Expected:32/little-float>>,
+				      Expected32 =:= Result
+			      end,
+			      lists:zip(Values, DecodedValues));
+		_Else ->
+		    Encoded = protobuffs:encode_packed(FieldID, Values,
+						       Type),
+		    Decoded = protobuffs:decode_packed(Encoded, Type),
+		    {{FieldID, Values}, <<>>} == Decoded
+	      end
 	    end).
 
 proper_protobuffs_empty() ->
@@ -145,36 +147,32 @@ check_with_default(Expected, Result, _Default, Fun) ->
 
 proper_protobuffs_hasdefault() ->
     ?FORALL(Withdefault,
-	    {withdefault, 
-	     {real(),1.0},
-	     {real(),2.0},
-	     {sint32(),1},
-	     {sint64(),2},
-	     {uint32(),3},
-	     {uint64(),4},
-	     {sint32(),5},
-	     {default(undefined, sint64()),6},
-	     {default(undefined, uint32()),7},
-	     {default(undefined, uint64()),8},
-	     {default(undefined, sint32()),9},
-	     {default(undefined, sint64()),10},
-	     {default(undefined, bool()),true},
-	     {default(undefined, utf8string()),"test"},
-	     {default(undefined, utf8string()),""}},
+	    {withdefault, {real(), 1.0}, {real(), 2.0},
+	     {sint32(), 1}, {sint64(), 2}, {uint32(), 3},
+	     {uint64(), 4}, {sint32(), 5},
+	     {default(undefined, sint64()), 6},
+	     {default(undefined, uint32()), 7},
+	     {default(undefined, uint64()), 8},
+	     {default(undefined, sint32()), 9},
+	     {default(undefined, sint64()), 10},
+	     {default(undefined, bool()), true},
+	     {default(undefined, utf8string()), "test"},
+	     {default(undefined, utf8string()), ""}},
 	    begin
-		FunGetDefault = fun({undefined,Val}) -> Val;
-				   ({Val,_}) -> Val;
-				   (Val) -> Val end,
-		FunGetTestMsg = fun({Val,_}) -> Val;
-				   (Val) -> Val end,
-
-		Expected = list_to_tuple(
-			     lists:map(FunGetDefault,tuple_to_list(Withdefault))),
-		TestMsg = list_to_tuple(
-			    lists:map(FunGetTestMsg,tuple_to_list(Withdefault))),
-		Decoded =
-		    hasdefault_pb:decode_withdefault(hasdefault_pb:encode_withdefault(TestMsg)),
-		compare_messages(Expected, Decoded)
+	      FunGetDefault = fun ({undefined, Val}) -> Val;
+				  ({Val, _}) -> Val;
+				  (Val) -> Val
+			      end,
+	      FunGetTestMsg = fun ({Val, _}) -> Val;
+				  (Val) -> Val
+			      end,
+	      Expected = list_to_tuple(lists:map(FunGetDefault,
+						 tuple_to_list(Withdefault))),
+	      TestMsg = list_to_tuple(lists:map(FunGetTestMsg,
+						tuple_to_list(Withdefault))),
+	      Decoded =
+		  hasdefault_pb:decode_withdefault(hasdefault_pb:encode_withdefault(TestMsg)),
+	      compare_messages(Expected, Decoded)
 	    end).
 
 location() ->
@@ -204,9 +202,9 @@ proper_protobuffs_nested1() ->
 	    {person, utf8string(), sint32(),
 	     default(undefined, utf8string()), list(phone_number())},
 	    begin
-		Decoded =
-		    nested1_pb:decode_person(nested1_pb:encode_person(Person)),
-		compare_messages(Person, Decoded)
+	      Decoded =
+		  nested1_pb:decode_person(nested1_pb:encode_person(Person)),
+	      compare_messages(Person, Decoded)
 	    end).
 
 innerAA() ->
@@ -268,17 +266,20 @@ first_inner() ->
 
 proper_protobuffs_nested5() ->
     ?FORALL(Inner,
-	    oneof([default({first, undefined}, {first, first_inner()}),
-		    {second, first_inner()}]),
+	    (oneof([default({first, undefined},
+			    {first, first_inner()}),
+		    {second, first_inner()}])),
 	    begin
-		case element(1,Inner) of
-		    first ->
-			Decoded = nested5_pb:decode_first(nested5_pb:encode_first(Inner)),
-			compare_messages(Inner, Decoded);
-		    second ->
-			Decoded = nested5_pb:decode_second(nested5_pb:encode_second(Inner)),
-			compare_messages(Inner, Decoded)
-		end
+	      case element(1, Inner) of
+		first ->
+		    Decoded =
+			nested5_pb:decode_first(nested5_pb:encode_first(Inner)),
+		    compare_messages(Inner, Decoded);
+		second ->
+		    Decoded =
+			nested5_pb:decode_second(nested5_pb:encode_second(Inner)),
+		    compare_messages(Inner, Decoded)
+	      end
 	    end).
 
 enum_value() -> oneof([value1, value2]).
@@ -307,7 +308,8 @@ proper_protobuffs_enum_outside() ->
 
 proper_protobuffs_extensions() ->
     ?FORALL({Middle},
-	    {default({extendable, dict:new()}, {maxtendable, dict:new()})},
+	    {default({extendable, dict:new()},
+		     {maxtendable, dict:new()})},
 	    begin
 	      DecodeFunc = list_to_atom("decode_" ++
 					  atom_to_list(element(1, Middle))),
@@ -317,19 +319,20 @@ proper_protobuffs_extensions() ->
 	    end).
 
 address_phone_number() ->
-    {person_phonenumber, utf8string(),oneof(['HOME', 'WORK', 'MOBILE'])}.
+    {person_phonenumber, utf8string(),
+     oneof(['HOME', 'WORK', 'MOBILE'])}.
 
 person() ->
-    {person, utf8string(), sint32(), default(undefined,utf8string()),
+    {person, utf8string(), sint32(),
+     default(undefined, utf8string()),
      list(address_phone_number())}.
 
 proper_protobuffs_addressbook() ->
-    ?FORALL(Addressbook,
-	    {addressbook, list(person())},
+    ?FORALL(Addressbook, {addressbook, list(person())},
 	    begin
-		Decoded = addressbook_pb:decode_addressbook(
-			    addressbook_pb:encode_addressbook(Addressbook)),
-		compare_messages(Addressbook, Decoded)
+	      Decoded =
+		  addressbook_pb:decode_addressbook(addressbook_pb:encode_addressbook(Addressbook)),
+	      compare_messages(Addressbook, Decoded)
 	    end).
 
 repeater_location() ->
@@ -337,20 +340,19 @@ repeater_location() ->
 
 repeater_person() ->
     {person, utf8string(), utf8string(), utf8string(),
-     sint32(), list(utf8string()),
-     list(repeater_location()),
+     sint32(), list(utf8string()), list(repeater_location()),
      list(uint32())}.
 
 proper_protobuffs_repeater() ->
-    ?FORALL(Repeater, repeater_person(),
+    ?FORALL(Repeater, (repeater_person()),
 	    begin
-		Decoded =
-		    repeater_pb:decode_person(repeater_pb:encode_person(Repeater)),
-		compare_messages(Repeater, Decoded)
+	      Decoded =
+		  repeater_pb:decode_person(repeater_pb:encode_person(Repeater)),
+	      compare_messages(Repeater, Decoded)
 	    end).
 
 proper_protobuffs_packed_repeated() ->
-    ?FORALL(Repeater, repeater_person(),
+    ?FORALL(Repeater, (repeater_person()),
 	    begin
 	      Decoded =
 		  packed_repeated_pb:decode_person(packed_repeated_pb:encode_person(Repeater)),
@@ -388,7 +390,7 @@ proper_protobuffs_import() ->
 single() -> {message, uint32()}.
 
 proper_protobuffs_single() ->
-    ?FORALL(Single, single(),
+    ?FORALL(Single, (single()),
 	    begin
 	      Decoded =
 		  single_pb:decode_message(single_pb:encode_message(Single)),
@@ -397,98 +399,127 @@ proper_protobuffs_single() ->
 
 proper_protobuffs_extend() ->
     ?FORALL(Extend,
-	    default({extendable, dict:from_list([{126, {optional, sint32(), sint32, []}}])},
-		    {extendable, dict:new()}),
+	    (default({extendable,
+		      dict:from_list([{126,
+				       {optional, sint32(), sint32, []}}])},
+		     {extendable, dict:new()})),
 	    begin
-      Decoded =
-		    extend_pb:decode_extendable(extend_pb:encode_extendable(Extend)),
-      compare_messages(Extend, Decoded)
+	      Decoded =
+		  extend_pb:decode_extendable(extend_pb:encode_extendable(Extend)),
+	      compare_messages(Extend, Decoded)
 	    end).
 
 proper_protobuffs_extend_degraded() ->
     ?FORALL(Extend,
-      default({extendable, dict:from_list([{126, {optional, sint32(), sint32, []}}])},{extendable,dict:new()}),
-      begin
-          Encoded = extend_pb:encode_extendable(Extend),
-          DegradedDecoded = extensions_pb:decode_extendable(Encoded),
-          Decoded = extend_pb:decode_extensions(DegradedDecoded),
-          compare_messages(Extend,Decoded)
-      end).
+	    (default({extendable,
+		      dict:from_list([{126,
+				       {optional, sint32(), sint32, []}}])},
+		     {extendable, dict:new()})),
+	    begin
+	      Encoded = extend_pb:encode_extendable(Extend),
+	      DegradedDecoded =
+		  extensions_pb:decode_extendable(Encoded),
+	      Decoded = extend_pb:decode_extensions(DegradedDecoded),
+	      compare_messages(Extend, Decoded)
+	    end).
 
 proper_protobuffs_extend_assign() ->
-    ?FORALL(Extend, sint32(),
-      begin
-          Input = {extendable, dict:new()},
-          Expected = {extendable, dict:from_list([{126,{optional,Extend,sint32,none}}])},
-          {ok, Output} = extend_pb:set_extension(Input, bar, Extend),
-          compare_messages(Expected,Output)
-      end).
+    ?FORALL(Extend, (sint32()),
+	    begin
+	      Input = {extendable, dict:new()},
+	      Expected = {extendable,
+			  dict:from_list([{126,
+					   {optional, Extend, sint32, none}}])},
+	      {ok, Output} = extend_pb:set_extension(Input, bar,
+						     Extend),
+	      compare_messages(Expected, Output)
+	    end).
 
 proper_protobuffs_assign_encode() ->
-    ?FORALL(Extend, sint32(),
-      begin
-          Input = {extendable, dict:new()},
-          Expected = {extendable, dict:from_list([{126,{optional,Extend,sint32,[]}}])},
-          {ok, Middle} = extend_pb:set_extension(Input, bar, Extend),
-          Output = extend_pb:decode_extendable(extend_pb:encode_extendable(Expected)),
-          compare_messages(Expected,Output)
-      end).
+    ?FORALL(Extend, (sint32()),
+	    begin
+	      Input = {extendable, dict:new()},
+	      Expected = {extendable,
+			  dict:from_list([{126,
+					   {optional, Extend, sint32, []}}])},
+	      {ok, Middle} = extend_pb:set_extension(Input, bar,
+						     Extend),
+	      Output =
+		  extend_pb:decode_extendable(extend_pb:encode_extendable(Expected)),
+	      compare_messages(Expected, Output)
+	    end).
 
 proper_protobuffs_extend_get() ->
-    ?FORALL(Extend, sint32(),
-      begin
-          Input = {extendable, dict:new()},
-          Encodable = {extendable, dict:from_list([{126,{optional,Extend,sint32,[]}}])},
-          {ok, Middle} = extend_pb:set_extension(Input, bar, Extend),
-          Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Middle)),
-          Output = extend_pb:get_extension(Decoded, bar),
-          compare({ok, Extend},Output)
-      end).
+    ?FORALL(Extend, (sint32()),
+	    begin
+	      Input = {extendable, dict:new()},
+	      Encodable = {extendable,
+			   dict:from_list([{126,
+					    {optional, Extend, sint32, []}}])},
+	      {ok, Middle} = extend_pb:set_extension(Input, bar,
+						     Extend),
+	      Decoded =
+		  extend_pb:decode_extendable(extend_pb:encode_extendable(Middle)),
+	      Output = extend_pb:get_extension(Decoded, bar),
+	      compare({ok, Extend}, Output)
+	    end).
 
 proper_protobuffs_extend_has_enum() ->
-    ?FORALL(Extend, oneof(['FOO', 'BAR']),
-      begin
-          Input = {extendable, dict:new()},
-          {ok, Encodable} = extend_pb:set_extension(Input, baz, Extend),
-          Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
-          Out = extend_pb:get_extension(Decoded, baz),
-          compare({ok, Extend}, Out)
-      end).
+    ?FORALL(Extend, (oneof(['FOO', 'BAR'])),
+	    begin
+	      Input = {extendable, dict:new()},
+	      {ok, Encodable} = extend_pb:set_extension(Input, baz,
+							Extend),
+	      Decoded =
+		  extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
+	      Out = extend_pb:get_extension(Decoded, baz),
+	      compare({ok, Extend}, Out)
+	    end).
 
 proper_protobuffs_extend_has_message() ->
-    ?FORALL(Extend, default({maxtendable, dict:new()}, {maxtendable, dict:from_list([{505, {optional, utf8string(), string, []}}])}),
-      begin
-          Input = {extendable, dict:new()},
-          {ok, Encodable} = extend_pb:set_extension(Input, bin, Extend),
-          Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
-          Out = extend_pb:get_extension(Decoded, bin),
-          compare({ok, Extend}, Out)
-      end).
+    ?FORALL(Extend,
+	    (default({maxtendable, dict:new()},
+		     {maxtendable,
+		      dict:from_list([{505,
+				       {optional, utf8string(), string,
+					[]}}])})),
+	    begin
+	      Input = {extendable, dict:new()},
+	      {ok, Encodable} = extend_pb:set_extension(Input, bin,
+							Extend),
+	      Decoded =
+		  extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
+	      Out = extend_pb:get_extension(Decoded, bin),
+	      compare({ok, Extend}, Out)
+	    end).
 
 proper_protobuffs_extend_has_string() ->
-    ?FORALL(Extend, utf8string(),
-      begin
-          Input = {extendable,dict:new()},
-          {ok, Encodable} = extend_pb:set_extension(Input, stringy, Extend),
-          Decoded = extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
-          Out = extend_pb:get_extension(Decoded, stringy),
-          compare({ok, Extend}, Out)
-      end).
+    ?FORALL(Extend, (utf8string()),
+	    begin
+	      Input = {extendable, dict:new()},
+	      {ok, Encodable} = extend_pb:set_extension(Input,
+							stringy, Extend),
+	      Decoded =
+		  extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
+	      Out = extend_pb:get_extension(Decoded, stringy),
+	      compare({ok, Extend}, Out)
+	    end).
 
 proper_protobuffs_service() ->
     %Don't handel service tag for the moment testing no errors and that the messages works
     ?FORALL(Service,
-	    oneof([{searchresponse, default(undefined,utf8string())},
-		   {searchrequest, default(undefined,utf8string())}]),
+	    (oneof([{searchresponse,
+		     default(undefined, utf8string())},
+		    {searchrequest, default(undefined, utf8string())}])),
 	    begin
-		case element(1,Service) of
-		    searchresponse -> 
-			Decoded = service_pb:decode_searchresponse(
-				    service_pb:encode_searchresponse(Service)),
-			compare_messages(Service, Decoded);
-		    searchrequest ->
-			Decoded = service_pb:decode_searchrequest(
-				    service_pb:encode_searchrequest(Service)),
-			compare_messages(Service, Decoded)
-		end
+	      case element(1, Service) of
+		searchresponse ->
+		    Decoded =
+			service_pb:decode_searchresponse(service_pb:encode_searchresponse(Service)),
+		    compare_messages(Service, Decoded);
+		searchrequest ->
+		    Decoded =
+			service_pb:decode_searchrequest(service_pb:encode_searchrequest(Service)),
+		    compare_messages(Service, Decoded)
+	      end
 	    end).

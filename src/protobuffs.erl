@@ -175,7 +175,7 @@ read_field_num_and_wire_type(Bytes) ->
     {{FieldID, WireType}, Rest}.
     
 %%--------------------------------------------------------------------
-%% @doc Decode a singel value from a protobuffs data structure
+%% @doc Decode a single value from a protobuffs data structure
 %% @end
 %%--------------------------------------------------------------------
 -spec decode(Bytes :: binary(), ExpectedType :: field_type()) ->

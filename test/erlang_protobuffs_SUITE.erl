@@ -17,8 +17,7 @@
 %% Info = [tuple()]
 %% @end
 %%--------------------------------------------------------------------
-suite() ->
-    [{timetrap,{seconds,30}}].
+suite() -> [{timetrap, {seconds, 60}}].
 
 %%--------------------------------------------------------------------
 %% @spec init_per_suite(Config0) ->
@@ -27,16 +26,14 @@ suite() ->
 %% Reason = term()
 %% @end
 %%--------------------------------------------------------------------
-init_per_suite(Config) ->
-    [{num_tests,1000}|Config].
+init_per_suite(Config) -> [{num_tests, 1000} | Config].
 
 %%--------------------------------------------------------------------
 %% @spec end_per_suite(Config0) -> void() | {save_config,Config1}
 %% Config0 = Config1 = [tuple()]
 %% @end
 %%--------------------------------------------------------------------
-end_per_suite(_Config) ->
-    ok.
+end_per_suite(_Config) -> ok.
 
 %%--------------------------------------------------------------------
 %% @spec init_per_group(GroupName, Config0) ->
@@ -46,8 +43,7 @@ end_per_suite(_Config) ->
 %% Reason = term()
 %% @end
 %%--------------------------------------------------------------------
-init_per_group(_GroupName, Config) ->
-    Config.
+init_per_group(_GroupName, Config) -> Config.
 
 %%--------------------------------------------------------------------
 %% @spec end_per_group(GroupName, Config0) ->
@@ -56,8 +52,7 @@ init_per_group(_GroupName, Config) ->
 %% Config0 = Config1 = [tuple()]
 %% @end
 %%--------------------------------------------------------------------
-end_per_group(_GroupName, _Config) ->
-    ok.
+end_per_group(_GroupName, _Config) -> ok.
 
 %%--------------------------------------------------------------------
 %% @spec init_per_testcase(TestCase, Config0) ->
@@ -67,8 +62,7 @@ end_per_group(_GroupName, _Config) ->
 %% Reason = term()
 %% @end
 %%--------------------------------------------------------------------
-init_per_testcase(_TestCase, Config) ->
-    Config.
+init_per_testcase(_TestCase, Config) -> Config.
 
 %%--------------------------------------------------------------------
 %% @spec end_per_testcase(TestCase, Config0) ->
@@ -78,8 +72,7 @@ init_per_testcase(_TestCase, Config) ->
 %% Reason = term()
 %% @end
 %%--------------------------------------------------------------------
-end_per_testcase(_TestCase, _Config) ->
-    ok.
+end_per_testcase(_TestCase, _Config) -> ok.
 
 %%--------------------------------------------------------------------
 %% @spec groups() -> [Group]
@@ -94,8 +87,7 @@ end_per_testcase(_TestCase, _Config) ->
 %% N = integer() | forever
 %% @end
 %%--------------------------------------------------------------------
-groups() ->
-    [].
+groups() -> [].
 
 %%--------------------------------------------------------------------
 %% @spec all() -> GroupsAndTestCases | {skip,Reason}
@@ -105,73 +97,20 @@ groups() ->
 %% Reason = term()
 %% @end
 %%--------------------------------------------------------------------
-all() -> 
-    [protobuffs_test_case,
-     protobuffs_packed_test_case,
-     parse_empty_test_case, 
-     parse_has_default_test_case,
-     parse_simple_test_case,
-     parse_nested1_test_case,
-     parse_nested2_test_case,
-     parse_nested3_test_case,
-     parse_nested4_test_case,
-     parse_nested5_test_case,
-     parse_enum_test_case,
-     parse_enum_outside_test_case,
-     parse_extensions_test_case,
-     parse_addressbook_test_case,
-     parse_repeater_test_case,
-     parse_packed_repeated_test_case,
-     parse_special_words_test_case,
-     parse_import_test_case,
-     parse_single_test_case,
-     parse_extend_test_case].
+all() ->
+    [protobuffs_test_case, protobuffs_packed_test_case,
+     test_proto_files, test_extendable_messages].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase() -> Info
 %% Info = [tuple()]
 %% @end
 %%--------------------------------------------------------------------
-protobuffs_test_case() ->
-    [].
-protobuffs_packed_test_case() ->
-    [].
-parse_empty_test_case() -> 
-    [].
-parse_has_default_test_case() ->
-    [].
-parse_simple_test_case() ->
-    [].
-parse_nested1_test_case() ->
-    [].
-parse_nested2_test_case() ->
-    [].
-parse_nested3_test_case() ->
-    [].
-parse_nested4_test_case() ->
-    [].
-parse_nested5_test_case() ->
-    [].
-parse_enum_test_case() ->
-    [].
-parse_enum_outside_test_case() ->
-	[].
-parse_extensions_test_case() ->
-	[].
-parse_addressbook_test_case() ->
-    [].
-parse_repeater_test_case() ->
-    [].
-parse_packed_repeated_test_case() ->
-    [].
-parse_special_words_test_case() ->
-    [].
-parse_import_test_case() ->
-	[].
-parse_single_test_case() ->
-    [].
-parse_extend_test_case() ->
-    [].
+protobuffs_test_case() -> [].
+
+protobuffs_packed_test_case() -> [].
+
+test_proto_files() -> [].
 
 %%--------------------------------------------------------------------
 %% @spec TestCase(Config0) ->
@@ -183,164 +122,122 @@ parse_extend_test_case() ->
 %% @end
 %%--------------------------------------------------------------------
 protobuffs_test_case(Config) ->
-    NumTests = ?config(num_tests, Config),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs())).
+    NumTests = (?config(num_tests, Config)),
+    true = proper:quickcheck(proper:numtests(NumTests,
+					     protobuffs_proper:proper_protobuffs())).
 
 protobuffs_packed_test_case(Config) ->
-    NumTests = ?config(num_tests, Config),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_packed())).
+    NumTests = (?config(num_tests, Config)),
+    true = proper:quickcheck(proper:numtests(NumTests,
+					     protobuffs_proper:proper_protobuffs_packed())).
 
-parse_empty_test_case(Config) -> 
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"empty.proto"])),
-    test_server:format("Testcase ~p, parse file ~p~n", [self(), Path]),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_empty())).
+test_proto_files(Config) ->
+    DataDir = (?config(data_dir, Config)),
+    NumTests = (?config(num_tests, Config)),
+    ProtoFiles = filelib:wildcard(filename:join([DataDir,
+						 "proto", "*.proto"])),
+    TestProtoFile = fun (ProtoFile, Acc) ->
+			    Path = filename:absname(ProtoFile),
+			    Message = filename:basename(ProtoFile, ".proto"),
+			    test_server:format("~n===Testcase ~p, testing message ~p===~n",
+					       [self(), Message]),
+			    test_server:format("Testcase ~p, parse file ~p",
+					       [self(), Path]),
+			    protobuffs_compile:scan_file(Path,
+							 [{imports_dir,
+							   [filename:join([DataDir,
+									   "proto"]),
+							    filename:join([DataDir,
+									   "proto",
+									   "import"])]}]),
+			    Test = list_to_atom("proper_protobuffs_" ++
+						  Message),
+			    Result = proper:quickcheck(proper:numtests(NumTests,
+								       protobuffs_proper:Test()),
+						       [long_result,
+							{on_output,
+							 fun (".", _) -> ok;
+							     (S, F) ->
+								 test_server:format(S,
+										    F)
+							 end}]),
+			    case Result of
+			      true ->
+				  test_server:format("Test ~p: ok~n~n~n",
+						     [Message]),
+				  Acc andalso true;
+			      F ->
+				  test_server:format("Test ~p: Failed with ~p~n~n~n",
+						     [Message, Result]),
+				  false
+			    end
+		    end,
+    case lists:foldl(TestProtoFile, true, ProtoFiles) of
+      true -> ok;
+      _ -> ct:fail("One or more property test cases failed")
+    end.
 
-parse_has_default_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"hasdefault.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_has_default())).
-
-parse_simple_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"simple.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_simple())).
-
-parse_nested1_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"nested1.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_nested1())).
-
-parse_nested2_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"nested2.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_nested2())).
-
-parse_nested3_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"nested3.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_nested3())).
-
-parse_nested4_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"nested4.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_nested4())).
-
-parse_nested5_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"nested5.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_nested5_1())),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_nested5_2())).
-
-parse_enum_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"enum.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_enum())).
-
-parse_enum_outside_test_case(Config) ->
-	DataDir = ?config(data_dir, Config),
-	NumTests = ?config(num_tests, Config),
-	Path = filename:absname(filename:join([DataDir, "enum_outside.proto"])),
-	protobuffs_compile:scan_file(Path),
-	true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_enum_outside())).
-
-parse_extensions_test_case(Config) ->
-	DataDir = ?config(data_dir, Config),
-	NumTests = ?config(num_tests, Config),
-	Path = filename:absname(filename:join([DataDir, "extensions.proto"])),
-	protobuffs_compile:scan_file(Path),
-	true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_extentions())).
-
-parse_service_test_case(Config) ->
-	DataDir = ?config(data_dir, Config),
-	NumTests = ?config(num_tests, Config),
-	Path = filename:absname(filename:join([DataDir, "service.proto"])),
-	protobuffs_compile:scan_file(Path),
-	true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_extentions())).
-
-parse_addressbook_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"addressbook.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_addressbook())).
-
-parse_repeater_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"repeater.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_repeater())).
-
-parse_packed_repeated_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"packed_repeated.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_packed_repeated())).
-
-parse_special_words_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"special_words.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_special_words())).
-
-parse_import_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir, "import.proto"])),
-    protobuffs_compile:scan_file(Path, [{imports_dir, [DataDir]}]),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_import())).
-
-parse_single_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"single.proto"])),
-    protobuffs_compile:scan_file(Path),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_single())).
-
-parse_extend_test_case(Config) ->
-    DataDir = ?config(data_dir, Config),
-    NumTests = ?config(num_tests, Config),
-    Path = filename:absname(filename:join([DataDir,"extend.proto"])),
-    protobuffs_compile:scan_file(Path, [{imports_dir, [DataDir]}]),
-    true = eqc:quickcheck(eqc:numtests(NumTests,protobuffs_eqc:prop_protobuffs_extend())).
+test_extendable_messages(Config) ->
+    DataDir = (?config(data_dir, Config)),
+    NumTests = (?config(num_tests, Config)),
+    ProtoFiles = [begin
+		    Filename = filename:join([DataDir, "proto", X]),
+		    Path = filename:absname(Filename),
+		    Options = [{imports_dir,
+				[filename:join([DataDir, "proto"]),
+				 filename:join([DataDir, "proto", "import"])]}],
+		    protobuffs_compile:scan_file(Path, Options)
+		  end
+		  || X <- ["extend.proto", "extensions.proto"]],
+    Tests = [proper_protobuffs_extend_degraded,
+	     proper_protobuffs_extend_assign,
+	     proper_protobuffs_extend_get,
+	     proper_protobuffs_extend_has_enum,
+	     proper_protobuffs_extend_has_message,
+	     proper_protobuffs_extend_has_string],
+    Folder = fun (Testname, Acc) ->
+		     test_server:format("~n===Extensions Testcase ~p===~n",
+					[Testname]),
+		     Result = proper:quickcheck(proper:numtests(NumTests,
+								protobuffs_proper:Testname()),
+						[long_result,
+						 {on_output,
+						  fun (".", _) -> ok;
+						      (S, F) ->
+							  test_server:format(S,
+									     F)
+						  end}]),
+		     case Result of
+		       true ->
+			   test_server:format("Test ~p:  ok~n~n~n", [Testname]),
+			   Acc andalso true;
+		       _ ->
+			   test_server:format("Test ~p:  Failed with ~p~n~n~n",
+					      [Testname, Result]),
+			   false
+		     end
+	     end,
+    BigRes = lists:foldl(Folder, true, Tests),
+    case BigRes of
+      true -> ok;
+      _ -> ct:fail("One or more extension tests failed")
+    end.
 
 %%---------------------------------------------------------------------
 %% Help flies
 %%---------------------------------------------------------------------
 parse(FileName) ->
     {ok, InFile} = file:open(FileName, [read]),
-    Acc = loop(InFile,[]),
+    Acc = loop(InFile, []),
     file:close(InFile),
-    {ok,Parsed} = protobuffs_parser:parse(Acc),
+    {ok, Parsed} = protobuffs_parser:parse(Acc),
     Parsed.
 
-loop(InFile,Acc) ->
-    case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
-        {ok,Token,_EndLine} ->
-            loop(InFile,Acc ++ [Token]);
-        {error,token} ->
-            exit(scanning_error);    
-        {eof,_} ->
-            Acc
+loop(InFile, Acc) ->
+    case io:request(InFile,
+		    {get_until, prompt, protobuffs_scanner, token, [1]})
+	of
+      {ok, Token, _EndLine} -> loop(InFile, Acc ++ [Token]);
+      {error, token} -> exit(scanning_error);
+      {eof, _} -> Acc
     end.

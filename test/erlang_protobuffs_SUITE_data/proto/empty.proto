@@ -14,4 +14,7 @@ message Empty {
   optional bool val1 = 13;
   optional string str1 = 14;
   optional bytes bit1 = 15;
+  optional EmptyMessage msg = 16;
+  message EmptyMessage {
+  }
 }

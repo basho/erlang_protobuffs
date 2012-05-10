@@ -23,7 +23,13 @@
 %% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(protobuffs_compile).
--export([scan_file/1, scan_file/2, generate_source/1, generate_source/2]).
+
+-ifdef(TEST).
+-compile(export_all).
+-else.
+-export([scan_file/1, scan_file/2, scan_string/2, scan_string/3, 
+	 generate_source/1, generate_source/2]).
+-endif.
 
 -record(collected,{enum=[], msg=[], extensions=[]}).
 
@@ -35,30 +41,48 @@
 scan_file(ProtoFile) ->
     scan_file(ProtoFile,[]).
 
+-spec scan_string(String :: string(), BaseName :: string()) ->
+			 ok | {error, _}.
+scan_string(String,BaseName) ->
+    scan_string(String,BaseName,[]).
+
 %%--------------------------------------------------------------------
 %% @doc Generats a built .beam file and header file .hrl
 %%      Considerd option properties: output_include_dir, 
 %%                                   output_ebin_dir,
 %%                                   imports_dir
 %%--------------------------------------------------------------------
--spec scan_file(ProtoFile :: string(), Options :: list()) ->
+-spec scan_file(ProtoFile :: string() | atom(), Options :: list()) ->
 		       ok | {error, _}.
 scan_file(ProtoFile,Options) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
-    {ok,FirstParsed} = parse(ProtoFile),
+    {ok,String} = parse_file(ProtoFile),
+    scan_string(String,Basename,Options);
+scan_file(ProtoFile,Options) when is_atom(ProtoFile) ->
+    Basename = atom_to_list(ProtoFile) ++ "_pb",
+    {ok,String} = parse_file(atom_to_list(ProtoFile) ++ ".proto"),
+    scan_string(String,Basename,Options).
+
+-spec scan_string(String :: string(), Basename :: string(), Options :: list()) ->
+			 ok | {error, _}. 
+scan_string(String,Basename,Options) ->
+    {ok,FirstParsed} = parse_string(String),
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
     Parsed = parse_imports(FirstParsed, ImportPaths),
     Collected = collect_full_messages(Parsed), 
     Messages = resolve_types(Collected#collected.msg,Collected#collected.enum),
     output(Basename, Messages, Collected#collected.enum, Options).
-
+    
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
 %%--------------------------------------------------------------------
 -spec generate_source(ProtoFile :: string()) ->
 			     ok | {error, _}.
+generate_source(ProtoFile) when is_atom(ProtoFile) ->
+    generate_source(atom_to_list(ProtoFile),[]);
 generate_source(ProtoFile) ->
-    generate_source(ProtoFile,[]).
+    Basename = filename:basename(ProtoFile, ".proto"),
+    generate_source(Basename,[]).
 
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
@@ -69,8 +93,9 @@ generate_source(ProtoFile) ->
 -spec generate_source(ProtoFile :: string(), Options :: list()) ->
 			     ok | {error, _}.
 generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
-    Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
-    {ok,FirstParsed} = parse(ProtoFile),
+    Basename = ProtoFile ++ "_pb",
+    {ok,String} = parse_file(ProtoFile),
+    {ok,FirstParsed} = parse_string(String),
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
     Parsed = parse_imports(FirstParsed, ImportPaths),
     Collected = collect_full_messages(Parsed), 
@@ -85,10 +110,11 @@ parse_imports(Parsed, Path) ->
 parse_imports([], _Path, Acc) ->
     lists:reverse(Acc);
 parse_imports([{import, File} = Head | Tail], Path, Acc) ->
-    case file:path_open(Path, File, [read]) of
+    case protobuffs_file:path_open(Path, File, [read]) of
 	{ok, F, Fullname} ->
 	    file:close(F),
-	    {ok,FirstParsed} = parse(Fullname),
+	    {ok,String} = parse_file(Fullname),
+	    {ok,FirstParsed} = parse_string(String),
 	    Parsed = lists:append(FirstParsed, Tail),
 	    parse_imports(Parsed, Path, [Head | Acc]);
 	{error, Error} ->
@@ -111,12 +137,13 @@ output(Basename, Messages, Enums, Options) ->
 	HeaderPath ->
 	    HeaderFile = filename:join(HeaderPath,Basename) ++ ".hrl"
     end,
+
     error_logger:info_msg("Writing header file to ~p~n",[HeaderFile]),
     ok = write_header_include_file(HeaderFile, Messages),
-    PokemonBeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
+    PokemonBeamFile = code:where_is_file("pokemon_pb.beam"),
     {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(PokemonBeamFile, [abstract_code]),
     Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
-    {ok, _, Bytes, _Warnings} = compile:forms(Forms1, [return, debug_info]),
+    {ok, _, Bytes, _Warnings} = protobuffs_file:compile_forms(Forms1, proplists:get_value(compile_flags,Options,[])),
     case proplists:get_value(output_ebin_dir,Options) of
 	undefined ->
 	    BeamFile = Basename ++ ".beam";
@@ -124,7 +151,7 @@ output(Basename, Messages, Enums, Options) ->
 	    BeamFile = filename:join(BeamPath,Basename) ++ ".beam"
     end,
     error_logger:info_msg("Writing beam file to ~p~n",[BeamFile]),
-    file:write_file(BeamFile, Bytes).
+    protobuffs_file:write_file(BeamFile, Bytes).
 
 %% @hidden
 output_source (Basename, Messages, Enums, Options) ->
@@ -146,25 +173,28 @@ output_source (Basename, Messages, Enums, Options) ->
 	    SrcFile = filename:join(SrcPath,Basename) ++ ".erl"
     end,
     error_logger:info_msg("Writing src file to ~p~n",[SrcFile]),
-    file:write_file(SrcFile, erl_prettypr:format(erl_syntax:form_list (Forms1))).
+    protobuffs_file:write_file(SrcFile, erl_prettypr:format(erl_syntax:form_list (Forms1))).
 
 %% @hidden
-parse(FileName) ->
-    {ok, InFile} = file:open(FileName, [read]),
-    Acc = loop(InFile,[]),
+parse_file(FileName) ->
+    {ok, InFile} = protobuffs_file:open(FileName, [read]),
+    String = parse_file(InFile,[]),
     file:close(InFile),
-    protobuffs_parser:parse(Acc).
+    {ok,String}.
 
 %% @hidden
-loop(InFile,Acc) ->
-    case io:request(InFile,{get_until,prompt,protobuffs_scanner,token,[1]}) of
+parse_file(InFile,Acc) ->
+    case protobuffs_file:request(InFile) of
         {ok,Token,_EndLine} ->
-            loop(InFile,Acc ++ [Token]);
+            parse_file(InFile,Acc ++ [Token]);
         {error,token} ->
             exit(scanning_error);    
         {eof,_} ->
             Acc
     end.
+
+parse_string(String) ->
+    protobuffs_parser:parse(String).
 
 %% @hidden
 filter_forms(Msgs, Enums, [{attribute,L,file,{_,_}}|Tail], Basename, Acc) ->
@@ -175,7 +205,7 @@ filter_forms(Msgs, Enums, [{attribute,L,module,pokemon_pb}|Tail], Basename, Acc)
 
 filter_forms(Msgs, Enums, [{attribute,L,export,[{encode_pikachu,1},{decode_pikachu,1}]}|Tail], Basename, Acc) ->
     Exports = lists:foldl(
-		fun({Name,_}, Acc1) ->
+		fun({Name,_,_}, Acc1) ->
 			[{list_to_atom("encode_" ++ string:to_lower(Name)),1},
 			 {list_to_atom("decode_" ++ string:to_lower(Name)),1} | Acc1]
 		end, [], Msgs),
@@ -184,19 +214,30 @@ filter_forms(Msgs, Enums, [{attribute,L,export,[{encode_pikachu,1},{decode_pikac
 filter_forms(Msgs, Enums, [{attribute,L,record,{pikachu,_}}|Tail], Basename, Acc) ->
     Records = [begin
 		   OutFields = [string:to_lower(A) || {_, _, _, A, _} <- lists:keysort(1, Fields)],
-		   Frm_Fields = [{record_field,L,{atom,L,list_to_atom(OutField)}}|| OutField <- OutFields],
+       ExtendField = case Extends of
+           disallowed -> [];
+           _ -> [{record_field,L,{atom,L,'$extensions'}}]
+       end,
+		   Frm_Fields = [{record_field,L,{atom,L,list_to_atom(OutField)}}|| OutField <- OutFields] ++ ExtendField,
 		   {attribute, L, record, {atomize(Name), Frm_Fields}}
-	       end || {Name, Fields} <- Msgs],
+	       end || {Name, Fields,Extends} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Records ++ Acc);
 
 filter_forms(Msgs, Enums, [{function,L,encode_pikachu,1,[Clause]}|Tail], Basename, Acc) ->
     Functions = [begin
 		     {function,L,list_to_atom("encode_" ++ string:to_lower(Name)),1,[replace_atom(Clause, pikachu, atomize(Name))]} 
-		 end || {Name, _} <- Msgs],
+		 end || {Name, _, _} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Functions ++ Acc);
 
 filter_forms(Msgs, Enums, [{function,L,encode,2,[Clause]}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [expand_encode_function(Msgs, L, Clause)|Acc]);
+
+filter_forms(Msgs, Enums, [{function,L,encode_extensions,1,[EncodeClause,Catchall]}|Tail], Basename, Acc) ->
+    NewEncodeClauses = [replace_atom(EncodeClause, pikachu, atomize(Name)) ||
+        {Name, _Fields, Extens} <- Msgs, Extens =/= disallowed],
+    NewClauses = NewEncodeClauses ++ [Catchall],
+    NewFunction = {function,L,encode_extensions,1,NewClauses},
+    filter_forms(Msgs, Enums, Tail, Basename, [NewFunction | Acc]);
 
  filter_forms(Msgs, Enums, [{function,L,iolist,2,[Clause]}|Tail], Basename, Acc) ->
      filter_forms(Msgs, Enums, Tail, Basename, [expand_iolist_function(Msgs, L, Clause)|Acc]);
@@ -208,7 +249,7 @@ filter_forms(Msgs, Enums, [{function,L,decode_pikachu,1,[Clause]}|Tail], Basenam
 		      list_to_atom("decode_" ++ string:to_lower(Name)),
 		      1,
 		      [replace_atom(Clause, pikachu, atomize(Name))]} 
-		 end || {Name, _} <- Msgs],
+		 end || {Name, _, _} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Functions ++ Acc);
 
 filter_forms(Msgs, Enums, [{function,L,decode,2,[Clause]}|Tail], Basename, Acc) ->
@@ -223,26 +264,152 @@ filter_forms(Msgs, Enums, [{function,L,enum_to_int,2,[Clause]}|Tail], Basename, 
 filter_forms(Msgs, Enums, [{function,L,int_to_enum,2,[Clause]}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [expand_int_to_enum_function(Enums, L, Clause)|Acc]);
 
+filter_forms(Msgs, Enums, [{function,L,decode_extensions,1,[Clause,Catchall]}|Tail],Basename, Acc) ->
+    NewClauses = filter_decode_extensions_clause(Msgs, Msgs, Clause, []),
+    NewHead = {function,L,decode_extensions,1,NewClauses ++ [Catchall]},
+    filter_forms(Msgs, Enums, Tail,Basename,[NewHead|Acc]);
+
+filter_forms(Msgs, Enums, [{function,L,extension_size,1,[RecClause,CatchAll]}|Tail],Basename, Acc) ->
+    NewRecClauses = filter_extension_size(Msgs, RecClause, []),
+    NewClauses = lists:reverse([CatchAll | NewRecClauses]),
+    NewHead = {function,L,extension_size,1,NewClauses},
+    filter_forms(Msgs, Enums, Tail, Basename, [NewHead|Acc]);
+
+filter_forms(Msgs, Enums, [{function,L,has_extension,2,[FilterClause,CatchallClause]}|Tail],Basename,Acc) ->
+    NewRecClauses = filter_has_extension(Msgs, FilterClause, []),
+    NewClauses = lists:reverse([CatchallClause | NewRecClauses]),
+    NewHead = {function,L,has_extension,2,NewClauses},
+    filter_forms(Msgs, Enums, Tail, Basename, [NewHead | Acc]);
+
+filter_forms(Msgs, Enums, [{function,L,get_extension,2,[AtomClause,IntClause,Catchall]}|Tail],Basename,Acc) ->
+    NewAtomClauses = filter_get_extension_atom(Msgs,AtomClause,[]),
+    NewRecClauses = filter_get_extension_integer(Msgs, IntClause, NewAtomClauses),
+    NewClauses = lists:reverse([Catchall | NewRecClauses]),
+    NewHead = {function,L,get_extension,2,NewClauses},
+    filter_forms(Msgs,Enums, Tail, Basename, [NewHead | Acc]);
+
+filter_forms(Msgs, Enums, [{function,L,set_extension,3,[RecClause,Catchall]}|Tail],Basename, Acc) ->
+    NewRecClauses = filter_set_extension(Msgs, RecClause, []),
+    NewClauses = lists:reverse([Catchall | NewRecClauses]),
+    NewHead = {function,L,set_extension,3,NewClauses},
+    filter_forms(Msgs,Enums,Tail,Basename,[NewHead|Acc]);
+
 filter_forms(Msgs, Enums, [Form|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [Form|Acc]);
 
 filter_forms(_, _, [], _, Acc) -> lists:reverse(Acc).
 
 %% @hidden
-expand_encode_function(Msgs, Line, Clause) ->
-    {function,Line,encode,2,[filter_encode_clause(Msg, Clause) || Msg <- Msgs]}.
+filter_set_extension([],_,Acc) ->
+    Acc;
+filter_set_extension([{_,_,disallowed}|Tail],Clause,Acc) ->
+    filter_set_extension(Tail,Clause,Acc);
+filter_set_extension([{MsgName,_,Extends}|Tail],Clause,Acc) ->
+    {clause,L,[OldRecArg,_OldAtomArg,ValueArg],Gs,[OldSet,OldReturn]} = Clause,
+    {match,L,{record,L,_,RecArgFields},RecVar} = OldRecArg,
+    {match,L2,NewReturn,OldDictStore} = OldSet,
+    {call,L2,DictStore,[_StoreKey,_StoreVal,StoreVar]} = OldDictStore,
+    {tuple,L3,[Ok, OldReturnRec]} = OldReturn,
+    {record,L3,ReturnRecVar,OldName,Fields} = OldReturnRec,
+    Folder = fun({Id, Rule, StrType, Name, Opts}, Facc) ->
+        Type = atomize(StrType),
+        FClause = {clause,L,[{match,L,{record,L,atomize(MsgName),RecArgFields},RecVar},{atom,L,atomize(Name)},ValueArg],Gs,[
+            {match,L2,NewReturn,{call,L2,DictStore,[{integer,L2,Id},{tuple,L2,[erl_parse:abstract(Rule),ValueArg,erl_parse:abstract(Type),erl_parse:abstract(Opts)]},StoreVar]}},
+            {tuple,L3,[Ok,{record,L3,ReturnRecVar,atomize(MsgName),Fields}]}
+        ]},
+        [FClause | Facc]
+    end,
+    NewAcc = lists:foldl(Folder, Acc, Extends),
+    filter_set_extension(Tail,Clause,NewAcc).
 
 %% @hidden
-filter_encode_clause({MsgName, _Fields}, {clause,L,_Args,Guards,_Content}) ->
-    ToBin = {call,L,{atom,L,iolist_to_binary},[{call,L,
-                                                {atom,L,iolist},
-                                                [{atom,L,atomize(MsgName)},{var,L,'Record'}]}]},
+filter_get_extension_atom([],_AtomClause,Acc) ->
+    Acc;
+filter_get_extension_atom([{_,_,disallowed}|Tail],Clause,Acc) ->
+    filter_get_extension_atom(Tail,Clause,Acc);
+filter_get_extension_atom([{Msg,_,Extends}|Tail],Clause,Acc) ->
+    {clause,L,[RecArg,_OldAtom],[RecG],[OldSubcall]} = Clause,
+    [{call,L,Guard,[Garg1,_RecName]}] = RecG,
+    {call,L1,Subname,[RecVar,_OldInt]} = OldSubcall,
+    NewG = [{call,L,Guard,[Garg1,{atom,L,atomize(Msg)}]}],
+    NewClauses = [
+        {clause,L,[RecArg,{atom,L,atomize(FName)}],[NewG],[
+          {call,L1,Subname,[RecVar,{integer,L1,FId}]}
+        ]} ||
+      {FId, _, _, FName, _} <- Extends],
+    NewAcc = lists:append(NewClauses,Acc),
+    filter_get_extension_atom(Tail,Clause,NewAcc).
+ 
+%% @hidden
+filter_get_extension_integer([],_,Acc) ->
+    Acc;
+filter_get_extension_integer([{_,_,disallowed}|Tail],IntClause,Acc) ->
+    filter_get_extension_integer(Tail,IntClause,Acc);
+filter_get_extension_integer([{Msg,_,Extends}|Tail],IntClause,Acc) ->
+    {clause,L,[{record,L,Pikachu,Fields},IntArg],Gs,Body} = IntClause,
+    NewRecName = replace_atom(Pikachu, pikachu, atomize(Msg)),
+    NewRecArg = {record,L,NewRecName,Fields},
+    NewClause = {clause,L,[NewRecArg,IntArg],Gs,Body},
+    NewAcc = [NewClause|Acc],
+    filter_get_extension_integer(Tail,IntClause,NewAcc).
+
+%% @hidden
+filter_has_extension([], _, Acc) ->
+    % non-reverseal is intentional.
+    Acc;
+filter_has_extension([{Msg,_,disallowed}|Tail], Clause, Acc) ->
+    filter_has_extension(Tail, Clause, Acc);
+filter_has_extension([{MsgName,_,Extends}|Tail], Clause, Acc) ->
+    {clause,L,[OldRecArg,_],G,[Body]} = Clause,
+		{call, L1, {remote,L1,Dict,IsKey},[_Key,DictArg]} = Body,
+    RecArg = replace_atom(OldRecArg,pikachu,atomize(MsgName)),
+    Folder = fun({ID, Rules, Type, Name, Other}, FoldAcc) ->
+        AtomClause = {clause,L,[RecArg,{atom,L,atomize(Name)}],G,[
+            {call,L,{remote,L,Dict,IsKey},[{atom,L,atomize(Name)},DictArg]}
+        ]},
+        IntClause = {clause,L,[RecArg,{integer,L,ID}],G,[
+            {call,L,{remote,L,Dict,IsKey},[{integer,L,ID},DictArg]}
+        ]},
+        [AtomClause,IntClause|FoldAcc]
+    end,
+    NewClauses = lists:foldl(Folder, [], Extends),
+    NewAcc = lists:append(Acc,NewClauses),
+    filter_has_extension(Tail,Clause,NewAcc).
+    
+%% @hidden
+filter_extension_size([], _RecClause, Acc) ->
+    % the non-reversal is intentional.
+    Acc;
+filter_extension_size([{MsgName,_,disallowed}|Tail],Clause,Acc) ->
+    filter_extension_size(Tail,Clause,Acc);
+filter_extension_size([{MsgName,_,_}|Tail],Clause,Acc) ->
+    {clause,L,[OldArg],G,Body} = Clause,
+    NewClause = {clause,L,[replace_atom(OldArg,pikachu,atomize(MsgName))],G,Body},
+    NewAcc = [NewClause | Acc],
+    filter_extension_size(Tail,Clause,NewAcc).
+
+%% @hidden
+filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,Content}) ->
+    ToBin = {call,L,{atom,L,iolist_to_binary},[
+        {op,L,'++',
+            {call,L, {atom,L,iolist}, [{atom,L,atomize(MsgName)},{var,L,'Record'}]},
+            {call,L, {atom,L,encode_extensions}, [{var,L,'Record'}]}
+        }
+    ]},
     {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Record'}],Guards,[ToBin]}.
 
 expand_iolist_function(Msgs, Line, Clause) ->
     {function,Line,iolist,2,[filter_iolist_clause(Msg, Clause) || Msg <- Msgs]}.
 
-filter_iolist_clause({MsgName, Fields}, {clause,L,_Args,Guards,_Content}) ->
+filter_iolist_clause({MsgName, Fields0, _Extends0}, {clause,L,_Args,Guards,_Content}) ->
+    Fields = [
+        case Tag of
+        optional ->
+            Field;
+        _ ->
+            {FNum,Tag,SType,SName,none}
+        end
+        || {FNum,Tag,SType,SName,_} = Field <- Fields0 ],
     Cons = lists:foldl(
 	     fun({FNum,Tag,SType,SName,Default}, Acc) ->
 		     {cons,L,
@@ -266,18 +433,68 @@ expand_decode_function(Msgs, Line, Clause) ->
      [filter_decode_clause(Msgs, Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
-filter_decode_clause(Msgs, {MsgName, Fields}, {clause,L,_Args,Guards,[_,B,C]}) ->
+filter_decode_clause(Msgs, {MsgName, Fields, Extends}, {clause,L,_Args,Guards,[_,_,C,D]}) ->
     Types = lists:keysort(1, [{FNum, list_to_atom(SName), 
 			       atomize(SType), 
-			       decode_opts(Msgs, Tag, SType)} || 
-				 {FNum,Tag,SType,SName,_} <- Fields]),
+			       decode_opts(Msgs, Tag, SType), Def} ||
+				 {FNum,Tag,SType,SName,Def} <- Fields]),
     Cons = lists:foldl(
-	     fun({FNum, FName, Type, Opts}, Acc) ->
-             {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,list_to_atom(string:to_lower(atom_to_list(FName)))},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
+	     fun({FNum, FName, Type, Opts, _Def}, Acc) ->
+		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
 	     end, {nil,L}, Types),
+    ExtendDefault = case Extends of
+        disallowed -> {nil,L};
+        _ -> erl_parse:abstract([{false, '$extensions', dict:new()}])
+    end,
+    Defaults = lists:foldr(
+        fun
+            ({_FNum, _FName, _Type, _Opts, none}, Acc) ->
+                Acc;
+            ({FNum, FName, _Type, _Opts, Def}, Acc) ->
+                {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},erl_parse:abstract(Def)]},Acc}
+        end,
+        ExtendDefault,
+        Types),
     A = {match,L,{var,L,'Types'},Cons},
-    C1 = replace_atom(C, pikachu, atomize(MsgName)),
-    {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Bytes'}],Guards,[A,B,C1]}.
+    B = {match,L,{var,L,'Defaults'},Defaults},
+    D1 = replace_atom(D, pikachu, atomize(MsgName)),
+    {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Bytes'}],Guards,[A,B,C,D1]}.
+
+%% @hidden
+filter_decode_extensions_clause(_,[],_,Acc) ->
+    lists:reverse(Acc);
+filter_decode_extensions_clause(Msgs,[{_,_,disallowed}|Tail],Clause,Acc) ->
+    filter_decode_extensions_clause(Msgs,Tail,Clause,Acc);
+filter_decode_extensions_clause(Msgs,[{MsgName,_,Extends}|Tail],Clause,Acc) ->
+    {clause,L,_,_,_} = Clause,
+    Types = lists:keysort(1, [{FNum, list_to_atom(SName), 
+			       atomize(SType), 
+			       decode_opts(Msgs, Tag, SType), Def} ||
+				 {FNum,Tag,SType,SName,Def} <- Extends]),
+    Cons = lists:foldl(
+	     fun({FNum, FName, Type, Opts, _Def}, Acc) ->
+		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
+	     end, {nil,L}, Types),
+%    Defaults = lists:foldr(
+%        fun
+%            ({_FNum, _FName, _Type, _Opts, none}, Acc) ->
+%                Acc;
+%            ({FNum, FName, _Type, _Opts, Def}, Acc) ->
+%                {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},erl_parse:abstract(Def)]},Acc}
+%        end,
+%        {nil, L},
+%        Types),
+    A = {match,L,{var,L,'Types'},Cons},
+    %B = {match,L,{var,L,'Defaults'},Defaults},
+    %D1 = replace_atom(D, pikachu, atomize(MsgName)),
+		{clause,L,[Arg],Guards,[_,B,C]} = Clause,
+		NewBody = [A,B,replace_atom(C,pikachu,atomize(MsgName))],
+		NewClause = {clause,L,[replace_atom(Arg, pikachu, atomize(MsgName))],Guards,NewBody},
+    filter_decode_extensions_clause(Msgs,Tail,Clause,[NewClause|Acc]).
+
+%% @hidden
+expand_encode_function(Msgs, Line, Clause) ->
+    {function,Line,encode,2,[filter_encode_clause(Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
 decode_opts(Msgs, Tag, Type) ->
@@ -294,9 +511,17 @@ expand_to_record_function(Msgs, Line, Clause) ->
     {function,Line,to_record,2,[filter_to_record_clause(Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
-filter_to_record_clause({MsgName, _}, {clause,L,[_Param1,Param2],Guards,[Fold]}) ->
+filter_to_record_clause({MsgName, _, Extends}, {clause,L,[_Param1,Param2],Guards,[Fold,DecodeExtends]}) ->
     Fold1 = replace_atom(Fold, pikachu, atomize(MsgName)),
-    {clause,L,[{atom,L,atomize(MsgName)},Param2],Guards,[Fold1]}.
+    ReturnLine = case Extends of
+        disallowed ->
+            {var,L,'Record1'};
+        _ ->
+            {ok, Tokens, _} = erl_scan:string("decode_extensions(Record1)."),
+	          {ok, [Abstract]} = erl_parse:parse_exprs(Tokens),
+            Abstract
+    end,
+    {clause,L,[{atom,L,atomize(MsgName)},Param2],Guards,[Fold1,ReturnLine]}.
 
 %% @hidden
 expand_enum_to_int_function([], Line, Clause) ->
@@ -355,8 +580,13 @@ collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
 			(_, TmpAcc) -> TmpAcc
 		    end, [], Fields),
 
+    ExtendedFields = case Extensions of
+        [] -> disallowed;
+        _ -> []
+    end,
+
     NewCollected = Collected#collected{
-		     msg=[{ListName, FieldsOut} | Collected#collected.msg],
+		     msg=[{ListName, FieldsOut, ExtendedFields} | Collected#collected.msg],
 		     extensions=[{ListName,Extensions} | Collected#collected.extensions]
 		    },
     collect_full_messages(Tail ++ SubMessages ++ Enums, NewCollected);
@@ -392,7 +622,7 @@ collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
 	       end,
 
     CollectedMsg = Collected#collected.msg,
-    {ListName,FieldsOut} = lists:keyfind(ListName,1,CollectedMsg),
+    {ListName,FieldsOut,ExtendFields} = lists:keyfind(ListName,1,CollectedMsg),
     {ListName,Extensions} = lists:keyfind(ListName,1,Collected#collected.extensions),
     
     FunNotInReservedRange = fun(Id) -> not(19000 =< Id andalso Id =< 19999) end,
@@ -421,19 +651,24 @@ collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
 				   (_, TmpAcc) -> TmpAcc
 			       end, [], ExtendedFields)
 			     ),
-    NewCollected = Collected#collected{msg=lists:keyreplace(ListName,1,CollectedMsg,{ListName,ExtendedFieldsOut})},
+    NewExtends = case ExtendFields of
+        disallowed -> disallowed;
+        _ -> ExtendFields ++ ExtendedFieldsOut
+    end,
+    NewCollected = Collected#collected{msg=lists:keyreplace(ListName,1,CollectedMsg,{ListName,FieldsOut,NewExtends})},
     collect_full_messages(Tail, NewCollected);
 %% Skip anything we don't understand
-collect_full_messages([_|Tail], Acc) ->
+collect_full_messages([Skip|Tail], Acc) ->
+    error_logger:warning_report(["Unkown, skipping",
+				 {skip,Skip}]), 
     collect_full_messages(Tail, Acc);
 collect_full_messages([], Collected) ->
     Collected.
 
 %% @hidden
 resolve_types (Data, Enums) -> resolve_types (Data, Data, Enums, []).
-resolve_types ([{TypePath, Fields} | Tail], AllPaths, Enums, Acc) ->
-    FieldsOut = lists:foldl(
-		  fun (Input, TmpAcc) ->
+resolve_types ([{TypePath, Fields,Extended} | Tail], AllPaths, Enums, Acc) ->
+    FolderFun = fun (Input, TmpAcc) ->
 			  case Input of
 			      {Index, Rules, Type, Identifier, Other} ->
 				  case is_scalar_type (Type) of
@@ -464,28 +699,40 @@ resolve_types ([{TypePath, Fields} | Tail], AllPaths, Enums, Acc) ->
 				  end;
 			      _ -> TmpAcc
 			  end
-		  end, [], Fields),
-    resolve_types (Tail, AllPaths, Enums, [{type_path_to_type (TypePath), lists:reverse (FieldsOut) } | Acc]);
+		end,
+    FieldsOut = lists:foldl(FolderFun, [], Fields),
+    ExtendedOut = case Extended of
+        disallowed ->
+            disallowed;
+        _ ->
+            MidExtendOut = lists:foldl(FolderFun, [], Extended),
+            lists:reverse(MidExtendOut)
+    end,
+    resolve_types (Tail, AllPaths, Enums, [{type_path_to_type (TypePath), lists:reverse (FieldsOut), ExtendedOut } | Acc]);
 resolve_types ([], _, _, Acc) ->
     Acc.
 
 %% @hidden
 write_header_include_file(Basename, Messages) ->
-    {ok, FileRef} = file:open(Basename, [write]),
+    {ok, FileRef} = protobuffs_file:open(Basename, [write]),
     [begin
 	 OutFields = [{string:to_lower(A), Optional, Default} || {_, Optional, _, A, Default} <- lists:keysort(1, Fields)],
-	 if
-	     OutFields /= [] ->
-		 io:format(FileRef, "-record(~s, {~n    ", [string:to_lower(Name)]),
-		 WriteFields = generate_field_definitions(OutFields),
+		 protobuffs_file:format(FileRef, "-record(~s, {~n    ", [string:to_lower(Name)]),
+		 WriteFields0 = generate_field_definitions(OutFields),
+     WriteFields = case Extends of
+         disallowed -> WriteFields0;
+         _ ->
+             ExtenStr = case OutFields of
+                 [] -> "'$extensions' = dict:new()";
+                 _ -> "'$extensions' = dict:new()"
+             end,
+							WriteFields0 ++ [ExtenStr]
+     end,
 		 FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
-		 io:format(FileRef, FormatString, WriteFields),
-		 io:format(FileRef, "~n}).~n~n", []);
-	     true ->
-		 ok
-	 end
-     end || {Name, Fields} <- Messages],
-    file:close(FileRef).
+		 protobuffs_file:format(FileRef, FormatString, WriteFields),
+		 protobuffs_file:format(FileRef, "~n}).~n~n", [])
+     end || {Name, Fields, Extends} <- Messages],
+    protobuffs_file:close(FileRef).
 
 %% @hidden
 generate_field_definitions(Fields) ->
@@ -500,7 +747,7 @@ generate_field_definitions([{Name, required, _} | Tail], Acc) ->
 generate_field_definitions([{Name, _, none} | Tail], Acc) ->
     Head = lists:flatten(io_lib:format("~s", [Name])),
     generate_field_definitions(Tail, [Head | Acc]);
-generate_field_definitions([{Name, optional, Default} | Tail], Acc) ->
+generate_field_definitions([{Name, _, Default} | Tail], Acc) ->
     Head = lists:flatten(io_lib:format("~s = ~p", [Name, Default])),
     generate_field_definitions(Tail, [Head | Acc]).
 
@@ -574,10 +821,10 @@ find_type ([], _KnownTypes) ->
     false;
 find_type ([Type | TailTypes], KnownTypes) ->
     case lists:keysearch (Type, 1, KnownTypes) of
-	false ->
-	    find_type (TailTypes, KnownTypes);
-	{value, {RealType, _}} ->
-	    RealType
+        false ->
+            find_type (TailTypes, KnownTypes);
+        {value, {RealType, _, _}} ->
+            RealType
     end.
 
 %% @hidden

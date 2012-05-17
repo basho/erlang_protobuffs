@@ -126,7 +126,8 @@ decode(Bytes, Types, Acc) ->
 		    decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
             end;
         false ->
-            exit({error, {unexpected_field_index, FNum}})
+            {ok, Skipped} = protobuffs:skip_next_field(Bytes),
+            decode(Skipped, Types, Acc)
     end.
     
 unpack_value(Binary, string) when is_binary(Binary) ->

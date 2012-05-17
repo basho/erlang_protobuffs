@@ -41,6 +41,23 @@ encode_test4_test_() ->
 decode_test4_test_() ->
     [?_assertMatch({{4,[3,270,86942]},<<>>},protobuffs:decode_packed(<<34,6,3,142,2,158,167,5>>,int32))].
 
+%%--------------------------------------------------------------------
+%% Skip fields in stream
+%%--------------------------------------------------------------------
+skip_next_field_test_() ->
+    [
+     %% Skip a varint with no remainder
+     ?_assertEqual({ok,<<>>}, protobuffs:skip_next_field(<<32,0>>)),
+     %% Skip a varint
+     ?_assertEqual({ok,<<8,1>>}, protobuffs:skip_next_field(<<32,0,8,1>>)),
+     %% Skip a string
+     ?_assertEqual({ok,<<8,1>>}, protobuffs:skip_next_field(<<18,3,102,111,111,8,1>>)),
+     %% Skip a 32-bit
+     ?_assertEqual({ok,<<8,1>>}, protobuffs:skip_next_field(<<21,32,0,0,0,8,1>>)),
+     %% Skip a 64-bit
+     ?_assertEqual({ok,<<8,1>>}, protobuffs:skip_next_field(<<17,32,0,0,0,0,0,0,0,8,1>>))
+    ].
+
 parse_empty_file_test_() ->
     Path = filename:absname("../test/erlang_protobuffs_SUITE_data/empty.proto"),
     io:format("Test path ~p~n",[Path]),

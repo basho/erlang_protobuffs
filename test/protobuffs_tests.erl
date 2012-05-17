@@ -1,7 +1,7 @@
 %%%-------------------------------------------------------------------
 %%% File    : protobuffs_tests.erl
 %%% Author  : David AAberg <david_ab@RB-DAVIDAB01>
-%%% Description : 
+%%% Description :
 %%%
 %%% Created :  2 Aug 2010 by David AAberg <david_ab@RB-DAVIDAB01>
 %%%-------------------------------------------------------------------
@@ -280,7 +280,7 @@ loop(InFile,Acc) ->
         {ok,Token,_EndLine} ->
             loop(InFile,Acc ++ [Token]);
         {error,token} ->
-            exit(scanning_error);    
+            exit(scanning_error);
         {eof,_} ->
             Acc
     end.

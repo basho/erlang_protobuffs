@@ -1,4 +1,4 @@
-%% Copyright (c) 2009 
+%% Copyright (c) 2009
 %% Nick Gerakines <nick@gerakines.net>
 %% Jacob Vorreuter <jacob.vorreuter@gmail.com>
 %%
@@ -45,22 +45,22 @@
 -define(TYPE_32BIT, 5).
 
 -type encoded_field_type() ::
-	?TYPE_VARINT | ?TYPE_64BIT | ?TYPE_STRING |
-	?TYPE_START_GROUP | ?TYPE_END_GROUP | ?TYPE_32BIT.
+    ?TYPE_VARINT | ?TYPE_64BIT | ?TYPE_STRING |
+    ?TYPE_START_GROUP | ?TYPE_END_GROUP | ?TYPE_32BIT.
 
--type field_type() :: bool | enum | int32 | uint32 | int64 | 
-		      unit64 | sint32 | sint64 | fixed32 | 
-		      sfixed32 | fixed64 | sfixed64 | string | 
-		      bytes | float | double.
+-type field_type() :: bool | enum | int32 | uint32 | int64 |
+              unit64 | sint32 | sint64 | fixed32 |
+              sfixed32 | fixed64 | sfixed64 | string |
+              bytes | float | double.
 
 %%--------------------------------------------------------------------
 %% @doc Encode an Erlang data structure into a Protocol Buffers value.
 %% @end
 %%--------------------------------------------------------------------
 -spec encode(FieldID :: non_neg_integer(),
-	     Value :: any(),
-	     Type :: field_type()) -> 
-		    binary().
+         Value :: any(),
+         Type :: field_type()) ->
+            binary().
 
 encode(FieldID, Value, Type) ->
     iolist_to_binary(encode_internal(FieldID, Value, Type)).
@@ -69,22 +69,22 @@ encode(FieldID, Value, Type) ->
 %% @doc Encode an list of Erlang data structure into a Protocol Buffers values.
 %% @end
 %%--------------------------------------------------------------------
--spec encode_packed(FieldID :: non_neg_integer(), 
-		    Values :: list(), 
-		    Type :: field_type()) -> 
-			   binary().
+-spec encode_packed(FieldID :: non_neg_integer(),
+            Values :: list(),
+            Type :: field_type()) ->
+               binary().
 encode_packed(_FieldID, [], _Type) ->
     <<>>;
 encode_packed(FieldID, Values, Type) ->
     PackedValues = iolist_to_binary(encode_packed_internal(Values,Type,[])),
     Size = encode_varint(size(PackedValues)),
     iolist_to_binary([encode_field_tag(FieldID, ?TYPE_STRING),Size,PackedValues]).
-    
+
 %% @hidden
--spec encode_internal(FieldID :: non_neg_integer(), 
-		      Value :: any(), 
-		      Type :: field_type()) -> 
-			     iolist().
+-spec encode_internal(FieldID :: non_neg_integer(),
+              Value :: any(),
+              Type :: field_type()) ->
+                 iolist().
 encode_internal(FieldID, false, bool) ->
     encode_internal(FieldID, 0, int32);
 encode_internal(FieldID, true, bool) ->
@@ -98,7 +98,7 @@ encode_internal(FieldID, Integer, int64) when Integer >= -16#8000000000000000, I
 encode_internal(FieldID, Integer, int32) when Integer >= -16#80000000, Integer =< 16#7fffffff ->
     encode_varint_field(FieldID, Integer);
 encode_internal(FieldID, Integer, uint32) when Integer band 16#ffffffff =:= Integer ->
-    encode_varint_field(FieldID, Integer);    
+    encode_varint_field(FieldID, Integer);
 encode_internal(FieldID, Integer, int64) when Integer >= -16#8000000000000000, Integer =< 16#7fffffffffffffff ->
     encode_varint_field(FieldID, Integer);
 encode_internal(FieldID, Integer, uint64) when Integer band 16#ffffffffffffffff =:= Integer ->
@@ -152,10 +152,10 @@ encode_internal(FieldID, '-infinity', double) ->
 
 
 %% @hidden
--spec encode_packed_internal(Values :: list(), 
-			     ExpectedType :: field_type(),
-			     Acc :: list()) ->
-				    iolist().
+-spec encode_packed_internal(Values :: list(),
+                 ExpectedType :: field_type(),
+                 Acc :: list()) ->
+                    iolist().
 encode_packed_internal([],_Type,Acc) ->
     lists:reverse(Acc);
 encode_packed_internal([Value|Tail], ExpectedType, Acc) ->
@@ -167,19 +167,19 @@ encode_packed_internal([Value|Tail], ExpectedType, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec read_field_num_and_wire_type(Bytes :: binary()) ->
-					  {{non_neg_integer(), encoded_field_type()}, binary()}.
+                      {{non_neg_integer(), encoded_field_type()}, binary()}.
 read_field_num_and_wire_type(Bytes) ->
     {Tag, Rest} = decode_varint(Bytes),
     FieldID = Tag bsr 3,
     WireType = Tag band 7,
     {{FieldID, WireType}, Rest}.
-    
+
 %%--------------------------------------------------------------------
 %% @doc Decode a singel value from a protobuffs data structure
 %% @end
 %%--------------------------------------------------------------------
 -spec decode(Bytes :: binary(), ExpectedType :: field_type()) ->
-		    {{non_neg_integer(), any()}, binary()}.
+            {{non_neg_integer(), any()}, binary()}.
 decode(Bytes, ExpectedType) ->
     {{FieldID, WireType}, Rest} = read_field_num_and_wire_type(Bytes),
     {Value, Rest1} = decode_value(Rest, WireType, ExpectedType),
@@ -190,7 +190,7 @@ decode(Bytes, ExpectedType) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec decode_packed(Bytes :: binary(), ExpectedType :: field_type()) ->
-			   {{non_neg_integer(), any()}, binary()}.
+               {{non_neg_integer(), any()}, binary()}.
 decode_packed(Bytes, ExpectedType) ->
     {{FieldID, ?TYPE_STRING}, Rest} = read_field_num_and_wire_type(Bytes),
     {Length, Rest1} = decode_varint(Rest),
@@ -272,9 +272,9 @@ decode_packed_values(Bytes, double, Acc) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec decode_value(Bytes :: binary(),
-		   WireType :: encoded_field_type(),
-		   ExpectedType :: field_type()) ->
-			  {any(),binary()}.
+           WireType :: encoded_field_type(),
+           ExpectedType :: field_type()) ->
+              {any(),binary()}.
 decode_value(Bytes, ?TYPE_VARINT, ExpectedType) ->
     {Value, Rest} = decode_varint(Bytes),
     {typecast(Value, ExpectedType), Rest};
@@ -318,7 +318,7 @@ decode_value(Value, WireType, ExpectedType) ->
 
 %% @hidden
 -spec typecast(Value :: any(), Type :: field_type()) ->
-		      any().
+              any().
 typecast(Value, SignedType) when SignedType =:= int32; SignedType =:= int64 ->
     if
         Value band 16#8000000000000000 =/= 0 -> Value - 16#10000000000000000;
@@ -326,34 +326,34 @@ typecast(Value, SignedType) when SignedType =:= int32; SignedType =:= int64 ->
     end;
 typecast(Value, SignedType) when SignedType =:= sint32; SignedType =:= sint64 ->
     (Value bsr 1) bxor (-(Value band 1));
-typecast(Value, Type) when Type =:= bool -> 
+typecast(Value, Type) when Type =:= bool ->
     Value =:= 1;
 typecast(Value, _) ->
     Value.
 
 %% @hidden
--spec encode_field_tag(FieldID :: non_neg_integer(), 
-		       FieldType :: encoded_field_type()) ->
-			      binary().
+-spec encode_field_tag(FieldID :: non_neg_integer(),
+               FieldType :: encoded_field_type()) ->
+                  binary().
 encode_field_tag(FieldID, FieldType) when FieldID band 16#3fffffff =:= FieldID ->
     encode_varint((FieldID bsl 3) bor FieldType).
 
 %% @hidden
 -spec encode_varint_field(FieldID :: non_neg_integer(),
-			  Integer :: integer()) ->
-				 iolist().
+              Integer :: integer()) ->
+                 iolist().
 encode_varint_field(FieldID, Integer) ->
     [encode_field_tag(FieldID, ?TYPE_VARINT), encode_varint(Integer)].
 
 %% @hidden
 -spec encode_varint(I :: integer()) ->
-			   binary().
+               binary().
 encode_varint(I) ->
     encode_varint(I, []).
 
 %% @hidden
 -spec encode_varint(I :: integer(), Acc :: list()) ->
-			   binary().
+               binary().
 encode_varint(I, Acc) when I =< 16#7f ->
     iolist_to_binary(lists:reverse([I | Acc]));
 encode_varint(I, Acc) ->
@@ -364,15 +364,15 @@ encode_varint(I, Acc) ->
 
 %% @hidden
 -spec decode_varint(Bytes :: binary()) ->
-			   {integer(), binary()}.
+               {integer(), binary()}.
 decode_varint(Bytes) ->
     decode_varint(Bytes, []).
 
--spec decode_varint(Bytes :: binary(), list()) -> 
-			   {integer(), binary()}.
+-spec decode_varint(Bytes :: binary(), list()) ->
+               {integer(), binary()}.
 decode_varint(<<0:1, I:7, Rest/binary>>, Acc) ->
     Acc1 = [I|Acc],
-    Result = 
+    Result =
         lists:foldl(
             fun(X, Acc0) ->
                 (Acc0 bsl 7 bor X)

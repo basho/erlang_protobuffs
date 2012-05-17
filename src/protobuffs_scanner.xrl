@@ -22,10 +22,10 @@ Rules.
 {HEX} : {token, {integer, TokenLine, hex_to_int(TokenChars)}}.
 
 Erlang code.
-strip(TokenChars,TokenLen) -> 
+strip(TokenChars,TokenLen) ->
     lists:sublist(TokenChars, 2, TokenLen - 2).
 
 hex_to_int([_,_|R]) ->
     {ok,[Int],[]} = io_lib:fread("~16u", R),
     Int.
-    
+

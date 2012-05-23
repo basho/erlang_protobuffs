@@ -476,11 +476,14 @@ write_header_include_file(Basename, Messages) ->
      OutFields = [{string:to_lower(A), Optional, Default} || {_, Optional, _, A, Default} <- lists:keysort(1, Fields)],
      if
          OutFields /= [] ->
+         DefName = string:to_upper(Name) ++ "_PB_H",
+         io:format(FileRef, "-ifndef(~s).~n-define(~s, true).~n", [DefName, DefName]),
          io:format(FileRef, "-record(~s, {~n    ", [string:to_lower(Name)]),
          WriteFields = generate_field_definitions(OutFields),
          FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
          io:format(FileRef, FormatString, WriteFields),
-         io:format(FileRef, "~n}).~n~n", []);
+         io:format(FileRef, "~n}).~n", []),
+         io:format(FileRef, "-endif.~n~n", []);
          true ->
          ok
      end

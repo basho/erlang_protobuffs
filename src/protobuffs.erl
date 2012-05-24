@@ -61,7 +61,6 @@
 	     Value :: any(),
 	     Type :: field_type()) -> 
 		    binary().
-
 encode(FieldID, Value, Type) ->
     iolist_to_binary(encode_internal(FieldID, Value, Type)).
 
@@ -89,48 +88,62 @@ encode_internal(FieldID, false, bool) ->
     encode_internal(FieldID, 0, int32);
 encode_internal(FieldID, true, bool) ->
     encode_internal(FieldID, 1, int32);
-encode_internal(FieldID, Integer, enum) ->
-    encode_internal(FieldID, Integer, uint32);
-encode_internal(FieldID, Integer, int32) when Integer >= -16#80000000, Integer < 0 ->
+encode_internal(FieldID, Integer, enum) when is_integer(Integer) ->
+    encode_internal(FieldID, Integer, int32);
+encode_internal(FieldID, Integer, int32) when Integer >= -16#80000000, 
+					      Integer < 0 ->
     encode_internal(FieldID, Integer, int64);
-encode_internal(FieldID, Integer, int64) when Integer >= -16#8000000000000000, Integer < 0 ->
+encode_internal(FieldID, Integer, int64) when Integer >= -16#8000000000000000, 
+					      Integer < 0 ->
     encode_internal(FieldID, Integer + (1 bsl 64), uint64);
-encode_internal(FieldID, Integer, int32) when Integer >= -16#80000000, Integer =< 16#7fffffff ->
+encode_internal(FieldID, Integer, int32) when is_integer(Integer), 
+					      Integer >= -16#80000000, 
+					      Integer =< 16#7fffffff ->
     encode_varint_field(FieldID, Integer);
 encode_internal(FieldID, Integer, uint32) when Integer band 16#ffffffff =:= Integer ->
     encode_varint_field(FieldID, Integer);    
-encode_internal(FieldID, Integer, int64) when Integer >= -16#8000000000000000, Integer =< 16#7fffffffffffffff ->
+encode_internal(FieldID, Integer, int64) when is_integer(Integer), 
+					      Integer >= -16#8000000000000000, 
+					      Integer =< 16#7fffffffffffffff ->
     encode_varint_field(FieldID, Integer);
 encode_internal(FieldID, Integer, uint64) when Integer band 16#ffffffffffffffff =:= Integer ->
     encode_varint_field(FieldID, Integer);
-encode_internal(FieldID, Integer, bool) when Integer band 1 =:= 1 ->
+encode_internal(FieldID, Integer, bool) when Integer =:= 1; Integer =:= 0 ->
     encode_varint_field(FieldID, Integer);
-encode_internal(FieldID, Integer, sint32) when Integer >= -16#80000000, Integer < 0 ->
+encode_internal(FieldID, Integer, sint32) when is_integer(Integer), 
+					       Integer >= -16#80000000, 
+					       Integer < 0 ->
     encode_varint_field(FieldID, bnot (Integer bsl 1));
-encode_internal(FieldID, Integer, sint64) when Integer >= -16#8000000000000000, Integer < 0 ->
+encode_internal(FieldID, Integer, sint64) when is_integer(Integer), 
+					       Integer >= -16#8000000000000000, 
+					       Integer < 0 ->
     encode_varint_field(FieldID, bnot (Integer bsl 1));
-encode_internal(FieldID, Integer, sint32) when Integer >= 0, Integer =< 16#7fffffff ->
+encode_internal(FieldID, Integer, sint32) when is_integer(Integer), 
+					       Integer >= 0, 
+					       Integer =< 16#7fffffff ->
     encode_varint_field(FieldID, Integer bsl 1);
-encode_internal(FieldID, Integer, sint64) when Integer >= 0, Integer =< 16#7fffffffffffffff ->
+encode_internal(FieldID, Integer, sint64) when is_integer(Integer), 
+					       Integer >= 0, 
+					       Integer =< 16#7fffffffffffffff ->
     encode_varint_field(FieldID, Integer bsl 1);
 encode_internal(FieldID, Integer, fixed32) when Integer band 16#ffffffff =:= Integer ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<Integer:32/little-integer>>];
-encode_internal(FieldID, Integer, sfixed32) when Integer >= -16#80000000, Integer =< 16#7fffffff ->
+encode_internal(FieldID, Integer, sfixed32) when Integer >= -16#80000000, 
+						 Integer =< 16#7fffffff ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<Integer:32/little-integer>>];
 encode_internal(FieldID, Integer, fixed64) when Integer band 16#ffffffffffffffff =:= Integer ->
     [encode_field_tag(FieldID, ?TYPE_64BIT), <<Integer:64/little-integer>>];
-encode_internal(FieldID, Integer, sfixed64) when Integer >= -16#8000000000000000, Integer =< 16#7fffffffffffffff ->
+encode_internal(FieldID, Integer, sfixed64) when Integer >= -16#8000000000000000,
+						 Integer =< 16#7fffffffffffffff ->
     [encode_field_tag(FieldID, ?TYPE_64BIT), <<Integer:64/little-integer>>];
 encode_internal(FieldID, String, string) when is_list(String) ->
-    encode_internal(FieldID, list_to_binary(String), string);
+    encode_internal(FieldID, unicode:characters_to_binary(String), string);
 encode_internal(FieldID, String, string) when is_binary(String) ->
     encode_internal(FieldID, String, bytes);
 encode_internal(FieldID, String, bytes) when is_list(String) ->
-    encode_internal(FieldID, list_to_binary(String), bytes);
+    encode_internal(FieldID, unicode:characters_to_binary(String), bytes);
 encode_internal(FieldID, Bytes, bytes) when is_binary(Bytes) ->
     [encode_field_tag(FieldID, ?TYPE_STRING), encode_varint(size(Bytes)), Bytes];
-encode_internal(FieldID, String, bytes) when is_list(String) ->
-    encode_internal(FieldID, list_to_binary(String), bytes);
 encode_internal(FieldID, Float, float) when is_integer(Float) ->
     encode_internal(FieldID, Float + 0.0, float);
 encode_internal(FieldID, Float, float) when is_float(Float) ->
@@ -141,6 +154,8 @@ encode_internal(FieldID, infinity, float) ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<0:16,128:8,127:8>>];
 encode_internal(FieldID, '-infinity', float) ->
     [encode_field_tag(FieldID, ?TYPE_32BIT), <<0:16,128:8,255:8>>];
+encode_internal(FieldID, Float, double) when is_integer(Float) ->
+    encode_internal(FieldID, Float + 0.0, double);
 encode_internal(FieldID, Float, double) when is_float(Float) ->
     [encode_field_tag(FieldID, ?TYPE_64BIT), <<Float:64/little-float>>];
 encode_internal(FieldID, nan, double) ->
@@ -148,7 +163,9 @@ encode_internal(FieldID, nan, double) ->
 encode_internal(FieldID, infinity, double) ->
     [encode_field_tag(FieldID, ?TYPE_64BIT), <<0:48,16#F0,16#7F>>];
 encode_internal(FieldID, '-infinity', double) ->
-    [encode_field_tag(FieldID, ?TYPE_64BIT), <<0:48,16#F0,16#FF>>].
+    [encode_field_tag(FieldID, ?TYPE_64BIT), <<0:48,16#F0,16#FF>>];
+encode_internal(FieldID, Value, Type) ->
+    erlang:error(badarg,[FieldID, Value, Type]).
 
 
 %% @hidden
@@ -168,11 +185,27 @@ encode_packed_internal([Value|Tail], ExpectedType, Acc) ->
 %%--------------------------------------------------------------------
 -spec read_field_num_and_wire_type(Bytes :: binary()) ->
 					  {{non_neg_integer(), encoded_field_type()}, binary()}.
-read_field_num_and_wire_type(Bytes) ->
+read_field_num_and_wire_type(<<_:8,_/binary>> = Bytes) ->
     {Tag, Rest} = decode_varint(Bytes),
     FieldID = Tag bsr 3,
-    WireType = Tag band 7,
-    {{FieldID, WireType}, Rest}.
+    case Tag band 7 of
+	?TYPE_VARINT ->
+	    {{FieldID, ?TYPE_VARINT}, Rest};
+	?TYPE_64BIT ->
+	    {{FieldID, ?TYPE_64BIT}, Rest};
+	?TYPE_STRING ->
+	    {{FieldID, ?TYPE_STRING}, Rest};
+	?TYPE_START_GROUP ->
+	    {{FieldID, ?TYPE_START_GROUP}, Rest};
+	?TYPE_END_GROUP ->
+	    {{FieldID, ?TYPE_END_GROUP}, Rest};
+	?TYPE_32BIT ->
+	    {{FieldID, ?TYPE_32BIT}, Rest};
+	_Else ->
+	    erlang:throw({error, "Error decodeing type"})
+    end;
+read_field_num_and_wire_type(Bytes) ->
+    erlang:error(badarg,[Bytes]).
     
 %%--------------------------------------------------------------------
 %% @doc Decode a single value from a protobuffs data structure
@@ -192,22 +225,25 @@ decode(Bytes, ExpectedType) ->
 -spec decode_packed(Bytes :: binary(), ExpectedType :: field_type()) ->
 			   {{non_neg_integer(), any()}, binary()}.
 decode_packed(Bytes, ExpectedType) ->
-    {{FieldID, ?TYPE_STRING}, Rest} = read_field_num_and_wire_type(Bytes),
-    {Length, Rest1} = decode_varint(Rest),
-    {Packed,Rest2} = split_binary(Rest1, Length),
-    Values = decode_packed_values(Packed, ExpectedType, []),
-    {{FieldID, Values},Rest2}.
+    case read_field_num_and_wire_type(Bytes) of
+	{{FieldID, ?TYPE_STRING}, Rest} ->
+	    {Length, Rest1} = decode_varint(Rest),
+	    {Packed,Rest2} = split_binary(Rest1, Length),
+	    Values = decode_packed_values(Packed, ExpectedType, []),
+	    {{FieldID, Values},Rest2};
+	_Else ->
+	    erlang:error(badarg)
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc Returns the next field number id from a protobuffs data structure
 %% @end
 %%--------------------------------------------------------------------
--spec next_field_num(Bytes :: binary()) ->
-			    {ok,non_neg_integer()}.
+-spec next_field_num(Bytes :: binary()) -> {ok,non_neg_integer()}.
 next_field_num(Bytes) ->
     {{FieldID,_WiredType}, _Rest} = read_field_num_and_wire_type(Bytes),
     {ok,FieldID}.
-    
+
 %% @hidden    
 -spec decode_packed_values(Bytes :: binary(),
 			   Type :: field_type(),
@@ -220,7 +256,7 @@ decode_packed_values(Bytes, bool, Acc) ->
     decode_packed_values(Rest, bool, [Value|Acc]);
 decode_packed_values(Bytes, enum, Acc) ->
     {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, enum),
-    decode_packed_values(Rest, bool, [Value|Acc]);
+    decode_packed_values(Rest, enum, [Value|Acc]);
 decode_packed_values(Bytes, int32, Acc) ->
     {Value,Rest} = decode_value(Bytes,?TYPE_VARINT, int32),
     decode_packed_values(Rest, int32, [Value|Acc]);
@@ -244,7 +280,9 @@ decode_packed_values(Bytes, float, Acc) ->
     decode_packed_values(Rest, float, [Value|Acc]);
 decode_packed_values(Bytes, double, Acc) ->
     {Value,Rest} = decode_value(Bytes,?TYPE_64BIT, double),
-    decode_packed_values(Rest, double, [Value|Acc]).
+    decode_packed_values(Rest, double, [Value|Acc]);
+decode_packed_values(Bytes, Type, Acc) ->
+    erlang:error(badarg,[Bytes,Type,Acc]).
 
 
 %%--------------------------------------------------------------------
@@ -261,7 +299,7 @@ decode_value(Bytes, ?TYPE_VARINT, ExpectedType) ->
 decode_value(Bytes, ?TYPE_STRING, string) ->
     {Length, Rest} = decode_varint(Bytes),
     {Value,Rest1} = split_binary(Rest, Length),
-    {binary_to_list(Value),Rest1};
+    {[C || <<C/utf8>> <= Value],Rest1};
 decode_value(Bytes, ?TYPE_STRING, bytes) ->
     {Length, Rest} = decode_varint(Bytes),
     split_binary(Rest, Length);
@@ -293,13 +331,13 @@ decode_value(<<0:48, 240:8, 255:8, Rest/binary>>, ?TYPE_64BIT, double) ->
     {'-infinity', Rest};
 decode_value(<<_:48, 2#1111:4, _:4, _:1, 2#1111111:7, Rest/binary>>, ?TYPE_64BIT, double) ->
     {nan, Rest};
-decode_value(Value, WireType, ExpectedType) ->
-    exit({error, {unexpected_value, WireType, ExpectedType, Value}}).
+decode_value(Bytes,WireType,ExpectedType) ->
+    erlang:error(badarg,[Bytes,WireType,ExpectedType]).
 
 %% @hidden
 -spec typecast(Value :: any(), Type :: field_type()) ->
 		      any().
-typecast(Value, SignedType) when SignedType =:= int32; SignedType =:= int64 ->
+typecast(Value, SignedType) when SignedType =:= int32; SignedType =:= int64; SignedType =:= enum ->
     if
         Value band 16#8000000000000000 =/= 0 -> Value - 16#10000000000000000;
         true -> Value
@@ -359,4 +397,6 @@ decode_varint(<<0:1, I:7, Rest/binary>>, Acc) ->
             end, 0, Acc1),
     {Result, Rest};
 decode_varint(<<1:1, I:7, Rest/binary>>, Acc) ->
-    decode_varint(Rest, [I | Acc]).
+    decode_varint(Rest, [I | Acc]);
+decode_varint(Bytes,Acc) ->
+    erlang:error(badarg,[Bytes,Acc]).

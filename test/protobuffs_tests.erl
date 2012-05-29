@@ -561,3 +561,20 @@ prop_packed_double() ->
 		(?DECODE_PACKED((?ENCODE_PACKED(Id, Doubles, double)),
 				double))
 	    end).
+
+%%--------------------------------------------------------------------
+%% Skip fields in stream
+%%--------------------------------------------------------------------
+skip_next_field_test_() ->
+    [
+     %% Skip a varint with no remainder
+     ?_assertEqual({ok,<<>>}, protobuffs:skip_next_field(<<32,0>>)),
+     %% Skip a varint
+     ?_assertEqual({ok,<<8,1>>}, protobuffs:skip_next_field(<<32,0,8,1>>)),
+     %% Skip a string
+     ?_assertEqual({ok,<<8,1>>}, protobuffs:skip_next_field(<<18,3,102,111,111,8,1>>)),
+     %% Skip a 32-bit
+     ?_assertEqual({ok,<<8,1>>}, protobuffs:skip_next_field(<<21,32,0,0,0,8,1>>)),
+     %% Skip a 64-bit
+     ?_assertEqual({ok,<<8,1>>}, protobuffs:skip_next_field(<<17,32,0,0,0,0,0,0,0,8,1>>))
+    ].

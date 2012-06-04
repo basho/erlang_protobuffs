@@ -716,21 +716,24 @@ resolve_types ([], _, _, Acc) ->
 write_header_include_file(Basename, Messages) ->
     {ok, FileRef} = protobuffs_file:open(Basename, [write]),
     [begin
-	 OutFields = [{string:to_lower(A), Optional, Default} || {_, Optional, _, A, Default} <- lists:keysort(1, Fields)],
-		 protobuffs_file:format(FileRef, "-record(~s, {~n    ", [string:to_lower(Name)]),
-		 WriteFields0 = generate_field_definitions(OutFields),
-     WriteFields = case Extends of
-         disallowed -> WriteFields0;
-         _ ->
-             ExtenStr = case OutFields of
-                 [] -> "'$extensions' = dict:new()";
-                 _ -> "'$extensions' = dict:new()"
-             end,
-							WriteFields0 ++ [ExtenStr]
-     end,
-		 FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
-		 protobuffs_file:format(FileRef, FormatString, WriteFields),
-		 protobuffs_file:format(FileRef, "~n}).~n~n", [])
+         OutFields = [{string:to_lower(A), Optional, Default} || {_, Optional, _, A, Default} <- lists:keysort(1, Fields)],
+         DefName = string:to_upper(Name) ++ "_PB_H",
+         protobuffs_file:format(FileRef, "-ifndef(~s).~n-define(~s, true).~n", [DefName, DefName]),
+         protobuffs_file:format(FileRef, "-record(~s, {~n    ", [string:to_lower(Name)]),
+         WriteFields0 = generate_field_definitions(OutFields),
+         WriteFields = case Extends of
+                           disallowed -> WriteFields0;
+                           _ ->
+                               ExtenStr = case OutFields of
+                                              [] -> "'$extensions' = dict:new()";
+                                              _ -> "'$extensions' = dict:new()"
+                                          end,
+                               WriteFields0 ++ [ExtenStr]
+                       end,
+         FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
+         protobuffs_file:format(FileRef, FormatString, WriteFields),
+         protobuffs_file:format(FileRef, "~n}).~n", []),
+         protobuffs_file:format(FileRef, "-endif.~n~n", [])
      end || {Name, Fields, Extends} <- Messages],
     protobuffs_file:close(FileRef).
 

@@ -30,7 +30,7 @@
 -export([encode/3, encode_packed/3, decode/2, decode_packed/2]).
 
 %% Used by generated *_pb file. Not intended to used by User
--export([next_field_num/1]).
+-export([next_field_num/1, skip_next_field/1]).
 
 %% Will be removed from export, only intended for internal usage
 -deprecated([{read_field_num_and_wire_type,1,next_version}]).
@@ -243,6 +243,28 @@ decode_packed(Bytes, ExpectedType) ->
 next_field_num(Bytes) ->
     {{FieldID,_WiredType}, _Rest} = read_field_num_and_wire_type(Bytes),
     {ok,FieldID}.
+
+%%--------------------------------------------------------------------
+%% @doc Skips the field at the front of the message, effectively ignoring it.
+%% @end
+%%--------------------------------------------------------------------
+-spec skip_next_field(Bytes :: binary()) ->
+                             {ok, binary()}.
+skip_next_field(Bytes) ->
+    {{_FieldId, WireType}, Rest} = read_field_num_and_wire_type(Bytes),
+    case WireType of
+        ?TYPE_VARINT ->
+            {_, Rest1} = decode_varint(Rest);
+        ?TYPE_64BIT ->
+            <<_:64, Rest1/binary>> = Rest;
+        ?TYPE_32BIT ->
+            <<_:32, Rest1/binary>> = Rest;
+        ?TYPE_STRING ->
+            {_, Rest1} = decode_value(Rest, WireType, string);
+        _ ->
+            Rest1 = Rest
+    end,
+    {ok, Rest1}.
 
 %% @hidden    
 -spec decode_packed_values(Bytes :: binary(),

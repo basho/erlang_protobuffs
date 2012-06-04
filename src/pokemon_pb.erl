@@ -143,7 +143,8 @@ decode(Bytes, Types, Acc) ->
                     NewAcc = lists:keyreplace('$extensions', 2, Acc, {false, '$extensions', NewDict}),
                     decode(R, Types, NewAcc);
                 _ ->
-                    exit({error, {unexpected_field_index, FNum}})
+                    {ok, Skipped} = protobuffs:skip_next_field(Bytes),
+                    decode(Skipped, Types, Acc)
             end
     end.
     

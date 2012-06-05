@@ -25,9 +25,9 @@
 -module(pokemon_pb).
 -export([encode_pikachu/1, decode_pikachu/1]).
 -export([has_extension/2, extension_size/1, get_extension/2,
-    set_extension/3]).
+         set_extension/3]).
 -export([decode_extensions/1]).
--export([encode/1]).
+-export([encode/1, decode/2]).
 -record(pikachu, {abc, def, '$extensions' = dict:new()}).
 
 %% ENCODE

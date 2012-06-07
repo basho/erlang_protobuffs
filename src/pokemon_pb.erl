@@ -1,4 +1,4 @@
-%% Copyright (c) 2009 
+%% Copyright (c) 2009
 %% Nick Gerakines <nick@gerakines.net>
 %% Jacob Vorreuter <jacob.vorreuter@gmail.com>
 %%
@@ -31,9 +31,11 @@
 -record(pikachu, {abc, def, '$extensions' = dict:new()}).
 
 %% ENCODE
+-spec encode(any()) -> any.
 encode(Record) ->
     encode(element(1, Record), Record).
 
+-spec encode_pikachu(#pikachu{}) -> any.
 encode_pikachu(Record) when is_record(Record, pikachu) ->
     encode(pikachu, Record).
 
@@ -58,11 +60,11 @@ pack(_, repeated, undefined, _, _) -> [];
 
 pack(_, repeated_packed, undefined, _, _) -> [];
 pack(_, repeated_packed, [], _, _) -> [];
-    
+
 pack(FNum, required, undefined, Type, _) ->
     exit({error, {required_field_is_undefined, FNum, Type}});
 
-pack(_, repeated, [], _, Acc) -> 
+pack(_, repeated, [], _, Acc) ->
     lists:reverse(Acc);
 
 pack(FNum, repeated, [Head|Tail], Type, Acc) ->
@@ -76,10 +78,10 @@ pack(FNum, _, Data, _, _) when is_tuple(Data) ->
     protobuffs:encode(FNum, encode(RecName, Data), bytes);
 
 pack(FNum, _, Data, Type, _) when Type=:=bool;Type=:=int32;Type=:=uint32;
-				  Type=:=int64;Type=:=uint64;Type=:=sint32;
-				  Type=:=sint64;Type=:=fixed32;Type=:=sfixed32;
-				  Type=:=fixed64;Type=:=sfixed64;Type=:=string;
-				  Type=:=bytes;Type=:=float;Type=:=double ->
+                                  Type=:=int64;Type=:=uint64;Type=:=sint32;
+                                  Type=:=sint64;Type=:=fixed32;Type=:=sfixed32;
+                                  Type=:=fixed64;Type=:=sfixed64;Type=:=string;
+                                  Type=:=bytes;Type=:=float;Type=:=double ->
     protobuffs:encode(FNum, Data, Type);
 
 pack(FNum, _, Data, Type, _) when is_atom(Data) ->
@@ -92,21 +94,23 @@ int_to_enum(_,Val) ->
     Val.
 
 %% DECODE
+-spec decode_pikachu(binary()) -> any.
 decode_pikachu(Bytes) when is_binary(Bytes) ->
     decode(pikachu, Bytes).
-    
+
+-spec decode(pikachu, binary()) -> any.
 decode(pikachu, Bytes) when is_binary(Bytes) ->
     Types = [{1, abc, int32, []}, {2, def, double, []}],
     Defaults = [],
     Decoded = decode(Bytes, Types, Defaults),
     to_record(pikachu, Decoded).
-    
+
 decode(<<>>, _, Acc) -> Acc;
 decode(Bytes, Types, Acc) ->
     {ok, FNum} = protobuffs:next_field_num(Bytes),
     case lists:keysearch(FNum, 1, Types) of
         {value, {FNum, Name, Type, Opts}} ->
-            {Value1, Rest1} = 
+            {Value1, Rest1} =
                 case lists:member(is_record, Opts) of
                     true ->
                         {{FNum, V}, R} = protobuffs:decode(Bytes, bytes),
@@ -131,7 +135,7 @@ decode(Bytes, Types, Acc) ->
                             decode(Rest1, Types, [{FNum, Name, [int_to_enum(Type,Value1)]}|Acc])
                     end;
                 false ->
-		                decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
+                                decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
             end;
         false ->
             case lists:keysearch('$extensions', 2, Acc) of
@@ -147,11 +151,11 @@ decode(Bytes, Types, Acc) ->
                     decode(Skipped, Types, Acc)
             end
     end.
-    
+
 unpack_value(Binary, string) when is_binary(Binary) ->
     binary_to_list(Binary);
 unpack_value(Value, _) -> Value.
-    
+
 to_record(pikachu, DecodedTuples) ->
     Record1 = lists:foldr(
         fun({_FNum, Name, Val}, Record) ->
@@ -159,6 +163,7 @@ to_record(pikachu, DecodedTuples) ->
         end, #pikachu{}, DecodedTuples),
     decode_extensions(Record1).
 
+-spec decode_extensions(#pikachu{}) -> any.
 decode_extensions(#pikachu{'$extensions' = Extensions} = Record) ->
     Types = [],
     NewExtensions = decode_extensions(Types, dict:to_list(Extensions), []),
@@ -166,12 +171,12 @@ decode_extensions(#pikachu{'$extensions' = Extensions} = Record) ->
 decode_extensions(Record) ->
     Record.
 
-decode_extensions(Types, [], Acc) ->
+decode_extensions(_Types, [], Acc) ->
     dict:from_list(Acc);
 decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
     NewAcc = case lists:keysearch(Fnum, 1, Types) of
         {value, {Fnum, Name, Type, Opts}} ->
-            {Value1, Rest1} = 
+            {Value1, Rest1} =
                 case lists:member(is_record, Opts) of
                     true ->
                         {{FNum, V}, R} = protobuffs:decode(Bytes, bytes),
@@ -204,10 +209,10 @@ decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
     decode_extensions(Types, Tail, NewAcc).
 
 set_record_field(Fields, Record, '$extensions', Value) ->
-		Decodable = [],
+                Decodable = [],
     NewValue = decode_extensions(element(1, Record), Decodable, dict:to_list(Value)),
-		Index = list_index('$extensions', Fields),
-		erlang:setelement(Index+1,Record,NewValue);
+                Index = list_index('$extensions', Fields),
+                erlang:setelement(Index+1,Record,NewValue);
 set_record_field(Fields, Record, Field, Value) ->
     Index = list_index(Field, Fields),
     erlang:setelement(Index+1, Record, Value).
@@ -218,16 +223,19 @@ list_index(Target, [Target|_], Index) -> Index;
 list_index(Target, [_|Tail], Index) -> list_index(Target, Tail, Index+1);
 list_index(_, [], _) -> 0.
 
+-spec extension_size(#pikachu{}) -> integer().
 extension_size(#pikachu{'$extensions' = Extensions}) ->
     dict:size(Extensions);
 extension_size(_) ->
     0.
 
+-spec has_extension(#pikachu{}, any()) -> boolean().
 has_extension(#pikachu{'$extensions' = Extensions}, FieldKey) ->
     dict:is_key(FieldKey, Extensions);
 has_extension(_Record, _FieldName) ->
     false.
 
+-spec get_extension(#pikachu{},fieldatom) -> any().
 get_extension(Record, fieldatom) when is_record(Record, pikachu) ->
     get_extension(Record, 1);
 get_extension(#pikachu{'$extensions' = Extensions}, Int) when is_integer(Int) ->
@@ -242,6 +250,7 @@ get_extension(#pikachu{'$extensions' = Extensions}, Int) when is_integer(Int) ->
 get_extension(_Record, _FieldName) ->
     undefined.
 
+-spec set_extension(#pikachu{},fieldname,any()) -> {ok, #pikachu{}}.
 set_extension(#pikachu{'$extensions' = Extensions} = Record, fieldname, Value) ->
     NewExtends = dict:store(1, {rule, Value, type, []}, Extensions),
     {ok, Record#pikachu{'$extensions' = NewExtends}};

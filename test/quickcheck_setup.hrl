@@ -9,7 +9,7 @@
 -ifdef(PROPER).
 %% No EQC, so include PropEr when available.
 -include_lib("proper/include/proper.hrl").
--import(proper, [quickcheck/1, quickcheck/2, numtests/2]).
+-import(proper, [quickcheck/1, quickcheck/2]).
 -endif.
 
 -ifndef(PROPER).

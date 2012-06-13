@@ -9,7 +9,7 @@
 -module(erlang_protobuffs_SUITE).
 
 -compile(export_all).
-
+-include("quickcheck_setup.hrl").
 -include_lib("common_test/include/ct.hrl").
 
 %%--------------------------------------------------------------------
@@ -123,13 +123,13 @@ test_proto_files() -> [].
 %%--------------------------------------------------------------------
 protobuffs_test_case(Config) ->
     NumTests = (?config(num_tests, Config)),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs())).
+    true = quickcheck(numtests(NumTests,
+                               protobuffs_proper:prop_protobuffs())).
 
 protobuffs_packed_test_case(Config) ->
     NumTests = (?config(num_tests, Config)),
-    true = proper:quickcheck(proper:numtests(NumTests,
-					     protobuffs_proper:proper_protobuffs_packed())).
+    true = quickcheck(numtests(NumTests,
+                               protobuffs_proper:prop_protobuffs_packed())).
 
 test_proto_files(Config) ->
     DataDir = (?config(data_dir, Config)),
@@ -152,8 +152,8 @@ test_proto_files(Config) ->
 									   "import"])]}]),
 			    Test = list_to_atom("proper_protobuffs_" ++
 						  Message),
-			    Result = proper:quickcheck(proper:numtests(NumTests,
-								       protobuffs_proper:Test()),
+			    Result = quickcheck(numtests(NumTests,
+                                             protobuffs_proper:Test()),
 						       [long_result,
 							{on_output,
 							 fun (".", _) -> ok;
@@ -198,7 +198,7 @@ test_extendable_messages(Config) ->
     Folder = fun (Testname, Acc) ->
 		     test_server:format("~n===Extensions Testcase ~p===~n",
 					[Testname]),
-		     Result = proper:quickcheck(proper:numtests(NumTests,
+		     Result = quickcheck(numtests(NumTests,
 								protobuffs_proper:Testname()),
 						[long_result,
 						 {on_output,

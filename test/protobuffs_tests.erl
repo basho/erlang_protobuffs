@@ -29,11 +29,10 @@ utf8string() -> list(utf8char()).
 
 -ifdef(EQC).
 eqc_module_test() ->
-    ?assertEqual(ok, eqc:module(?MODULE)).
+    ?assertEqual([], eqc:module(?MODULE)).
 -endif.
 
 -ifdef(PROPER).
-
 proper_specs_test() ->
     ?assertEqual([],
 		 (proper:check_specs(protobuffs, [long_result]))).

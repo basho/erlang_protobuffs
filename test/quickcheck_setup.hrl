@@ -3,7 +3,20 @@
 %% Prefer EQC over PropEr and shim up functions that PropEr provides
 %% into EQC equivalents.
 -include_lib("eqc/include/eqc.hrl").
-
+integer() ->
+    int().
+integer(A,B) ->
+    choose(A,B).
+non_neg_integer() ->
+    ?SUCHTHAT(X, int(), X >= 0).
+float() ->
+    real().
+union(List) ->
+    elements(List).
+boolean() ->
+    elements([false, true]).
+quickcheck(Prop, _) ->
+    quickcheck(Prop).
 -endif.
 
 -ifdef(PROPER).

@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(protobuffs_proper).
 
--include_lib("proper/include/proper.hrl").
+-include("quickcheck_setup.hrl").
 
 -compile(export_all).
 
@@ -63,7 +63,7 @@ compare(A, B) when is_float(A), is_float(B) ->
 compare(A, B) ->
     error_logger:error_msg("~p =/= ~p~n", [A, B]), false.
 
-proper_protobuffs() ->
+prop_protobuffs() ->
     ?FORALL({FieldID, {Value, Type}},
 	    {?SUCHTHAT(I, (uint32()), (I =< 1073741823)), value()},
 	    begin
@@ -81,7 +81,7 @@ proper_protobuffs() ->
 	      end
 	    end).
 
-proper_protobuffs_packed() ->
+prop_protobuffs_packed() ->
     ?FORALL({FieldID, {Values, Type}},
 	    {?SUCHTHAT(I, (uint32()), (I =< 1073741823)),
 	     oneof([{non_empty(list(uint32())), uint32},

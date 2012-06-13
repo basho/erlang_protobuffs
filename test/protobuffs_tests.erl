@@ -9,7 +9,7 @@
 
 -compile(export_all).
 
--include_lib("proper/include/proper.hrl").
+-include("quickcheck_setup.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -27,6 +27,13 @@ utf8char() ->
 
 utf8string() -> list(utf8char()).
 
+-ifdef(EQC).
+eqc_module_test() ->
+    ?assertEqual(ok, eqc:module(?MODULE)).
+-endif.
+
+-ifdef(PROPER).
+
 proper_specs_test() ->
     ?assertEqual([],
 		 (proper:check_specs(protobuffs, [long_result]))).
@@ -34,7 +41,7 @@ proper_specs_test() ->
 proper_module_test() ->
     ?assertEqual([],
 		 (proper:module(?MODULE, [long_result]))).
-
+-endif.
 %%--------------------------------------------------------------------
 %% Encode/Decode int32
 %%--------------------------------------------------------------------

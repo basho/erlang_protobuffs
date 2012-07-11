@@ -21,6 +21,12 @@
 
 -define(ENCODE_PACKED, protobuffs:encode_packed).
 
+asciistring() ->
+    list(integer(0,127)).
+
+bytestring() ->
+    list(integer(0,255)).
+
 utf8char() ->
     union([integer(0, 36095), integer(57344, 65533),
 	   integer(65536, 1114111)]).
@@ -69,7 +75,7 @@ decode_int_test_() ->
 %% Encode/Decode string
 %%--------------------------------------------------------------------
 prop_string() ->
-    ?FORALL({Id, String}, {non_neg_integer(), utf8string()},
+    ?FORALL({Id, String}, {non_neg_integer(), oneof([asciistring(), utf8string()])},
 	    begin
 	      {{Id, String}, <<>>} =:=
 		(?DECODE((?ENCODE(Id, String, string)), string))
@@ -198,7 +204,7 @@ prop_uint64() ->
 		(?DECODE((?ENCODE(Id, Uint64, uint64)), uint64))
 	    end).
 
-enclode_uint64_test_() ->
+encode_uint64_test_() ->
     [?_assertMatch(<<40, 182, 141, 51>>,
 		   (?ENCODE(5, 837302, uint64)))].
 
@@ -309,10 +315,10 @@ decode_sfixed64_test_() ->
 %%--------------------------------------------------------------------
 prop_bytes() ->
     ?FORALL({Id, Bytes},
-	    {non_neg_integer(), oneof([utf8string(), binary()])},
+	    {non_neg_integer(), oneof([bytestring(), binary()])},
 	    begin
 	      Fun = fun (B) when is_list(B) ->
-			    unicode:characters_to_binary(B);
+			    list_to_binary(B);
 			(B) -> B
 		    end,
 	      {{Id, Fun(Bytes)}, <<>>} =:=
@@ -325,8 +331,7 @@ encode_bytes_test_() ->
      ?_assertMatch(<<34, 4, 84, 101, 115, 116>>,
 		   (?ENCODE(4, "Test", bytes))),
      ?_assertMatch(<<34, 0>>, (?ENCODE(4, "", bytes))),
-     ?_assertMatch(<<34, 2, 196, 128>>,
-		   (?ENCODE(4, [256], bytes)))].
+     ?_assertError(badarg, ?ENCODE(4, [256], bytes))].
 
 decode_bytes_test_() ->
     [?_assertMatch({{3, <<8, 150, 1>>}, <<>>},

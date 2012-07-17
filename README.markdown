@@ -54,11 +54,6 @@ Person message into records.
 How cool is that? From .proto files, we create modules that export encode and
 decode functions for the messages defined.
 
-## CAVEATS
-
-Support for parsing proto files and creating code from it is volatile and
-should be considered alpha software at best. Please do not use this in production.
-
 ## no_debug_info
 
 The protobuffs_compile module relies on the pokemon_pb module being compiled

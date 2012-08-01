@@ -523,3 +523,45 @@ proper_protobuffs_service() ->
 		    compare_messages(Service, Decoded)
 	      end
 	    end).
+
+proper_protobuffs_exporter() ->
+    io:format("explosions!\n"),
+    ?FORALL(Exporter,
+        (oneof([{exporter, sint32()},
+            {export_this_message, sint32()}])),
+        begin
+            Decoded = case element(1, Exporter) of
+                exporter ->
+                    Encoded = exports_pb:encode_exporter(Exporter),
+                    exports_pb:decode_exporter(Encoded);
+                export_this_message ->
+                    Encoded = exports_pb:encode_export_this_message(Exporter),
+                    exports_pb:decode_export_this_message(Encoded)
+            end,
+            compare_messages(Exporter, Decoded)
+        end).
+
+proper_protobuffs_importer() ->
+    ?FORALL(Importer,
+        (oneof([
+            {importer, {exporter, sint32()}},
+            {import_with_underscores, {export_this_message, sint32()}},
+            {exporter, sint32()},
+            {export_this_message, sint32()}])),
+        begin
+            Decoded = case element(1, Importer) of
+                importer ->
+                    Encoded = imports_pb:encode_importer(Importer),
+                    imports_pb:decode_impoter(Encoded);
+                import_with_underscore ->
+                    Encoded = imports_pb:encode_import_with_underscore(Importer),
+                    imports_pb:decode_import_with_underscore(Encoded);
+                exports_exporter ->
+                    Encoded = imports_pb:encode_exporter(Importer),
+                    imports_pb:decode_exporter(Encoded);
+                exports_export_this_message ->
+                    Encoded = imports_pb:encode_export_this_message(Importer),
+                    imports_pb:decode_export_this_message(Encoded)
+            end,
+            compare_messages(Importer, Decoded)
+        end).

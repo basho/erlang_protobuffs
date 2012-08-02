@@ -99,7 +99,6 @@ generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
     Parsed = parse_imports(FirstParsed, ImportPaths),
     Collected = collect_full_messages(Parsed),
-    io:format("Collected:  ~p\n", [Collected]),
     Messages = resolve_types(Collected#collected.msg,Collected#collected.enum),
     output_source (Basename, Messages, Collected#collected.enum, Options).
 
@@ -109,16 +108,13 @@ parse_imports(Parsed, Path) ->
 
 %% @hidden
 parse_imports([], _Path, Acc) ->
-    io:format("done parsing import:  ~p\n", [Acc]),
     lists:reverse(Acc);
 parse_imports([{import, File} = Head | Tail], Path, Acc) ->
-    io:format("parsing import for file ~p\n", [File]),
     case protobuffs_file:path_open(Path, File, [read]) of
 	{ok, F, Fullname} ->
 	    file:close(F),
 	    {ok,String} = parse_file(Fullname),
 	    {ok,FirstParsed} = parse_string(String),
-        io:format("Str:   ~p\nFirstParsed:  ~p\n", [String, FirstParsed]),
 	    Parsed = lists:append(FirstParsed, [file_boundary | Tail]),
 	    parse_imports(Parsed, Path, [Head | Acc]);
 	{error, Error} ->
@@ -273,7 +269,6 @@ filter_forms(Msgs, Enums, [{function,L,int_to_enum,2,[Clause]}|Tail], Basename, 
 
 filter_forms(Msgs, Enums, [{function,L,decode_extensions,1,[Clause,Catchall]}|Tail],Basename, Acc) ->
     NewClauses = filter_decode_extensions_clause(Msgs, Msgs, Clause, []),
-    io:format("# new clauses for extensions:  ~p\n", [length(NewClauses)]),
     NewHead = {function,L,decode_extensions,1,NewClauses ++ [Catchall]},
     filter_forms(Msgs, Enums, Tail,Basename,[NewHead|Acc]);
 
@@ -443,7 +438,6 @@ expand_decode_function(Msgs, Line, Clause) ->
 %% @hidden
 filter_decode_clause(Msgs, {MsgName, Fields, Extends}, {clause,L,_Args,Guards,[_,_,C,D]}) ->
     Types = lists:keysort(1, [begin
-            io:format("SName: ~p\nSType: ~p\n", [SName, SType]),
             {FNum, list_to_atom(SName), 
 			       atomize(SType), 
 			       decode_opts(Msgs, Tag, SType), Def} end ||
@@ -485,19 +479,7 @@ filter_decode_extensions_clause(Msgs,[{MsgName,_,Extends}|Tail],Clause,Acc) ->
 	     fun({FNum, FName, Type, Opts, _Def}, Acc) ->
 		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
 	     end, {nil,L}, Types),
-    io:format("MsgName:  ~p\nExtends:  ~p\nTypes:  ~p\nCons Types:  ~p\n", [MsgName, Extends, Types, erl_parse:normalise(Cons)]),
-%    Defaults = lists:foldr(
-%        fun
-%            ({_FNum, _FName, _Type, _Opts, none}, Acc) ->
-%                Acc;
-%            ({FNum, FName, _Type, _Opts, Def}, Acc) ->
-%                {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},erl_parse:abstract(Def)]},Acc}
-%        end,
-%        {nil, L},
-%        Types),
     A = {match,L,{var,L,'Types'},Cons},
-    %B = {match,L,{var,L,'Defaults'},Defaults},
-    %D1 = replace_atom(D, pikachu, atomize(MsgName)),
 		{clause,L,[Arg],Guards,[_,B,C]} = Clause,
 		NewBody = [A,B,replace_atom(C,pikachu,atomize(MsgName))],
 		NewClause = {clause,L,[replace_atom(Arg, pikachu, atomize(MsgName))],Guards,NewBody},
@@ -509,7 +491,6 @@ expand_encode_function(Msgs, Line, Clause) ->
 
 %% @hidden
 decode_opts(Msgs, Tag, Type) ->
-    io:format("decoing opts.  Type:  ~p\nTag:  ~p\nmsgs:  ~p\n", [Type, Tag, Msgs]),
     Opts0 = if Tag == repeated -> [repeated]; Tag == repeated_packed -> [repeated_packed]; true -> [] end,
     case lists:keymember(Type, 1, Msgs) of
         true ->
@@ -565,15 +546,13 @@ filter_int_to_enum_clause({enum,EnumTypeName,IntValue,EnumValue}, {clause,L,_Arg
 %%    {3,required,"string","phone_number",none},
 %%    {2,required,"string","address",none},
 %%    {1,required,"string","name",none}]}]
-collect_full_messages(Data) -> io:format("Das data:  ~p\n", [Data]), collect_full_messages(Data, #collected{}).
+collect_full_messages(Data) -> collect_full_messages(Data, #collected{}).
 collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
     Package = Collected#collected.package,
     ListName = resolve_list_name(Name, Package),
     
-    io:format("listname to be used:  ~p\n", [ListName]),
-
     FieldsOut = lists:foldl(
-		  fun ({_,_,_,_,_} = Input, TmpAcc) -> io:format("New intput field thing:  ~p\n", [Input]),[Input | TmpAcc];
+		  fun ({_,_,_,_,_} = Input, TmpAcc) -> [Input | TmpAcc];
 		      (_, TmpAcc) -> TmpAcc
 		  end, [], Fields),
     
@@ -581,7 +560,6 @@ collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
 	      fun ({enum,C,D}, TmpAcc) -> [{enum, [list_to_tuple([C | LN]) || LN <- ListName], D} | TmpAcc];
 		  (_, TmpAcc) -> TmpAcc
 	      end, [], Fields),
-    io:format("The enums:  ~p\n", [Enums]),
     
     Extensions = lists:foldl(
 		   fun ({extensions, From, To}, TmpAcc) -> [{From,To}|TmpAcc];
@@ -606,7 +584,6 @@ collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
 collect_full_messages([{enum, Name, Fields} | Tail], Collected) ->
     Package = Collected#collected.package,
     ListName = resolve_list_name(Name, Package),
-    io:format("enum type name thing:  ~p\n", [ListName]),
 
     FieldsOut = lists:foldl(
 		  fun (Field, TmpAcc) ->
@@ -628,14 +605,12 @@ collect_full_messages([{option,_,_} | Tail], Collected) ->
 collect_full_messages([{import, _Filename} | Tail], Collected) ->
     collect_full_messages(Tail, Collected);
 collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
-    io:format("Seek out the message with name ~p\n", [Name]),
     SeekName0 = string:tokens(Name, "."),
     SeekName1 = [list_to_tuple(lists:reverse(SeekName0))],
     SeekNames0 = resolve_list_name(SeekName1, Collected#collected.package),
     SeekNames = [list_to_tuple(SN) || SN <- SeekNames0],
 
     #collected{msg = CollectedMsg, extensions = Extended} = Collected,
-    io:format("And the actual seek is ~p\nMsgs:  ~p\nExtended:  ~p\n", [SeekNames, CollectedMsg, Extended]),
     BestMatch = element(1, find_message_by_path(SeekNames, CollectedMsg)),
 
     %{ListNameT,FieldsOut,ExtendFields} = find_extended_msg(ListName, CollectedMsg),
@@ -676,7 +651,6 @@ collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
     NewCollected = Collected#collected{msg=lists:keyreplace(ListName,1,CollectedMsg,{ListName,FieldsOut,NewExtends})},
     collect_full_messages(Tail, NewCollected);
 collect_full_messages([file_boundary | Tail], Collected) ->
-    io:format("file_boundary hit\n", []),
     collect_full_messages(Tail, Collected#collected{package = undefined});
 %% Skip anything we don't understand
 collect_full_messages([Skip|Tail], Acc) ->
@@ -739,9 +713,7 @@ resolve_list_name(Name, Package) when is_integer(hd(Name)) ->
 %% @hidden
 resolve_types (Data, Enums) -> resolve_types (Data, Data, Enums, []).
 resolve_types ([{TypePath, Fields,Extended} | Tail], AllPaths, Enums, Acc) ->
-    io:format("Typepath:  ~p\n;  Allpaths:  ~p\nEnums:  ~p\n", [TypePath, AllPaths, Enums]),
     FolderFun = fun (Input, TmpAcc) ->
-        io:format("Resolve types for ~p with acc ~p\n", [Input, TmpAcc]),
 			  case Input of
 			      {Index, Rules, Type, Identifier, Other} ->
 				  case is_scalar_type (Type) of
@@ -756,7 +728,6 @@ resolve_types ([{TypePath, Fields,Extended} | Tail], AllPaths, Enums, Acc) ->
 						% so we just convert to a type path and check it.
 						      [lists:reverse (FullPath)]
 					      end,
-                        io:format("possible paths:  ~p\n", [PossiblePaths]),
 					  RealPath =
 					      case find_type (PossiblePaths, AllPaths) of
 						  false ->
@@ -769,7 +740,6 @@ resolve_types ([{TypePath, Fields,Extended} | Tail], AllPaths, Enums, Acc) ->
 						  ResultType ->
 						      ResultType
 					      end,
-                          io:format("Real path:  ~p\n", [RealPath]),
 					  [{Index, Rules, canonical_name(RealPath), Identifier, Other} | TmpAcc]
 				  end;
 			      _ -> TmpAcc
@@ -873,7 +843,6 @@ is_enum_type(Type, [TypePath|Paths], Enums) ->
             is_enum_type(Type, Paths, Enums)
     end.
 is_enum_type(Type, Enums) ->
-    io:format("Seeking for enum:  ~p\nThe knowns:  ~p\n", [Type, Enums]),
     lists:any(fun(Enum) ->
         Types = element(2, Enum),
         lists:member(Type, Types)
@@ -889,7 +858,6 @@ sublists(List,Acc) ->
 
 %% @hidden
 all_possible_type_paths (Type, TypePaths) ->
-    io:format("All possible type paths.  Type:  ~p;  paths:  ~p\n", [Type, TypePaths]),
     all_possible_type_paths(Type, TypePaths, []).
 
 all_possible_type_paths(_Type, [], Acc) ->
@@ -917,7 +885,6 @@ find_type ([], _KnownTypes) ->
 find_type([Type | TailTypes], KnownTypes) when is_list(Type) ->
     find_type([list_to_tuple(Type) | TailTypes], KnownTypes);
 find_type ([Type | TailTypes], KnownTypes) ->
-    io:format("Looking for type ~p in list of ~p\n", [Type, KnownTypes]),
     FilterFun = fun(KnownType) ->
         lists:member(Type, element(1, KnownType))
     end,
@@ -925,7 +892,6 @@ find_type ([Type | TailTypes], KnownTypes) ->
         [] ->
             find_type(TailTypes, KnownTypes);
         [{RealType, _, _} | _] ->
-            io:format("Das found:  ~p\n", [RealType]),
             RealType
     end.
 
@@ -933,7 +899,6 @@ find_type ([Type | TailTypes], KnownTypes) ->
 canonical_name([TypePath | _]) ->
     % yes, we're assuming the first name in the list is the most 
     % cannonical name.
-    io:format("Canonizing name ~p\n", [TypePath]),
     type_path_to_type(TypePath).
 
 canonize_names(Messages) ->
@@ -956,7 +921,6 @@ type_path_to_type([[Name|Tuple]]) when is_tuple(Tuple) ->
 type_path_to_type(TypePath) when is_tuple(TypePath) ->
     type_path_to_type(tuple_to_list(TypePath));
 type_path_to_type (TypePath) ->
-    io:format("Tasty tpye path:  ~p\n", [TypePath]),
     case is_list(hd(TypePath)) of
         true ->
             string:join (lists:reverse (TypePath), "_");

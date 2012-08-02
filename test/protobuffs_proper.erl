@@ -524,7 +524,7 @@ proper_protobuffs_service() ->
 	      end
 	    end).
 
-proper_protobuffs_exporter() ->
+proper_protobuffs_exports() ->
     io:format("explosions!\n"),
     ?FORALL(Exporter,
         (oneof([{exporter, sint32()},
@@ -541,7 +541,7 @@ proper_protobuffs_exporter() ->
             compare_messages(Exporter, Decoded)
         end).
 
-proper_protobuffs_importer() ->
+proper_protobuffs_imports() ->
     ?FORALL(Importer,
         (oneof([
             {importer, {exporter, sint32()}},
@@ -552,14 +552,14 @@ proper_protobuffs_importer() ->
             Decoded = case element(1, Importer) of
                 importer ->
                     Encoded = imports_pb:encode_importer(Importer),
-                    imports_pb:decode_impoter(Encoded);
-                import_with_underscore ->
-                    Encoded = imports_pb:encode_import_with_underscore(Importer),
-                    imports_pb:decode_import_with_underscore(Encoded);
-                exports_exporter ->
+                    imports_pb:decode_importer(Encoded);
+                import_with_underscores ->
+                    Encoded = imports_pb:encode_import_with_underscores(Importer),
+                    imports_pb:decode_import_with_underscores(Encoded);
+                exporter ->
                     Encoded = imports_pb:encode_exporter(Importer),
                     imports_pb:decode_exporter(Encoded);
-                exports_export_this_message ->
+                export_this_message ->
                     Encoded = imports_pb:encode_export_this_message(Importer),
                     imports_pb:decode_export_this_message(Encoded)
             end,

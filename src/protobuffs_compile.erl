@@ -134,7 +134,9 @@ parse_imports([Head | Tail], Path, Acc) ->
     parse_imports(Tail, Path, [Head | Acc]).
 
 %% @hidden
-output(Basename, Messages, Enums, Options) ->
+output(Basename, MessagesRaw, RawEnums, Options) ->
+    Messages = canonize_names(MessagesRaw),
+    Enums = canonize_names(RawEnums),
     case proplists:get_value(output_include_dir,Options) of
 	undefined ->
 	    HeaderFile = Basename ++ ".hrl";
@@ -158,7 +160,8 @@ output(Basename, Messages, Enums, Options) ->
     protobuffs_file:write_file(BeamFile, Bytes).
 
 %% @hidden
-output_source (Basename, Messages, Enums, Options) ->
+output_source (Basename, MessagesRaw, Enums, Options) ->
+    Messages = canonize_names(MessagesRaw),
     case proplists:get_value(output_include_dir,Options) of
 	undefined ->
 	    HeaderFile = Basename ++ ".hrl";
@@ -243,7 +246,7 @@ filter_forms(Msgs, Enums, [{function,L,encode_extensions,1,[EncodeClause,Catchal
     NewFunction = {function,L,encode_extensions,1,NewClauses},
     filter_forms(Msgs, Enums, Tail, Basename, [NewFunction | Acc]);
 
- filter_forms(Msgs, Enums, [{function,L,iolist,2,[Clause]}|Tail], Basename, Acc) ->
+filter_forms(Msgs, Enums, [{function,L,iolist,2,[Clause]}|Tail], Basename, Acc) ->
      filter_forms(Msgs, Enums, Tail, Basename, [expand_iolist_function(Msgs, L, Clause)|Acc]);
 
 filter_forms(Msgs, Enums, [{function,L,decode_pikachu,1,[Clause]}|Tail], Basename, Acc) ->
@@ -270,6 +273,7 @@ filter_forms(Msgs, Enums, [{function,L,int_to_enum,2,[Clause]}|Tail], Basename, 
 
 filter_forms(Msgs, Enums, [{function,L,decode_extensions,1,[Clause,Catchall]}|Tail],Basename, Acc) ->
     NewClauses = filter_decode_extensions_clause(Msgs, Msgs, Clause, []),
+    io:format("# new clauses for extensions:  ~p\n", [length(NewClauses)]),
     NewHead = {function,L,decode_extensions,1,NewClauses ++ [Catchall]},
     filter_forms(Msgs, Enums, Tail,Basename,[NewHead|Acc]);
 
@@ -438,9 +442,11 @@ expand_decode_function(Msgs, Line, Clause) ->
 
 %% @hidden
 filter_decode_clause(Msgs, {MsgName, Fields, Extends}, {clause,L,_Args,Guards,[_,_,C,D]}) ->
-    Types = lists:keysort(1, [{FNum, list_to_atom(SName), 
+    Types = lists:keysort(1, [begin
+            io:format("SName: ~p\nSType: ~p\n", [SName, SType]),
+            {FNum, list_to_atom(SName), 
 			       atomize(SType), 
-			       decode_opts(Msgs, Tag, SType), Def} ||
+			       decode_opts(Msgs, Tag, SType), Def} end ||
 				 {FNum,Tag,SType,SName,Def} <- Fields]),
     Cons = lists:foldl(
 	     fun({FNum, FName, Type, Opts, _Def}, Acc) ->
@@ -479,6 +485,7 @@ filter_decode_extensions_clause(Msgs,[{MsgName,_,Extends}|Tail],Clause,Acc) ->
 	     fun({FNum, FName, Type, Opts, _Def}, Acc) ->
 		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
 	     end, {nil,L}, Types),
+    io:format("MsgName:  ~p\nExtends:  ~p\nTypes:  ~p\nCons Types:  ~p\n", [MsgName, Extends, Types, erl_parse:normalise(Cons)]),
 %    Defaults = lists:foldr(
 %        fun
 %            ({_FNum, _FName, _Type, _Opts, none}, Acc) ->
@@ -502,6 +509,7 @@ expand_encode_function(Msgs, Line, Clause) ->
 
 %% @hidden
 decode_opts(Msgs, Tag, Type) ->
+    io:format("decoing opts.  Type:  ~p\nTag:  ~p\nmsgs:  ~p\n", [Type, Tag, Msgs]),
     Opts0 = if Tag == repeated -> [repeated]; Tag == repeated_packed -> [repeated_packed]; true -> [] end,
     case lists:keymember(Type, 1, Msgs) of
         true ->
@@ -560,19 +568,12 @@ filter_int_to_enum_clause({enum,EnumTypeName,IntValue,EnumValue}, {clause,L,_Arg
 collect_full_messages(Data) -> io:format("Das data:  ~p\n", [Data]), collect_full_messages(Data, #collected{}).
 collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
     Package = Collected#collected.package,
-    ListName = if
-        erlang:is_tuple(hd(Name)) ->
-            [tuple_to_list(N) || N <- Name];
-        erlang:is_integer(hd(Name)), Package == undefined ->
-            [Name];
-        erlang:is_integer(hd(Name)) ->
-            [[Name], [Name, Package]]
-    end,
+    ListName = resolve_list_name(Name, Package),
     
     io:format("listname to be used:  ~p\n", [ListName]),
 
     FieldsOut = lists:foldl(
-		  fun ({_,_,_,_,_} = Input, TmpAcc) -> [Input | TmpAcc];
+		  fun ({_,_,_,_,_} = Input, TmpAcc) -> io:format("New intput field thing:  ~p\n", [Input]),[Input | TmpAcc];
 		      (_, TmpAcc) -> TmpAcc
 		  end, [], Fields),
     
@@ -580,6 +581,7 @@ collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
 	      fun ({enum,C,D}, TmpAcc) -> [{enum, [list_to_tuple([C | LN]) || LN <- ListName], D} | TmpAcc];
 		  (_, TmpAcc) -> TmpAcc
 	      end, [], Fields),
+    io:format("The enums:  ~p\n", [Enums]),
     
     Extensions = lists:foldl(
 		   fun ({extensions, From, To}, TmpAcc) -> [{From,To}|TmpAcc];
@@ -598,20 +600,19 @@ collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
 
     NewCollected = Collected#collected{
 		     msg=[{[list_to_tuple(L) || L <- ListName], FieldsOut, ExtendedFields} | Collected#collected.msg],
-		     extensions=[{ListName,Extensions} | Collected#collected.extensions]
+		     extensions=[{[list_to_tuple(L) || L <- ListName],Extensions} | Collected#collected.extensions]
 		    },
     collect_full_messages(Tail ++ SubMessages ++ Enums, NewCollected);
 collect_full_messages([{enum, Name, Fields} | Tail], Collected) ->
-    ListName = case erlang:is_list (hd(Name)) of
-		   true -> Name;
-		   false -> [Name]
-	       end,
+    Package = Collected#collected.package,
+    ListName = resolve_list_name(Name, Package),
+    io:format("enum type name thing:  ~p\n", [ListName]),
 
     FieldsOut = lists:foldl(
 		  fun (Field, TmpAcc) ->
 			  case Field of
 			      {EnumAtom, IntValue} -> [{enum, 
-							type_path_to_type(ListName), 
+							[type_path_to_type(LN) || LN <-ListName], 
 							IntValue, 
 							EnumAtom} | TmpAcc];
 			      _ -> TmpAcc
@@ -627,14 +628,20 @@ collect_full_messages([{option,_,_} | Tail], Collected) ->
 collect_full_messages([{import, _Filename} | Tail], Collected) ->
     collect_full_messages(Tail, Collected);
 collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
-    ListName = case erlang:is_list (hd(Name)) of
-		   true -> Name;
-		   false -> [Name]
-	       end,
+    io:format("Seek out the message with name ~p\n", [Name]),
+    SeekName0 = string:tokens(Name, "."),
+    SeekName1 = [list_to_tuple(lists:reverse(SeekName0))],
+    SeekNames0 = resolve_list_name(SeekName1, Collected#collected.package),
+    SeekNames = [list_to_tuple(SN) || SN <- SeekNames0],
 
-    CollectedMsg = Collected#collected.msg,
-    {ListName,FieldsOut,ExtendFields} = lists:keyfind(ListName,1,CollectedMsg),
-    {ListName,Extensions} = lists:keyfind(ListName,1,Collected#collected.extensions),
+    #collected{msg = CollectedMsg, extensions = Extended} = Collected,
+    io:format("And the actual seek is ~p\nMsgs:  ~p\nExtended:  ~p\n", [SeekNames, CollectedMsg, Extended]),
+    BestMatch = element(1, find_message_by_path(SeekNames, CollectedMsg)),
+
+    %{ListNameT,FieldsOut,ExtendFields} = find_extended_msg(ListName, CollectedMsg),
+    %{ListNameT2,Extensions} = find_defined_extensions(ListName, Extended),
+    {ListName,FieldsOut,ExtendFields} = lists:keyfind(BestMatch,1,CollectedMsg),
+    {ListName,Extensions} = lists:keyfind(BestMatch,1,Collected#collected.extensions),
     
     FunNotInReservedRange = fun(Id) -> not(19000 =< Id andalso Id =< 19999) end,
     FunInRange = fun(Id,From,max) -> From =< Id andalso Id =< 16#1fffffff;
@@ -680,9 +687,59 @@ collect_full_messages([], Collected) ->
     Collected.
 
 %% @hidden
+find_message_by_path(_TypeName, []) ->
+    false;
+find_message_by_path(TypeName, [Msg | Tail]) ->
+    Names = element(1, Msg),
+    case [N || N <- Names, lists:member(N, TypeName)] of
+        [] ->
+            find_message_by_path(TypeName, Tail);
+        _ ->
+            Msg
+    end.
+
+%% @hidden
+find_extended_msg(_TypeName, []) ->
+    false;
+find_extended_msg(TypeName, Msgs) when is_list(hd(TypeName)) ->
+    TypeName0 = [list_to_tuple(TN) || TN <- TypeName],
+    find_extended_msg(TypeName0, Msgs);
+find_extended_msg(TypeName, [Msg | Tail]) ->
+    Names = element(1, Msg),
+    case [N || N <- Names, lists:member(N, TypeName)] of
+        [] ->
+            find_extended_msg(TypeName, Tail);
+        _ ->
+            Msg
+    end.
+
+%% @hidden
+find_defined_extensions(TypeName, []) ->
+    false;
+find_defined_extensions(TypeName, Extends) when is_list(hd(TypeName)) ->
+    TypeName0 = [list_to_tuple(TN) || TN <- TypeName],
+    find_defined_extensions(TypeName0, Extends);
+find_defined_extensions(TypeName, [Ext | Tail]) ->
+    Names = element(1, Ext),
+    case [N || N <- Names] of
+        [] ->
+            find_defined_extensions(TypeName, Tail);
+        _ ->
+            Ext
+    end.
+
+%% @hidden
+resolve_list_name(Name, _Package) when is_tuple(hd(Name)) ->
+    [tuple_to_list(N) || N <- Name];
+resolve_list_name(Name, undefined) when is_integer(hd(Name)) ->
+    [[Name]];
+resolve_list_name(Name, Package) when is_integer(hd(Name)) ->
+    [[Name], [Name, Package]].
+
+%% @hidden
 resolve_types (Data, Enums) -> resolve_types (Data, Data, Enums, []).
 resolve_types ([{TypePath, Fields,Extended} | Tail], AllPaths, Enums, Acc) ->
-    io:format("Typepath:  ~p;  Allpaths:  ~p\n", [TypePath, AllPaths]),
+    io:format("Typepath:  ~p\n;  Allpaths:  ~p\nEnums:  ~p\n", [TypePath, AllPaths, Enums]),
     FolderFun = fun (Input, TmpAcc) ->
         io:format("Resolve types for ~p with acc ~p\n", [Input, TmpAcc]),
 			  case Input of
@@ -705,7 +762,7 @@ resolve_types ([{TypePath, Fields,Extended} | Tail], AllPaths, Enums, Acc) ->
 						  false ->
 						      case is_enum_type(Type, PossiblePaths, Enums) of
 							  {true,EnumType} ->
-							      EnumType;
+							      [EnumType];
 							  false ->
 							      throw (["Unknown Type ", Type])
 						      end;
@@ -713,7 +770,7 @@ resolve_types ([{TypePath, Fields,Extended} | Tail], AllPaths, Enums, Acc) ->
 						      ResultType
 					      end,
                           io:format("Real path:  ~p\n", [RealPath]),
-					  [{Index, Rules, type_path_to_type (RealPath), Identifier, Other} | TmpAcc]
+					  [{Index, Rules, canonical_name(RealPath), Identifier, Other} | TmpAcc]
 				  end;
 			      _ -> TmpAcc
 			  end
@@ -732,26 +789,29 @@ resolve_types ([], _, _, Acc) ->
     Acc.
 
 %% @hidden
-write_header_include_file(Basename, Messages) ->
+write_header_include_file(Basename, Messages) when is_list(Basename) ->
     {ok, FileRef} = protobuffs_file:open(Basename, [write]),
-    [begin
-         OutFields = [{string:to_lower(A), Optional, Default} || {_, Optional, _, A, Default} <- lists:keysort(1, Fields)],
-         DefName = string:to_upper(Name) ++ "_PB_H",
-         protobuffs_file:format(FileRef, "-ifndef(~s).~n-define(~s, true).~n", [DefName, DefName]),
-         protobuffs_file:format(FileRef, "-record(~s, {~n    ", [string:to_lower(Name)]),
-         WriteFields0 = generate_field_definitions(OutFields),
-         WriteFields = case Extends of
-                           disallowed -> WriteFields0;
-                           _ ->
-                               ExtenStr = "'$extensions' = dict:new()",
-                               WriteFields0 ++ [ExtenStr]
-                       end,
-         FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
-         protobuffs_file:format(FileRef, FormatString, WriteFields),
-         protobuffs_file:format(FileRef, "~n}).~n", []),
-         protobuffs_file:format(FileRef, "-endif.~n~n", [])
-     end || {Name, Fields, Extends} <- Messages],
-    protobuffs_file:close(FileRef).
+    write_header_include_file(FileRef, Messages),
+    protobuffs_file:close(FileRef);
+write_header_include_file(_FileRef, []) ->
+    ok;
+    write_header_include_file(FileRef, [{Name, Fields, Extends} | Tail]) ->
+    OutFields = [{string:to_lower(A), Optional, Default} || {_, Optional, _, A, Default} <- lists:keysort(1, Fields)],
+    DefName = string:to_upper(Name) ++ "_PB_H",
+    protobuffs_file:format(FileRef, "-ifndef(~s).~n-define(~s, true).~n", [DefName, DefName]),
+    protobuffs_file:format(FileRef, "-record(~s, {~n    ", [string:to_lower(Name)]),
+    WriteFields0 = generate_field_definitions(OutFields),
+    WriteFields = case Extends of
+                      disallowed -> WriteFields0;
+                      _ ->
+                          ExtenStr = "'$extensions' = dict:new()",
+                          WriteFields0 ++ [ExtenStr]
+                  end,
+    FormatString = string:join(["~s" || _ <- lists:seq(1, length(WriteFields))], ",~n    "),
+    protobuffs_file:format(FileRef, FormatString, WriteFields),
+    protobuffs_file:format(FileRef, "~n}).~n", []),
+    protobuffs_file:format(FileRef, "-endif.~n~n", []),
+    write_header_include_file(FileRef, Tail).
 
 %% @hidden
 generate_field_definitions(Fields) ->
@@ -805,19 +865,19 @@ is_scalar_type (_) -> false.
 is_enum_type(_Type, [], _Enums) ->
     false;
 is_enum_type(Type, [TypePath|Paths], Enums) ->
-    case is_enum_type(type_path_to_type(TypePath), Enums) of
+    TypeFromPath = type_path_to_type(TypePath),
+    case is_enum_type(TypeFromPath, Enums) of
       true ->
-	{true,TypePath};
+            {true,TypePath};
       false ->
-	is_enum_type(Type, Paths, Enums)
+            is_enum_type(Type, Paths, Enums)
     end.
 is_enum_type(Type, Enums) ->
-    case lists:keysearch(Type,2,Enums) of
-	false ->
-	    false;
-	{value,_} ->
-	    true
-    end.
+    io:format("Seeking for enum:  ~p\nThe knowns:  ~p\n", [Type, Enums]),
+    lists:any(fun(Enum) ->
+        Types = element(2, Enum),
+        lists:member(Type, Types)
+    end, Enums).
 
 %% @hidden
 sublists(List) when is_list(List) ->
@@ -828,36 +888,73 @@ sublists(List,Acc) ->
     sublists (tl (List), [ List | Acc ]).
 
 %% @hidden
-all_possible_type_paths (Type, TypePath) ->
-    io:format("All possible type paths.  Type:  ~p;  path:  ~p\n", [Type, TypePath]),
-    Type0 = if
-        is_list(hd(Type)) -> Type;
-        true -> [Type]
-    end,
-    FoldFun = fun(TypeSuffix, AccIn) ->
-        [[Type0 ++ TypeSuffix] | AccIn]
-    end,
-    lists:foldl(FoldFun, Type0, TypePath).
-    %lists:foldl (fun (TypeSuffix, AccIn) ->
-	%		 [[Type | TypeSuffix] | AccIn]
-	%	 end,
-	%	 [],
-	%	 sublists (TypePath)).
+all_possible_type_paths (Type, TypePaths) ->
+    io:format("All possible type paths.  Type:  ~p;  paths:  ~p\n", [Type, TypePaths]),
+    all_possible_type_paths(Type, TypePaths, []).
+
+all_possible_type_paths(_Type, [], Acc) ->
+    lists:reverse(lists:flatten(Acc));
+all_possible_type_paths(Type, [TypePath | Tail], Acc) ->
+    TypePath0 = tuple_to_list(TypePath),
+%    Type0 = if
+%        is_list(hd(Type)) -> Type;
+%        true -> [Type]
+%    end,
+%    FoldFun = fun(TypeSuffix, AccIn) ->
+%        [[Type0 ++ TypeSuffix] | AccIn]
+%    end,
+%    lists:foldl(FoldFun, Type0, TypePath).
+    Head = lists:foldl (fun (TypeSuffix, AccIn) ->
+			 [list_to_tuple([Type | TypeSuffix]) | AccIn]
+		 end,
+		 [],
+		 sublists (TypePath0)),
+    all_possible_type_paths(Type, Tail, [Head | Acc]).
 
 %% @hidden
 find_type ([], _KnownTypes) ->
     false;
+find_type([Type | TailTypes], KnownTypes) when is_list(Type) ->
+    find_type([list_to_tuple(Type) | TailTypes], KnownTypes);
 find_type ([Type | TailTypes], KnownTypes) ->
     io:format("Looking for type ~p in list of ~p\n", [Type, KnownTypes]),
-    case lists:keysearch (Type, 1, KnownTypes) of
-        false ->
-            find_type (TailTypes, KnownTypes);
-        {value, {RealType, _, _}} ->
+    FilterFun = fun(KnownType) ->
+        lists:member(Type, element(1, KnownType))
+    end,
+    case lists:filter(FilterFun, KnownTypes) of
+        [] ->
+            find_type(TailTypes, KnownTypes);
+        [{RealType, _, _} | _] ->
             io:format("Das found:  ~p\n", [RealType]),
             RealType
     end.
 
 %% @hidden
+canonical_name([TypePath | _]) ->
+    % yes, we're assuming the first name in the list is the most 
+    % cannonical name.
+    io:format("Canonizing name ~p\n", [TypePath]),
+    type_path_to_type(TypePath).
+
+canonize_names(Messages) ->
+    canonize_names(Messages, []).
+
+canonize_names([], Acc) ->
+    lists:reverse(Acc);
+canonize_names([Enum | Tail], Acc) when element(1, Enum) == enum ->
+    Name = canonical_name(element(2, Enum)),
+    Enum0 = setelement(2, Enum, Name),
+    canonize_names(Tail, [Enum0 | Acc]);
+canonize_names([Msg | Tail], Acc) ->
+    Name = canonical_name(element(1, Msg)),
+    Msg0 = setelement(1,Msg,Name),
+    canonize_names(Tail, [Msg0 | Acc]).
+
+%% @hidden
+type_path_to_type([[Name|Tuple]]) when is_tuple(Tuple) ->
+    type_path_to_type([Name | tuple_to_list(Tuple)]);
+type_path_to_type(TypePath) when is_tuple(TypePath) ->
+    type_path_to_type(tuple_to_list(TypePath));
 type_path_to_type (TypePath) ->
     io:format("Tasty tpye path:  ~p\n", [TypePath]),
     case is_list(hd(TypePath)) of

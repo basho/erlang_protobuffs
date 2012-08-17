@@ -76,13 +76,10 @@ scan_string(String,Basename,Options) ->
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
 %%--------------------------------------------------------------------
--spec generate_source(ProtoFile :: string()) ->
+-spec generate_source(ProtoFile :: string() | atom() ) ->
 			     ok | {error, _}.
-generate_source(ProtoFile) when is_atom(ProtoFile) ->
-    generate_source(atom_to_list(ProtoFile),[]);
 generate_source(ProtoFile) ->
-    Basename = filename:basename(ProtoFile, ".proto"),
-    generate_source(Basename,[]).
+  generate_source(ProtoFile,[]).
 
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
@@ -90,10 +87,12 @@ generate_source(ProtoFile) ->
 %%                                  output_src_dir,
 %%                                  imports_dir
 %%--------------------------------------------------------------------
--spec generate_source(ProtoFile :: string(), Options :: list()) ->
+-spec generate_source(ProtoFile :: string() | atom(), Options :: list()) ->
 			     ok | {error, _}.
+generate_source(ProtoFile,Options) when is_atom (ProtoFile) ->
+    generate_source (atom_to_list (ProtoFile) ++ ".proto", Options);
 generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
-    Basename = ProtoFile ++ "_pb",
+    Basename = filename:basename (ProtoFile, ".proto") ++ "_pb",
     {ok,String} = parse_file(ProtoFile),
     {ok,FirstParsed} = parse_string(String),
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],

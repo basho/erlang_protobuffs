@@ -440,7 +440,7 @@ filter_decode_clause(Msgs, {MsgName, Fields, Extends}, {clause,L,_Args,Guards,[_
 				 {FNum,Tag,SType,SName,Def} <- Fields]),
     Cons = lists:foldl(
 	     fun({FNum, FName, Type, Opts, _Def}, Acc) ->
-		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
+             {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,list_to_atom(string:to_lower(atom_to_list(FName)))},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
 	     end, {nil,L}, Types),
     ExtendDefault = case Extends of
         disallowed -> {nil,L};

@@ -525,7 +525,6 @@ proper_protobuffs_service() ->
 	    end).
 
 proper_protobuffs_exports() ->
-    io:format("explosions!\n"),
     ?FORALL(Exporter,
         (oneof([{exporter, sint32()},
             {export_this_message, sint32()}])),

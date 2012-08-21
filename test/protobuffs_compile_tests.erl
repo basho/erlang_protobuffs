@@ -56,7 +56,7 @@ parse_imports_test_() ->
     {foreach, fun setup/0, fun cleanup/1,
      [?_assertMatch([],
 		    (protobuffs_compile:parse_imports([], dummy_path))),
-      ?_assertMatch([{import, dummy_import_file}],
+      ?_assertMatch([{import, dummy_import_file}, file_boundary],
 		    (protobuffs_compile:parse_imports([{import,
 							dummy_import_file}],
 						      "dummy_path"))),

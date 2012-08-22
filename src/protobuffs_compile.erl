@@ -89,17 +89,17 @@ generate_source(ProtoFile) ->
 %%--------------------------------------------------------------------
 -spec generate_source(ProtoFile :: string() | atom(), Options :: list()) ->
 			     ok | {error, _}.
-generate_source(ProtoFile,Options) when is_atom (ProtoFile) ->
-    generate_source (atom_to_list (ProtoFile) ++ ".proto", Options);
-generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
-    Basename = filename:basename (ProtoFile, ".proto") ++ "_pb",
+generate_source(ProtoFile,Options) when is_atom(ProtoFile) ->
+    generate_source(atom_to_list(ProtoFile) ++ ".proto", Options);
+generate_source(ProtoFile,Options) when is_list(ProtoFile) ->
+    Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,String} = parse_file(ProtoFile),
     {ok,FirstParsed} = parse_string(String),
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
     Parsed = parse_imports(FirstParsed, ImportPaths),
     Collected = collect_full_messages(Parsed),
     Messages = resolve_types(Collected#collected.msg,Collected#collected.enum),
-    output_source (Basename, Messages, Collected#collected.enum, Options).
+    output_source(Basename, Messages, Collected#collected.enum, Options).
 
 %% @hidden
 parse_imports(Parsed, Path) ->
@@ -155,7 +155,7 @@ output(Basename, MessagesRaw, RawEnums, Options) ->
     protobuffs_file:write_file(BeamFile, Bytes).
 
 %% @hidden
-output_source (Basename, MessagesRaw, Enums, Options) ->
+output_source(Basename, MessagesRaw, Enums, Options) ->
     Messages = canonize_names(MessagesRaw),
     case proplists:get_value(output_include_dir,Options) of
 	undefined ->
@@ -175,7 +175,7 @@ output_source (Basename, MessagesRaw, Enums, Options) ->
 	    SrcFile = filename:join(SrcPath,Basename) ++ ".erl"
     end,
     error_logger:info_msg("Writing src file to ~p~n",[SrcFile]),
-    protobuffs_file:write_file(SrcFile, erl_prettypr:format(erl_syntax:form_list (Forms1))).
+    protobuffs_file:write_file(SrcFile, erl_prettypr:format(erl_syntax:form_list(Forms1))).
 
 %% @hidden
 parse_file(FileName) ->
@@ -710,31 +710,31 @@ resolve_list_name(Name, Package) when is_integer(hd(Name)) ->
     [[Name], [Name, Package]].
 
 %% @hidden
-resolve_types (Data, Enums) -> resolve_types (Data, Data, Enums, []).
-resolve_types ([{TypePath, Fields,Extended} | Tail], AllPaths, Enums, Acc) ->
+resolve_types(Data, Enums) -> resolve_types (Data, Data, Enums, []).
+resolve_types([{TypePath, Fields,Extended} | Tail], AllPaths, Enums, Acc) ->
     FolderFun = fun (Input, TmpAcc) ->
 			  case Input of
 			      {Index, Rules, Type, Identifier, Other} ->
-				  case is_scalar_type (Type) of
+				  case is_scalar_type(Type) of
 				      true -> [Input | TmpAcc];
 				      false ->
 					  PossiblePaths =
-					      case string:tokens (Type,".") of
+					      case string:tokens(Type,".") of
 						  [Type] ->
-						      all_possible_type_paths (Type, TypePath);
+						      all_possible_type_paths(Type, TypePath);
 						  FullPath ->
 						% handle types of the form Foo.Bar which are absolute,
 						% so we just convert to a type path and check it.
-						      [lists:reverse (FullPath)]
+						      [lists:reverse(FullPath)]
 					      end,
 					  RealPath =
-					      case find_type (PossiblePaths, AllPaths) of
+					      case find_type(PossiblePaths, AllPaths) of
 						  false ->
 						      case is_enum_type(Type, PossiblePaths, Enums) of
 							  {true,EnumType} ->
 							      [EnumType];
 							  false ->
-							      throw (["Unknown Type ", Type])
+							      throw(["Unknown Type ", Type])
 						      end;
 						  ResultType ->
 						      ResultType
@@ -753,8 +753,8 @@ resolve_types ([{TypePath, Fields,Extended} | Tail], AllPaths, Enums, Acc) ->
             lists:reverse(MidExtendOut)
     end,
     Type = type_path_to_type(TypePath),
-    resolve_types (Tail, AllPaths, Enums, [{Type, lists:reverse (FieldsOut), ExtendedOut } | Acc]);
-resolve_types ([], _, _, Acc) ->
+    resolve_types(Tail, AllPaths, Enums, [{Type, lists:reverse(FieldsOut), ExtendedOut } | Acc]);
+resolve_types([], _, _, Acc) ->
     Acc.
 
 %% @hidden
@@ -813,22 +813,22 @@ replace_atom(Other, _Find, _Replace) ->
     Other.
 
 %% @hidden
-is_scalar_type ("double") -> true;
-is_scalar_type ("float") -> true;
-is_scalar_type ("int32") -> true;
-is_scalar_type ("int64") -> true;
-is_scalar_type ("uint32") -> true;
-is_scalar_type ("uint64") -> true;
-is_scalar_type ("sint32") -> true;
-is_scalar_type ("sint64") -> true;
-is_scalar_type ("fixed32") -> true;
-is_scalar_type ("fixed64") -> true;
-is_scalar_type ("sfixed32") -> true;
-is_scalar_type ("sfixed64") -> true;
-is_scalar_type ("bool") -> true;
-is_scalar_type ("string") -> true;
-is_scalar_type ("bytes") -> true;
-is_scalar_type (_) -> false.
+is_scalar_type("double") -> true;
+is_scalar_type("float") -> true;
+is_scalar_type("int32") -> true;
+is_scalar_type("int64") -> true;
+is_scalar_type("uint32") -> true;
+is_scalar_type("uint64") -> true;
+is_scalar_type("sint32") -> true;
+is_scalar_type("sint64") -> true;
+is_scalar_type("fixed32") -> true;
+is_scalar_type("fixed64") -> true;
+is_scalar_type("sfixed32") -> true;
+is_scalar_type("sfixed64") -> true;
+is_scalar_type("bool") -> true;
+is_scalar_type("string") -> true;
+is_scalar_type("bytes") -> true;
+is_scalar_type(_) -> false.
 
 %% @hidden
 is_enum_type(_Type, [], _Enums) ->
@@ -853,10 +853,10 @@ sublists(List) when is_list(List) ->
 sublists([],Acc) ->
     [ [] | Acc ];
 sublists(List,Acc) ->
-    sublists (tl (List), [ List | Acc ]).
+    sublists(tl(List), [ List | Acc ]).
 
 %% @hidden
-all_possible_type_paths (Type, TypePaths) ->
+all_possible_type_paths(Type, TypePaths) ->
     all_possible_type_paths(Type, TypePaths, []).
 
 all_possible_type_paths(_Type, [], Acc) ->
@@ -871,19 +871,19 @@ all_possible_type_paths(Type, [TypePath | Tail], Acc) ->
 %        [[Type0 ++ TypeSuffix] | AccIn]
 %    end,
 %    lists:foldl(FoldFun, Type0, TypePath).
-    Head = lists:foldl (fun (TypeSuffix, AccIn) ->
+    Head = lists:foldl(fun (TypeSuffix, AccIn) ->
 			 [list_to_tuple([Type | TypeSuffix]) | AccIn]
 		 end,
 		 [],
-		 sublists (TypePath0)),
+		 sublists(TypePath0)),
     all_possible_type_paths(Type, Tail, [Head | Acc]).
 
 %% @hidden
-find_type ([], _KnownTypes) ->
+find_type([], _KnownTypes) ->
     false;
 find_type([Type | TailTypes], KnownTypes) when is_list(Type) ->
     find_type([list_to_tuple(Type) | TailTypes], KnownTypes);
-find_type ([Type | TailTypes], KnownTypes) ->
+find_type([Type | TailTypes], KnownTypes) ->
     FilterFun = fun(KnownType) ->
         lists:member(Type, element(1, KnownType))
     end,
@@ -919,10 +919,10 @@ type_path_to_type([[Name|Tuple]]) when is_tuple(Tuple) ->
     type_path_to_type([Name | tuple_to_list(Tuple)]);
 type_path_to_type(TypePath) when is_tuple(TypePath) ->
     type_path_to_type(tuple_to_list(TypePath));
-type_path_to_type (TypePath) ->
+type_path_to_type(TypePath) ->
     case is_list(hd(TypePath)) of
         true ->
-            string:join (lists:reverse (TypePath), "_");
+            string:join(lists:reverse(TypePath), "_");
         false ->
             TypePath
     end.

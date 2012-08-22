@@ -216,7 +216,7 @@ list_index(Target, List) -> list_index(Target, List, 1).
 
 list_index(Target, [Target|_], Index) -> Index;
 list_index(Target, [_|Tail], Index) -> list_index(Target, Tail, Index+1);
-list_index(_, [], _) -> 0.
+list_index(_, [], _) -> -1.
 
 extension_size(#pikachu{'$extensions' = Extensions}) ->
     dict:size(Extensions);

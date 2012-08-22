@@ -76,13 +76,10 @@ scan_string(String,Basename,Options) ->
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
 %%--------------------------------------------------------------------
--spec generate_source(ProtoFile :: string()) ->
+-spec generate_source(ProtoFile :: string() | atom() ) ->
 			     ok | {error, _}.
-generate_source(ProtoFile) when is_atom(ProtoFile) ->
-    generate_source(atom_to_list(ProtoFile),[]);
 generate_source(ProtoFile) ->
-    Basename = filename:basename(ProtoFile, ".proto"),
-    generate_source(Basename,[]).
+  generate_source(ProtoFile,[]).
 
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
@@ -90,10 +87,12 @@ generate_source(ProtoFile) ->
 %%                                  output_src_dir,
 %%                                  imports_dir
 %%--------------------------------------------------------------------
--spec generate_source(ProtoFile :: string(), Options :: list()) ->
+-spec generate_source(ProtoFile :: string() | atom(), Options :: list()) ->
 			     ok | {error, _}.
+generate_source(ProtoFile,Options) when is_atom (ProtoFile) ->
+    generate_source (atom_to_list (ProtoFile) ++ ".proto", Options);
 generate_source(ProtoFile,Options) when is_list (ProtoFile) ->
-    Basename = ProtoFile ++ "_pb",
+    Basename = filename:basename (ProtoFile, ".proto") ++ "_pb",
     {ok,String} = parse_file(ProtoFile),
     {ok,FirstParsed} = parse_string(String),
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
@@ -444,7 +443,7 @@ filter_decode_clause(Msgs, {MsgName, Fields, Extends}, {clause,L,_Args,Guards,[_
 				 {FNum,Tag,SType,SName,Def} <- Fields]),
     Cons = lists:foldl(
 	     fun({FNum, FName, Type, Opts, _Def}, Acc) ->
-		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
+             {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,list_to_atom(string:to_lower(atom_to_list(FName)))},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
 	     end, {nil,L}, Types),
     ExtendDefault = case Extends of
         disallowed -> {nil,L};

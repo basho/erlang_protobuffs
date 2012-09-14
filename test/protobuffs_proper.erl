@@ -523,3 +523,11 @@ proper_protobuffs_service() ->
 		    compare_messages(Service, Decoded)
 	      end
 	    end).
+
+proper_protobuffs_camel_case() ->
+    ?FORALL(Record,
+    ({outer, oneof([utf8string(), undefined]), list({inner, oneof([utf8string(), undefined])})}),
+    begin
+        Decoded = camel_case_pb:decode_outer(camel_case_pb:encode_outer(Record)),
+        compare_messages(Record, Decoded)
+    end).

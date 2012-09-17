@@ -212,7 +212,7 @@ set_record_field(Fields, Record, Field, Value) ->
     Index = list_index(Field, Fields),
     erlang:setelement(Index+1, Record, Value).
 
-list_index(Target, List) -> list_index(Target, List, 1).
+list_index(Target, List) ->  list_index(list_to_atom(string:to_lower(atom_to_list(Target))), List, 1).
 
 list_index(Target, [Target|_], Index) -> Index;
 list_index(Target, [_|Tail], Index) -> list_index(Target, Tail, Index+1);

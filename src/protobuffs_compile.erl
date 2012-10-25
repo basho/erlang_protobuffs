@@ -454,7 +454,7 @@ filter_decode_clause(Msgs, {MsgName, Fields, Extends}, {clause,L,_Args,Guards,[_
             ({_FNum, _FName, _Type, _Opts, none}, Acc) ->
                 Acc;
             ({FNum, FName, _Type, _Opts, Def}, Acc) ->
-                {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},erl_parse:abstract(Def)]},Acc}
+                {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,list_to_atom(string:to_lower(atom_to_list(FName)))},erl_parse:abstract(Def)]},Acc}
         end,
         ExtendDefault,
         Types),

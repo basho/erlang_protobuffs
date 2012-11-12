@@ -166,7 +166,7 @@ decode_extensions(#pikachu{'$extensions' = Extensions} = Record) ->
 decode_extensions(Record) ->
     Record.
 
-decode_extensions(Types, [], Acc) ->
+decode_extensions(_Types, [], Acc) ->
     dict:from_list(Acc);
 decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
     NewAcc = case lists:keysearch(Fnum, 1, Types) of

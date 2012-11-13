@@ -196,7 +196,7 @@ parse_file(InFile,Acc) ->
     end.
 
 parse_string(String) ->
-    case lists:all(fun(N) -> is_integer(N) end, String) of
+    case lists:all(fun erlang:is_integer/1, String) of
         true ->
             {ok, Tokens, _Line} = protobuffs_scanner:string(String),
             protobuffs_parser:parse(Tokens);

@@ -196,7 +196,13 @@ parse_file(InFile,Acc) ->
     end.
 
 parse_string(String) ->
-    protobuffs_parser:parse(String).
+    case lists:all(fun erlang:is_integer/1, String) of
+        true ->
+            {ok, Tokens, _Line} = protobuffs_scanner:string(String),
+            protobuffs_parser:parse(Tokens);
+        false ->
+            protobuffs_parser:parse(String)
+    end.
 
 %% @hidden
 filter_forms(Msgs, Enums, [{attribute,L,file,{_,_}}|Tail], Basename, Acc) ->
@@ -261,7 +267,11 @@ filter_forms(Msgs, Enums, [{function,L,to_record,2,[Clause]}|Tail], Basename, Ac
     filter_forms(Msgs, Enums, Tail, Basename, [expand_to_record_function(Msgs, L, Clause)|Acc]);
 
 filter_forms(Msgs, Enums, [{function,L,enum_to_int,2,[Clause]}|Tail], Basename, Acc) ->
-    filter_forms(Msgs, Enums, Tail, Basename, [expand_enum_to_int_function(Enums, L, Clause)|Acc]);
+    Acc2 = case any_message_has_fields(Msgs) orelse any_message_has_extentions(Msgs) of
+        true -> [expand_enum_to_int_function(Enums,L,Clause)|Acc];
+        false -> Acc
+    end,
+    filter_forms(Msgs, Enums, Tail, Basename, Acc2);
 
 filter_forms(Msgs, Enums, [{function,L,int_to_enum,2,[Clause]}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [expand_int_to_enum_function(Enums, L, Clause)|Acc]);
@@ -296,10 +306,32 @@ filter_forms(Msgs, Enums, [{function,L,set_extension,3,[RecClause,Catchall]}|Tai
     NewHead = {function,L,set_extension,3,NewClauses},
     filter_forms(Msgs,Enums,Tail,Basename,[NewHead|Acc]);
 
+filter_forms(Msgs, Enums, [{function,_L,with_default,2,_Args}=Func|Tail],Basename,Acc) ->
+    Acc2 = case any_message_has_fields(Msgs) of
+        true -> [Func|Acc];
+        false -> Acc
+    end,
+    filter_forms(Msgs,Enums,Tail,Basename,Acc2);
+
+filter_forms(Msgs, Enums, [{function,_L,pack,5,_Clauses}=Func|Tail],Basename,Acc) ->
+    Acc2 = case any_message_has_fields(Msgs) orelse any_message_has_extentions(Msgs) of
+        true -> [Func|Acc];
+        false -> Acc
+    end,
+    filter_forms(Msgs,Enums,Tail,Basename,Acc2);
+
 filter_forms(Msgs, Enums, [Form|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [Form|Acc]);
 
 filter_forms(_, _, [], _, Acc) -> lists:reverse(Acc).
+
+any_message_has_extentions(Msgs) ->
+    Predicate = fun({_,_,disallowed}) -> false; (_) -> true end,
+    lists:any(Predicate, Msgs).
+
+any_message_has_fields(Msgs) ->
+    Predicate = fun({_,[],_}) -> false; (_) -> true end,
+    lists:any(Predicate, Msgs).
 
 %% @hidden
 filter_set_extension([],_,Acc) ->
@@ -403,6 +435,8 @@ filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,Content
 expand_iolist_function(Msgs, Line, Clause) ->
     {function,Line,iolist,2,[filter_iolist_clause(Msg, Clause) || Msg <- Msgs]}.
 
+filter_iolist_clause({MsgName, [], _Extends0}, {clause,L,Args,Guards,_Content}) ->
+    {clause,L,[{atom,L,atomize(MsgName)},{var,L,'_Record'}],Guards,[{nil,L}]};
 filter_iolist_clause({MsgName, Fields0, _Extends0}, {clause,L,_Args,Guards,_Content}) ->
     Fields = [
         case Tag of

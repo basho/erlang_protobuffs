@@ -20,7 +20,8 @@ setup() ->
     meck:expect(protobuffs_file, request,
 		fun (_) -> {eof, dummy} end),
     meck:expect(protobuffs_file, compile_forms,
-		fun (_, _) -> {ok, dummy, <<"Bytest">>, dummy} end),
+		fun (_, []) -> {ok, dummy, <<"Bytest">>, dummy};
+        (A, B) -> meck:passthrough([A,B]) end),
     meck:expect(protobuffs_file, write_file,
 		fun (_, _) -> ok end),
     meck:expect(protobuffs_file, format,
@@ -43,7 +44,9 @@ scan_file_test_() ->
 scan_string_test_() ->
     {setup, fun setup/0, fun cleanup/1,
      [?_assertMatch(ok,
-		    (protobuffs_compile:scan_string("", "dummy")))]}.
+		    (protobuffs_compile:scan_string("", "dummy"))),
+      ?_assertMatch(ok,
+        (protobuffs_compile:scan_string("message Dummy { }", "dummy")))]}.
 
 generate_source_test_() ->
     {foreach, fun setup/0, fun cleanup/1,
@@ -63,3 +66,14 @@ parse_imports_test_() ->
       ?_assertMatch([what_ever],
 		    (protobuffs_compile:parse_imports([what_ever],
 						      dummy_path)))]}.
+
+parse_empty_message_test_() ->
+    {foreach, fun setup/0, fun cleanup/1,
+     [?_assertMatch(ok,
+        (protobuffs_compile:scan_string("message Dummy { }", "dummy", [{compile_flags, [warnings_as_errors]}]))),
+      ?_assertMatch(ok,
+        (protobuffs_compile:scan_string("message Dummy { } message AlsoDummy { }", "dummy", [{compile_flags, [warnings_as_errors]}]))),
+      ?_assertMatch(ok,
+        (protobuffs_compile:scan_string("message Dummy { extensions 100 to 200; }", "dummy", [{compile_flags, [warnings_as_errors]}]))),
+      ?_assertMatch(ok,
+        (protobuffs_compile:scan_string("message Dummy { extentions 100 to max; }", "dummy", [{compile_flags, [warnings_as_errors]}])))]}.

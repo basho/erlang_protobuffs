@@ -38,7 +38,7 @@ encode_pikachu(Record) when is_record(Record, pikachu) ->
     encode(pikachu, Record).
 
 encode(pikachu, Record) ->
-    iolist_to_binary(iolist(pikachu, Record) ++ encode_extensions(Record)).
+    [iolist(pikachu, Record)|encode_extensions(Record)].
 
 encode_extensions(#pikachu{'$extensions' = Extends}) ->
     [pack(Key, Optionalness, Data, Type, Accer) ||

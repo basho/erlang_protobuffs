@@ -69,13 +69,13 @@ prop_protobuffs() ->
 	    begin
 	      case Type of
 		float when is_float(Value) ->
-		    Encoded = protobuffs:encode(FieldID, Value, Type),
+		    Encoded = iolist_to_binary(protobuffs:encode(FieldID, Value, Type)),
 		    {{FieldID, Float}, <<>>} = protobuffs:decode(Encoded,
 								 Type),
 		    <<Value32:32/little-float>> = <<Value:32/little-float>>,
 		    Float =:= Value32;
 		_Else ->
-		    Encoded = protobuffs:encode(FieldID, Value, Type),
+		    Encoded = iolist_to_binary(protobuffs:encode(FieldID, Value, Type)),
 		    {{FieldID, Value}, <<>>} ==
 		      protobuffs:decode(Encoded, Type)
 	      end
@@ -96,8 +96,8 @@ prop_protobuffs_packed() ->
 	    begin
 	      case Type of
 		float ->
-		    Encoded = protobuffs:encode_packed(FieldID, Values,
-						       Type),
+		    Encoded = iolist_to_binary(protobuffs:encode_packed(FieldID, Values,
+						       Type)),
 		    {{FieldID, DecodedValues}, <<>>} =
 			protobuffs:decode_packed(Encoded, Type),
 		    lists:all(fun ({Expected, Result}) ->
@@ -107,8 +107,8 @@ prop_protobuffs_packed() ->
 			      end,
 			      lists:zip(Values, DecodedValues));
 		_Else ->
-		    Encoded = protobuffs:encode_packed(FieldID, Values,
-						       Type),
+		    Encoded = iolist_to_binary(protobuffs:encode_packed(FieldID, Values,
+						       Type)),
 		    Decoded = protobuffs:decode_packed(Encoded, Type),
 		    {{FieldID, Values}, <<>>} == Decoded
 	      end

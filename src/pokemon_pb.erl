@@ -104,8 +104,8 @@ decode(pikachu, Bytes) when is_binary(Bytes) ->
 decode(<<>>, _, Acc) -> Acc;
 decode(Bytes, Types, Acc) ->
     {ok, FNum} = protobuffs:next_field_num(Bytes),
-    case lists:keysearch(FNum, 1, Types) of
-        {value, {FNum, Name, Type, Opts}} ->
+    case lists:keyfind(FNum, 1, Types) of
+        {FNum, Name, Type, Opts} ->
             {Value1, Rest1} =
                 case lists:member(is_record, Opts) of
                     true ->
@@ -134,8 +134,8 @@ decode(Bytes, Types, Acc) ->
 		                decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
             end;
         false ->
-            case lists:keysearch('$extensions', 2, Acc) of
-                {value,{_,_,Dict}} ->
+            case lists:keyfind('$extensions', 2, Acc) of
+                {_,_,Dict} ->
                     {{FNum, _V}, R} = protobuffs:decode(Bytes, bytes),
                     Diff = size(Bytes) - size(R),
                     <<V:Diff/binary,_/binary>> = Bytes,
@@ -169,8 +169,8 @@ decode_extensions(Record) ->
 decode_extensions(_Types, [], Acc) ->
     dict:from_list(Acc);
 decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
-    NewAcc = case lists:keysearch(Fnum, 1, Types) of
-        {value, {Fnum, Name, Type, Opts}} ->
+    NewAcc = case lists:keyfind(Fnum, 1, Types) of
+        {Fnum, Name, Type, Opts} ->
             {Value1, Rest1} =
                 case lists:member(is_record, Opts) of
                     true ->

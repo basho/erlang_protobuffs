@@ -409,14 +409,17 @@ decode_varint(Bytes) ->
 -spec decode_varint(Bytes :: binary(), list()) -> 
 			   {integer(), binary()}.
 decode_varint(<<0:1, I:7, Rest/binary>>, Acc) ->
-    Acc1 = [I|Acc],
-    Result = 
-        lists:foldl(
-            fun(X, Acc0) ->
-                (Acc0 bsl 7 bor X)
-            end, 0, Acc1),
+    Result = unroll_varint([I|Acc]),
     {Result, Rest};
 decode_varint(<<1:1, I:7, Rest/binary>>, Acc) ->
     decode_varint(Rest, [I | Acc]);
 decode_varint(Bytes,Acc) ->
     erlang:error(badarg,[Bytes,Acc]).
+
+unroll_varint(L) ->
+    unroll_varint(L, 0).
+
+unroll_varint([], Acc) ->
+    Acc;
+unroll_varint([X|Rest], Acc) ->
+    unroll_varint(Rest,(Acc bsl 7 bor X)).

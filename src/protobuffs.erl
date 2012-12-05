@@ -60,9 +60,9 @@
 -spec encode(FieldID :: non_neg_integer(),
 	     Value :: any(),
 	     Type :: field_type()) -> 
-		    binary().
+		    iodata().
 encode(FieldID, Value, Type) ->
-    iolist_to_binary(encode_internal(FieldID, Value, Type)).
+    encode_internal(FieldID, Value, Type).
 
 %%--------------------------------------------------------------------
 %% @doc Encode an list of Erlang data structure into a Protocol Buffers values.
@@ -75,9 +75,9 @@ encode(FieldID, Value, Type) ->
 encode_packed(_FieldID, [], _Type) ->
     <<>>;
 encode_packed(FieldID, Values, Type) ->
-    PackedValues = iolist_to_binary(encode_packed_internal(Values,Type,[])),
-    Size = encode_varint(size(PackedValues)),
-    iolist_to_binary([encode_field_tag(FieldID, ?TYPE_STRING),Size,PackedValues]).
+    PackedValues = encode_packed_internal(Values,Type,[]),
+    Size = encode_varint(iolist_size(PackedValues)),
+    [encode_field_tag(FieldID, ?TYPE_STRING),Size,PackedValues].
     
 %% @hidden
 -spec encode_internal(FieldID :: non_neg_integer(), 
@@ -395,7 +395,7 @@ encode_varint(I) ->
 -spec encode_varint(I :: integer(), Acc :: list()) ->
 			   binary().
 encode_varint(I, Acc) when I =< 16#7f ->
-    iolist_to_binary(lists:reverse([I | Acc]));
+    lists:reverse([I | Acc]);
 encode_varint(I, Acc) ->
     Last_Seven_Bits = (I - ((I bsr 7) bsl 7)),
     First_X_Bits = (I bsr 7),

@@ -1,4 +1,4 @@
-%% Copyright (c) 2009 
+%% Copyright (c) 2009
 %% Nick Gerakines <nick@gerakines.net>
 %% Jacob Vorreuter <jacob.vorreuter@gmail.com>
 %%
@@ -58,11 +58,11 @@ pack(_, repeated, undefined, _, _) -> [];
 
 pack(_, repeated_packed, undefined, _, _) -> [];
 pack(_, repeated_packed, [], _, _) -> [];
-    
+
 pack(FNum, required, undefined, Type, _) ->
     exit({error, {required_field_is_undefined, FNum, Type}});
 
-pack(_, repeated, [], _, Acc) -> 
+pack(_, repeated, [], _, Acc) ->
     lists:reverse(Acc);
 
 pack(FNum, repeated, [Head|Tail], Type, Acc) ->
@@ -94,19 +94,19 @@ int_to_enum(_,Val) ->
 %% DECODE
 decode_pikachu(Bytes) when is_binary(Bytes) ->
     decode(pikachu, Bytes).
-    
+
 decode(pikachu, Bytes) when is_binary(Bytes) ->
     Types = [{1, abc, int32, []}, {2, def, double, []}],
     Defaults = [],
     Decoded = decode(Bytes, Types, Defaults),
     to_record(pikachu, Decoded).
-    
+
 decode(<<>>, _, Acc) -> Acc;
 decode(Bytes, Types, Acc) ->
     {ok, FNum} = protobuffs:next_field_num(Bytes),
     case lists:keysearch(FNum, 1, Types) of
         {value, {FNum, Name, Type, Opts}} ->
-            {Value1, Rest1} = 
+            {Value1, Rest1} =
                 case lists:member(is_record, Opts) of
                     true ->
                         {{FNum, V}, R} = protobuffs:decode(Bytes, bytes),
@@ -147,11 +147,11 @@ decode(Bytes, Types, Acc) ->
                     decode(Skipped, Types, Acc)
             end
     end.
-    
+
 unpack_value(Binary, string) when is_binary(Binary) ->
     binary_to_list(Binary);
 unpack_value(Value, _) -> Value.
-    
+
 to_record(pikachu, DecodedTuples) ->
     Record1 = lists:foldr(
         fun({_FNum, Name, Val}, Record) ->
@@ -171,7 +171,7 @@ decode_extensions(_Types, [], Acc) ->
 decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
     NewAcc = case lists:keysearch(Fnum, 1, Types) of
         {value, {Fnum, Name, Type, Opts}} ->
-            {Value1, Rest1} = 
+            {Value1, Rest1} =
                 case lists:member(is_record, Opts) of
                     true ->
                         {{FNum, V}, R} = protobuffs:decode(Bytes, bytes),

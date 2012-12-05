@@ -404,22 +404,12 @@ encode_varint(I, Acc) ->
 -spec decode_varint(Bytes :: binary()) ->
 			   {integer(), binary()}.
 decode_varint(Bytes) ->
-    decode_varint(Bytes, []).
+    decode_varint(Bytes, 0, 0).
 
--spec decode_varint(Bytes :: binary(), list()) -> 
+%% @hidden
+-spec decode_varint(Bytes :: binary(), non_neg_integer(), non_neg_integer()) -> 
 			   {integer(), binary()}.
-decode_varint(<<0:1, I:7, Rest/binary>>, Acc) ->
-    Result = unroll_varint([I|Acc]),
-    {Result, Rest};
-decode_varint(<<1:1, I:7, Rest/binary>>, Acc) ->
-    decode_varint(Rest, [I | Acc]);
-decode_varint(Bytes,Acc) ->
-    erlang:error(badarg,[Bytes,Acc]).
-
-unroll_varint(L) ->
-    unroll_varint(L, 0).
-
-unroll_varint([], Acc) ->
-    Acc;
-unroll_varint([X|Rest], Acc) ->
-    unroll_varint(Rest,(Acc bsl 7 bor X)).
+decode_varint(<<0:1, I:7, Rest/binary>>, Int, Depth) ->
+    {(I bsl Depth) bor Int, Rest};
+decode_varint(<<1:1, I:7, Rest/binary>>, Int, Depth) ->
+    decode_varint(Rest, (I bsl Depth) bor Int, Depth + 7).

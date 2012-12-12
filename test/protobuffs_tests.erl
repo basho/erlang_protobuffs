@@ -15,11 +15,11 @@
 
 -define(DECODE, protobuffs:decode).
 
--define(ENCODE, protobuffs:encode).
+-define(ENCODE(A,B,C), iolist_to_binary(protobuffs:encode(A,B,C))).
 
 -define(DECODE_PACKED, protobuffs:decode_packed).
 
--define(ENCODE_PACKED, protobuffs:encode_packed).
+-define(ENCODE_PACKED(A,B,C), iolist_to_binary(protobuffs:encode_packed(A,B,C))).
 
 asciistring() ->
     list(integer(0,127)).

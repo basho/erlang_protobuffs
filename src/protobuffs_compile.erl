@@ -1,4 +1,4 @@
-%% Copyright (c) 2009 
+%% Copyright (c) 2009
 %% Nick Gerakines <nick@gerakines.net>
 %% Jacob Vorreuter <jacob.vorreuter@gmail.com>
 %%
@@ -27,7 +27,7 @@
 -ifdef(TEST).
 -compile(export_all).
 -else.
--export([scan_file/1, scan_file/2, scan_string/2, scan_string/3, 
+-export([scan_file/1, scan_file/2, scan_string/2, scan_string/3,
 	 generate_source/1, generate_source/2]).
 -endif.
 
@@ -48,7 +48,7 @@ scan_string(String,BaseName) ->
 
 %%--------------------------------------------------------------------
 %% @doc Generats a built .beam file and header file .hrl
-%%      Considerd option properties: output_include_dir, 
+%%      Considerd option properties: output_include_dir,
 %%                                   output_ebin_dir,
 %%                                   imports_dir
 %%--------------------------------------------------------------------
@@ -64,15 +64,15 @@ scan_file(ProtoFile,Options) when is_atom(ProtoFile) ->
     scan_string(String,Basename,Options).
 
 -spec scan_string(String :: string(), Basename :: string(), Options :: list()) ->
-			 ok | {error, _}. 
+			 ok | {error, _}.
 scan_string(String,Basename,Options) ->
     {ok,FirstParsed} = parse_string(String),
     ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
     Parsed = parse_imports(FirstParsed, ImportPaths),
-    Collected = collect_full_messages(Parsed), 
+    Collected = collect_full_messages(Parsed),
     Messages = resolve_types(Collected#collected.msg,Collected#collected.enum),
     output(Basename, Messages, Collected#collected.enum, Options).
-    
+
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
 %%--------------------------------------------------------------------
@@ -83,7 +83,7 @@ generate_source(ProtoFile) ->
 
 %%--------------------------------------------------------------------
 %% @doc Generats a source .erl file and header file .hrl
-%%      Consider option properties: output_include_dir, 
+%%      Consider option properties: output_include_dir,
 %%                                  output_src_dir,
 %%                                  imports_dir
 %%--------------------------------------------------------------------
@@ -190,7 +190,7 @@ parse_file(InFile,Acc) ->
         {ok,Token,_EndLine} ->
             parse_file(InFile,Acc ++ [Token]);
         {error,token} ->
-            exit(scanning_error);    
+            exit(scanning_error);
         {eof,_} ->
             Acc
     end.
@@ -233,7 +233,7 @@ filter_forms(Msgs, Enums, [{attribute,L,record,{pikachu,_}}|Tail], Basename, Acc
 
 filter_forms(Msgs, Enums, [{function,L,encode_pikachu,1,[Clause]}|Tail], Basename, Acc) ->
     Functions = [begin
-		     {function,L,list_to_atom("encode_" ++ string:to_lower(Name)),1,[replace_atom(Clause, pikachu, atomize(Name))]} 
+		     {function,L,list_to_atom("encode_" ++ string:to_lower(Name)),1,[replace_atom(Clause, pikachu, atomize(Name))]}
 		 end || {Name, _, _} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Functions ++ Acc);
 
@@ -256,7 +256,7 @@ filter_forms(Msgs, Enums, [{function,L,decode_pikachu,1,[Clause]}|Tail], Basenam
 		      L,
 		      list_to_atom("decode_" ++ string:to_lower(Name)),
 		      1,
-		      [replace_atom(Clause, pikachu, atomize(Name))]} 
+		      [replace_atom(Clause, pikachu, atomize(Name))]}
 		 end || {Name, _, _} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Functions ++ Acc);
 
@@ -373,7 +373,7 @@ filter_get_extension_atom([{Msg,_,Extends}|Tail],Clause,Acc) ->
       {FId, _, _, FName, _} <- Extends],
     NewAcc = lists:append(NewClauses,Acc),
     filter_get_extension_atom(Tail,Clause,NewAcc).
- 
+
 %% @hidden
 filter_get_extension_integer([],_,Acc) ->
     Acc;
@@ -409,7 +409,7 @@ filter_has_extension([{MsgName,_,Extends}|Tail], Clause, Acc) ->
     NewClauses = lists:foldl(Folder, [], Extends),
     NewAcc = lists:append(Acc,NewClauses),
     filter_has_extension(Tail,Clause,NewAcc).
-    
+
 %% @hidden
 filter_extension_size([], _RecClause, Acc) ->
     % the non-reversal is intentional.
@@ -424,13 +424,11 @@ filter_extension_size([{MsgName,_,_}|Tail],Clause,Acc) ->
 
 %% @hidden
 filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,Content}) ->
-    ToBin = {call,L,{atom,L,iolist_to_binary},[
-        {op,L,'++',
-            {call,L, {atom,L,iolist}, [{atom,L,atomize(MsgName)},{var,L,'Record'}]},
-            {call,L, {atom,L,encode_extensions}, [{var,L,'Record'}]}
-        }
-    ]},
-    {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Record'}],Guards,[ToBin]}.
+    ToIolist = {cons, L,
+                {call,L, {atom,L,iolist}, [{atom,L,atomize(MsgName)},{var,L,'Record'}]},
+                {call,L, {atom,L,encode_extensions}, [{var,L,'Record'}]}
+               },
+    {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Record'}],Guards,[ToIolist]}.
 
 expand_iolist_function(Msgs, Line, Clause) ->
     {function,Line,iolist,2,[filter_iolist_clause(Msg, Clause) || Msg <- Msgs]}.
@@ -465,14 +463,14 @@ filter_iolist_clause({MsgName, Fields0, _Extends0}, {clause,L,_Args,Guards,_Cont
 
 %% @hidden
 expand_decode_function(Msgs, Line, Clause) ->
-    {function,Line,decode,2, [{clause,Line,[{atom,Line,enummsg_values},{integer,Line,1}],[],[{atom,Line,value1}]}] ++ 
+    {function,Line,decode,2, [{clause,Line,[{atom,Line,enummsg_values},{integer,Line,1}],[],[{atom,Line,value1}]}] ++
      [filter_decode_clause(Msgs, Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
 filter_decode_clause(Msgs, {MsgName, Fields, Extends}, {clause,L,_Args,Guards,[_,_,C,D]}) ->
     Types = lists:keysort(1, [begin
-            {FNum, list_to_atom(SName), 
-			       atomize(SType), 
+            {FNum, list_to_atom(SName),
+			       atomize(SType),
 			       decode_opts(Msgs, Tag, SType), Def} end ||
 				 {FNum,Tag,SType,SName,Def} <- Fields]),
     Cons = lists:foldl(
@@ -504,8 +502,8 @@ filter_decode_extensions_clause(Msgs,[{_,_,disallowed}|Tail],Clause,Acc) ->
     filter_decode_extensions_clause(Msgs,Tail,Clause,Acc);
 filter_decode_extensions_clause(Msgs,[{MsgName,_,Extends}|Tail],Clause,Acc) ->
     {clause,L,_,_,_} = Clause,
-    Types = lists:keysort(1, [{FNum, list_to_atom(SName), 
-			       atomize(SType), 
+    Types = lists:keysort(1, [{FNum, list_to_atom(SName),
+			       atomize(SType),
 			       decode_opts(Msgs, Tag, SType), Def} ||
 				 {FNum,Tag,SType,SName,Def} <- Extends]),
     Cons = lists:foldl(
@@ -583,22 +581,22 @@ collect_full_messages(Data) -> collect_full_messages(Data, #collected{}).
 collect_full_messages([{message, Name, Fields} | Tail], Collected) ->
     Package = Collected#collected.package,
     ListName = resolve_list_name(Name, Package),
-    
+
     FieldsOut = lists:foldl(
 		  fun ({_,_,_,_,_} = Input, TmpAcc) -> [Input | TmpAcc];
 		      (_, TmpAcc) -> TmpAcc
 		  end, [], Fields),
-    
+
     Enums = lists:foldl(
 	      fun ({enum,C,D}, TmpAcc) -> [{enum, [list_to_tuple([C | LN]) || LN <- ListName], D} | TmpAcc];
 		  (_, TmpAcc) -> TmpAcc
 	      end, [], Fields),
-    
+
     Extensions = lists:foldl(
 		   fun ({extensions, From, To}, TmpAcc) -> [{From,To}|TmpAcc];
 		       (_, TmpAcc) -> TmpAcc
 		   end, [], Fields),
-			   
+
     SubMessages = lists:foldl(
 		    fun ({message, C, D}, TmpAcc) -> [{message, [list_to_tuple([C | LN]) || LN <- ListName], D} | TmpAcc];
 			(_, TmpAcc) -> TmpAcc
@@ -621,14 +619,14 @@ collect_full_messages([{enum, Name, Fields} | Tail], Collected) ->
     FieldsOut = lists:foldl(
 		  fun (Field, TmpAcc) ->
 			  case Field of
-			      {EnumAtom, IntValue} -> [{enum, 
-							[type_path_to_type(LN) || LN <-ListName], 
-							IntValue, 
+			      {EnumAtom, IntValue} -> [{enum,
+							[type_path_to_type(LN) || LN <-ListName],
+							IntValue,
 							EnumAtom} | TmpAcc];
 			      _ -> TmpAcc
 			  end
 		  end, [], Fields),
-    
+
     NewCollected = Collected#collected{enum=FieldsOut++Collected#collected.enum},
     collect_full_messages(Tail, NewCollected);
 collect_full_messages([{package, PackageName} | Tail], Collected) ->
@@ -650,18 +648,18 @@ collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
     %{ListNameT2,Extensions} = find_defined_extensions(ListName, Extended),
     {ListName,FieldsOut,ExtendFields} = lists:keyfind(BestMatch,1,CollectedMsg),
     {ListName,Extensions} = lists:keyfind(BestMatch,1,Collected#collected.extensions),
-    
+
     FunNotInReservedRange = fun(Id) -> not(19000 =< Id andalso Id =< 19999) end,
     FunInRange = fun(Id,From,max) -> From =< Id andalso Id =< 16#1fffffff;
 		    (Id,From,To) -> From =< Id andalso Id =< To
 		 end,
-    
+
     ExtendedFieldsOut = lists:append(FieldsOut,
 			     lists:foldl(
 			       fun ({Id, _, _, FieldName, _} = Input, TmpAcc) ->
-				       case lists:any(fun({From,To}) -> FunNotInReservedRange(Id) 
+				       case lists:any(fun({From,To}) -> FunNotInReservedRange(Id)
 									    andalso FunInRange(Id,From,To)
-						      end,Extensions) of 
+						      end,Extensions) of
 					   true ->
 					       [Input | TmpAcc];
 					   _ ->
@@ -688,7 +686,7 @@ collect_full_messages([file_boundary | Tail], Collected) ->
 %% Skip anything we don't understand
 collect_full_messages([Skip|Tail], Acc) ->
     error_logger:warning_report(["Unkown, skipping",
-				 {skip,Skip}]), 
+				 {skip,Skip}]),
     collect_full_messages(Tail, Acc);
 collect_full_messages([], Collected) ->
     Collected.
@@ -930,7 +928,7 @@ find_type([Type | TailTypes], KnownTypes) ->
 
 %% @hidden
 canonical_name([TypePath | _]) ->
-    % yes, we're assuming the first name in the list is the most 
+    % yes, we're assuming the first name in the list is the most
     % cannonical name.
     type_path_to_type(TypePath).
 
@@ -960,4 +958,3 @@ type_path_to_type(TypePath) ->
         false ->
             TypePath
     end.
-

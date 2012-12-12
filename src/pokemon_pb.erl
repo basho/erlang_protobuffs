@@ -1,4 +1,4 @@
-%% Copyright (c) 2009 
+%% Copyright (c) 2009
 %% Nick Gerakines <nick@gerakines.net>
 %% Jacob Vorreuter <jacob.vorreuter@gmail.com>
 %%
@@ -38,7 +38,7 @@ encode_pikachu(Record) when is_record(Record, pikachu) ->
     encode(pikachu, Record).
 
 encode(pikachu, Record) ->
-    iolist_to_binary(iolist(pikachu, Record) ++ encode_extensions(Record)).
+    [iolist(pikachu, Record)|encode_extensions(Record)].
 
 encode_extensions(#pikachu{'$extensions' = Extends}) ->
     [pack(Key, Optionalness, Data, Type, Accer) ||
@@ -58,11 +58,11 @@ pack(_, repeated, undefined, _, _) -> [];
 
 pack(_, repeated_packed, undefined, _, _) -> [];
 pack(_, repeated_packed, [], _, _) -> [];
-    
+
 pack(FNum, required, undefined, Type, _) ->
     exit({error, {required_field_is_undefined, FNum, Type}});
 
-pack(_, repeated, [], _, Acc) -> 
+pack(_, repeated, [], _, Acc) ->
     lists:reverse(Acc);
 
 pack(FNum, repeated, [Head|Tail], Type, Acc) ->
@@ -94,23 +94,23 @@ int_to_enum(_,Val) ->
 %% DECODE
 decode_pikachu(Bytes) when is_binary(Bytes) ->
     decode(pikachu, Bytes).
-    
+
 decode(pikachu, Bytes) when is_binary(Bytes) ->
     Types = [{1, abc, int32, []}, {2, def, double, []}],
     Defaults = [],
     Decoded = decode(Bytes, Types, Defaults),
     to_record(pikachu, Decoded).
-    
+
 decode(<<>>, _, Acc) -> Acc;
 decode(Bytes, Types, Acc) ->
     {ok, FNum} = protobuffs:next_field_num(Bytes),
-    case lists:keysearch(FNum, 1, Types) of
-        {value, {FNum, Name, Type, Opts}} ->
-            {Value1, Rest1} = 
+    case lists:keyfind(FNum, 1, Types) of
+        {FNum, Name, Type, Opts} ->
+            {Value1, Rest1} =
                 case lists:member(is_record, Opts) of
                     true ->
                         {{FNum, V}, R} = protobuffs:decode(Bytes, bytes),
-                        RecVal = decode(list_to_atom(string:to_lower(atom_to_list(Type))), V),
+                        RecVal = decode(Type, V),
                         {RecVal, R};
                     false ->
                         case lists:member(repeated_packed, Opts) of
@@ -134,8 +134,8 @@ decode(Bytes, Types, Acc) ->
 		                decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
             end;
         false ->
-            case lists:keysearch('$extensions', 2, Acc) of
-                {value,{_,_,Dict}} ->
+            case lists:keyfind('$extensions', 2, Acc) of
+                {_,_,Dict} ->
                     {{FNum, _V}, R} = protobuffs:decode(Bytes, bytes),
                     Diff = size(Bytes) - size(R),
                     <<V:Diff/binary,_/binary>> = Bytes,
@@ -147,11 +147,11 @@ decode(Bytes, Types, Acc) ->
                     decode(Skipped, Types, Acc)
             end
     end.
-    
+
 unpack_value(Binary, string) when is_binary(Binary) ->
     binary_to_list(Binary);
 unpack_value(Value, _) -> Value.
-    
+
 to_record(pikachu, DecodedTuples) ->
     Record1 = lists:foldr(
         fun({_FNum, Name, Val}, Record) ->
@@ -169,13 +169,13 @@ decode_extensions(Record) ->
 decode_extensions(_Types, [], Acc) ->
     dict:from_list(Acc);
 decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
-    NewAcc = case lists:keysearch(Fnum, 1, Types) of
-        {value, {Fnum, Name, Type, Opts}} ->
-            {Value1, Rest1} = 
+    NewAcc = case lists:keyfind(Fnum, 1, Types) of
+        {Fnum, Name, Type, Opts} ->
+            {Value1, Rest1} =
                 case lists:member(is_record, Opts) of
                     true ->
                         {{FNum, V}, R} = protobuffs:decode(Bytes, bytes),
-                        RecVal = decode(list_to_atom(string:to_lower(atom_to_list(Type))), V),
+                        RecVal = decode(Type, V),
                         {RecVal, R};
                     false ->
                         case lists:member(repeated_packed, Opts) of
@@ -212,7 +212,7 @@ set_record_field(Fields, Record, Field, Value) ->
     Index = list_index(Field, Fields),
     erlang:setelement(Index+1, Record, Value).
 
-list_index(Target, List) ->  list_index(list_to_atom(string:to_lower(atom_to_list(Target))), List, 1).
+list_index(Target, List) ->  list_index(Target, List, 1).
 
 list_index(Target, [Target|_], Index) -> Index;
 list_index(Target, [_|Tail], Index) -> list_index(Target, Tail, Index+1);

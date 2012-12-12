@@ -412,4 +412,6 @@ decode_varint(Bytes) ->
 decode_varint(<<0:1, I:7, Rest/binary>>, Int, Depth) ->
     {(I bsl Depth) bor Int, Rest};
 decode_varint(<<1:1, I:7, Rest/binary>>, Int, Depth) ->
-    decode_varint(Rest, (I bsl Depth) bor Int, Depth + 7).
+    decode_varint(Rest, (I bsl Depth) bor Int, Depth + 7);
+decode_varint(Bin, Int, Depth) ->
+    erlang:error(badarg, [Bin, Int, Depth]).

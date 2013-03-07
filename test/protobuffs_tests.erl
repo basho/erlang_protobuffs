@@ -478,7 +478,7 @@ encode_packed_enum_test_() ->
 		   (?ENCODE_PACKED(0, [0, 0], enum)))].
 
 decode_packed_enum_test_() ->
-    [?_assertMatch({{Id, [0, 0]}, <<>>},
+    [?_assertMatch({{_Id, [0, 0]}, <<>>},
 		   (?DECODE_PACKED(<<2, 2, 0, 0>>, enum)))].
 
 prop_packed_uint32() ->

@@ -644,8 +644,6 @@ collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
     #collected{msg = CollectedMsg} = Collected,
     BestMatch = element(1, find_message_by_path(SeekNames, CollectedMsg)),
 
-    %{ListNameT,FieldsOut,ExtendFields} = find_extended_msg(ListName, CollectedMsg),
-    %{ListNameT2,Extensions} = find_defined_extensions(ListName, Extended),
     {ListName,FieldsOut,ExtendFields} = lists:keyfind(BestMatch,1,CollectedMsg),
     {ListName,Extensions} = lists:keyfind(BestMatch,1,Collected#collected.extensions),
 
@@ -702,36 +700,6 @@ find_message_by_path(TypeName, [Msg | Tail]) ->
         _ ->
             Msg
     end.
-
-%% @hidden
-%% find_extended_msg(_TypeName, []) ->
-%%     false;
-%% find_extended_msg(TypeName, Msgs) when is_list(hd(TypeName)) ->
-%%     TypeName0 = [list_to_tuple(TN) || TN <- TypeName],
-%%     find_extended_msg(TypeName0, Msgs);
-%% find_extended_msg(TypeName, [Msg | Tail]) ->
-%%     Names = element(1, Msg),
-%%     case [N || N <- Names, lists:member(N, TypeName)] of
-%%         [] ->
-%%             find_extended_msg(TypeName, Tail);
-%%         _ ->
-%%             Msg
-%%     end.
-
-%% @hidden
-%% find_defined_extensions(_TypeName, []) ->
-%%     false;
-%% find_defined_extensions(TypeName, Extends) when is_list(hd(TypeName)) ->
-%%     TypeName0 = [list_to_tuple(TN) || TN <- TypeName],
-%%     find_defined_extensions(TypeName0, Extends);
-%% find_defined_extensions(TypeName, [Ext | Tail]) ->
-%%     Names = element(1, Ext),
-%%     case [N || N <- Names] of
-%%         [] ->
-%%             find_defined_extensions(TypeName, Tail);
-%%         _ ->
-%%             Ext
-%%     end.
 
 %% @hidden
 resolve_list_name(Name, _Package) when is_tuple(hd(Name)) ->
@@ -895,14 +863,6 @@ all_possible_type_paths(_Type, [], Acc) ->
     lists:reverse(lists:flatten(Acc));
 all_possible_type_paths(Type, [TypePath | Tail], Acc) ->
     TypePath0 = tuple_to_list(TypePath),
-%    Type0 = if
-%        is_list(hd(Type)) -> Type;
-%        true -> [Type]
-%    end,
-%    FoldFun = fun(TypeSuffix, AccIn) ->
-%        [[Type0 ++ TypeSuffix] | AccIn]
-%    end,
-%    lists:foldl(FoldFun, Type0, TypePath).
     Head = lists:foldl(fun (TypeSuffix, AccIn) ->
 			 [list_to_tuple([Type | TypeSuffix]) | AccIn]
 		 end,

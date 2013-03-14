@@ -344,7 +344,7 @@ filter_set_extension([{MsgName,_,Extends}|Tail],Clause,Acc) ->
     {match,L2,NewReturn,OldDictStore} = OldSet,
     {call,L2,DictStore,[_StoreKey,_StoreVal,StoreVar]} = OldDictStore,
     {tuple,L3,[Ok, OldReturnRec]} = OldReturn,
-    {record,L3,ReturnRecVar,OldName,Fields} = OldReturnRec,
+    {record,L3,ReturnRecVar,_OldName,Fields} = OldReturnRec,
     Folder = fun({Id, Rule, StrType, Name, Opts}, Facc) ->
         Type = atomize(StrType),
         FClause = {clause,L,[{match,L,{record,L,atomize(MsgName),RecArgFields},RecVar},{atom,L,atomize(Name)},ValueArg],Gs,[
@@ -379,7 +379,7 @@ filter_get_extension_integer([],_,Acc) ->
     Acc;
 filter_get_extension_integer([{_,_,disallowed}|Tail],IntClause,Acc) ->
     filter_get_extension_integer(Tail,IntClause,Acc);
-filter_get_extension_integer([{Msg,_,Extends}|Tail],IntClause,Acc) ->
+filter_get_extension_integer([{Msg,_,_Extends}|Tail],IntClause,Acc) ->
     {clause,L,[{record,L,Pikachu,Fields},IntArg],Gs,Body} = IntClause,
     NewRecName = replace_atom(Pikachu, pikachu, atomize(Msg)),
     NewRecArg = {record,L,NewRecName,Fields},
@@ -391,13 +391,13 @@ filter_get_extension_integer([{Msg,_,Extends}|Tail],IntClause,Acc) ->
 filter_has_extension([], _, Acc) ->
     % non-reverseal is intentional.
     Acc;
-filter_has_extension([{Msg,_,disallowed}|Tail], Clause, Acc) ->
+filter_has_extension([{_Msg,_,disallowed}|Tail], Clause, Acc) ->
     filter_has_extension(Tail, Clause, Acc);
 filter_has_extension([{MsgName,_,Extends}|Tail], Clause, Acc) ->
     {clause,L,[OldRecArg,_],G,[Body]} = Clause,
 		{call, L1, {remote,L1,Dict,IsKey},[_Key,DictArg]} = Body,
     RecArg = replace_atom(OldRecArg,pikachu,atomize(MsgName)),
-    Folder = fun({ID, Rules, Type, Name, Other}, FoldAcc) ->
+    Folder = fun({ID, _Rules, _Type, Name, _Other}, FoldAcc) ->
         AtomClause = {clause,L,[RecArg,{atom,L,atomize(Name)}],G,[
             {call,L,{remote,L,Dict,IsKey},[{atom,L,atomize(Name)},DictArg]}
         ]},
@@ -414,7 +414,7 @@ filter_has_extension([{MsgName,_,Extends}|Tail], Clause, Acc) ->
 filter_extension_size([], _RecClause, Acc) ->
     % the non-reversal is intentional.
     Acc;
-filter_extension_size([{MsgName,_,disallowed}|Tail],Clause,Acc) ->
+filter_extension_size([{_MsgName,_,disallowed}|Tail],Clause,Acc) ->
     filter_extension_size(Tail,Clause,Acc);
 filter_extension_size([{MsgName,_,_}|Tail],Clause,Acc) ->
     {clause,L,[OldArg],G,Body} = Clause,
@@ -423,7 +423,7 @@ filter_extension_size([{MsgName,_,_}|Tail],Clause,Acc) ->
     filter_extension_size(Tail,Clause,NewAcc).
 
 %% @hidden
-filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,Content}) ->
+filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,_Content}) ->
     ToIolist = {cons, L,
                 {call,L, {atom,L,iolist}, [{atom,L,atomize(MsgName)},{var,L,'Record'}]},
                 {call,L, {atom,L,encode_extensions}, [{var,L,'Record'}]}
@@ -433,7 +433,7 @@ filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,Content
 expand_iolist_function(Msgs, Line, Clause) ->
     {function,Line,iolist,2,[filter_iolist_clause(Msg, Clause) || Msg <- Msgs]}.
 
-filter_iolist_clause({MsgName, [], _Extends0}, {clause,L,Args,Guards,_Content}) ->
+filter_iolist_clause({MsgName, [], _Extends0}, {clause,L,_Args,Guards,_Content}) ->
     {clause,L,[{atom,L,atomize(MsgName)},{var,L,'_Record'}],Guards,[{nil,L}]};
 filter_iolist_clause({MsgName, Fields0, _Extends0}, {clause,L,_Args,Guards,_Content}) ->
     Fields = [
@@ -507,8 +507,8 @@ filter_decode_extensions_clause(Msgs,[{MsgName,_,Extends}|Tail],Clause,Acc) ->
 			       decode_opts(Msgs, Tag, SType), Def} ||
 				 {FNum,Tag,SType,SName,Def} <- Extends]),
     Cons = lists:foldl(
-	     fun({FNum, FName, Type, Opts, _Def}, Acc) ->
-		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},Acc}
+	     fun({FNum, FName, Type, Opts, _Def}, AccF) ->
+		     {cons,L,{tuple,L,[{integer,L,FNum},{atom,L,FName},{atom,L,Type},erl_parse:abstract(Opts)]},AccF}
 	     end, {nil,L}, Types),
     A = {match,L,{var,L,'Types'},Cons},
 		{clause,L,[Arg],Guards,[_,B,C]} = Clause,
@@ -535,7 +535,7 @@ expand_to_record_function(Msgs, Line, Clause) ->
     {function,Line,to_record,2,[filter_to_record_clause(Msg, Clause) || Msg <- Msgs]}.
 
 %% @hidden
-filter_to_record_clause({MsgName, _, Extends}, {clause,L,[_Param1,Param2],Guards,[Fold,DecodeExtends]}) ->
+filter_to_record_clause({MsgName, _, Extends}, {clause,L,[_Param1,Param2],Guards,[Fold,_DecodeExtends]}) ->
     Fold1 = replace_atom(Fold, pikachu, atomize(MsgName)),
     ReturnLine = case Extends of
         disallowed ->
@@ -641,11 +641,9 @@ collect_full_messages([{extend, Name, ExtendedFields} | Tail], Collected) ->
     SeekNames0 = resolve_list_name(SeekName1, Collected#collected.package),
     SeekNames = [list_to_tuple(SN) || SN <- SeekNames0],
 
-    #collected{msg = CollectedMsg, extensions = Extended} = Collected,
+    #collected{msg = CollectedMsg} = Collected,
     BestMatch = element(1, find_message_by_path(SeekNames, CollectedMsg)),
 
-    %{ListNameT,FieldsOut,ExtendFields} = find_extended_msg(ListName, CollectedMsg),
-    %{ListNameT2,Extensions} = find_defined_extensions(ListName, Extended),
     {ListName,FieldsOut,ExtendFields} = lists:keyfind(BestMatch,1,CollectedMsg),
     {ListName,Extensions} = lists:keyfind(BestMatch,1,Collected#collected.extensions),
 
@@ -701,36 +699,6 @@ find_message_by_path(TypeName, [Msg | Tail]) ->
             find_message_by_path(TypeName, Tail);
         _ ->
             Msg
-    end.
-
-%% @hidden
-find_extended_msg(_TypeName, []) ->
-    false;
-find_extended_msg(TypeName, Msgs) when is_list(hd(TypeName)) ->
-    TypeName0 = [list_to_tuple(TN) || TN <- TypeName],
-    find_extended_msg(TypeName0, Msgs);
-find_extended_msg(TypeName, [Msg | Tail]) ->
-    Names = element(1, Msg),
-    case [N || N <- Names, lists:member(N, TypeName)] of
-        [] ->
-            find_extended_msg(TypeName, Tail);
-        _ ->
-            Msg
-    end.
-
-%% @hidden
-find_defined_extensions(TypeName, []) ->
-    false;
-find_defined_extensions(TypeName, Extends) when is_list(hd(TypeName)) ->
-    TypeName0 = [list_to_tuple(TN) || TN <- TypeName],
-    find_defined_extensions(TypeName0, Extends);
-find_defined_extensions(TypeName, [Ext | Tail]) ->
-    Names = element(1, Ext),
-    case [N || N <- Names] of
-        [] ->
-            find_defined_extensions(TypeName, Tail);
-        _ ->
-            Ext
     end.
 
 %% @hidden
@@ -895,14 +863,6 @@ all_possible_type_paths(_Type, [], Acc) ->
     lists:reverse(lists:flatten(Acc));
 all_possible_type_paths(Type, [TypePath | Tail], Acc) ->
     TypePath0 = tuple_to_list(TypePath),
-%    Type0 = if
-%        is_list(hd(Type)) -> Type;
-%        true -> [Type]
-%    end,
-%    FoldFun = fun(TypeSuffix, AccIn) ->
-%        [[Type0 ++ TypeSuffix] | AccIn]
-%    end,
-%    lists:foldl(FoldFun, Type0, TypePath).
     Head = lists:foldl(fun (TypeSuffix, AccIn) ->
 			 [list_to_tuple([Type | TypeSuffix]) | AccIn]
 		 end,

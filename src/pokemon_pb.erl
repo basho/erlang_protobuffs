@@ -48,7 +48,6 @@ encode_extensions(_) -> [].
 iolist(pikachu, Record) ->
     [pack(1, required, with_default(Record#pikachu.abc, none), string, [])].
 
-with_default(Val, none) -> Val;
 with_default(Default, Default) -> undefined;
 with_default(Val, _) -> Val.
 

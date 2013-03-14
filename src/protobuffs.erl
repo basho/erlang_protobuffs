@@ -26,7 +26,7 @@
 %% @doc A protcol buffers encoding and decoding module.
 -module(protobuffs).
 
-%% Pubic
+%% Public
 -export([encode/3, encode_packed/3, decode/2, decode_packed/2]).
 
 %% Used by generated *_pb file. Not intended to used by User
@@ -372,7 +372,7 @@ typecast(Value, _) ->
 %% @hidden
 -spec encode_field_tag(FieldID :: non_neg_integer(),
 		       FieldType :: encoded_field_type()) ->
-			      binary().
+			      iodata().
 encode_field_tag(FieldID, FieldType) when FieldID band 16#3fffffff =:= FieldID ->
     encode_varint((FieldID bsl 3) bor FieldType).
 
@@ -385,13 +385,13 @@ encode_varint_field(FieldID, Integer) ->
 
 %% @hidden
 -spec encode_varint(I :: integer()) ->
-			   binary().
+			   iodata().
 encode_varint(I) ->
     encode_varint(I, []).
 
 %% @hidden
 -spec encode_varint(I :: integer(), Acc :: list()) ->
-			   binary().
+			   iodata().
 encode_varint(I, Acc) when I =< 16#7f ->
     lists:reverse([I | Acc]);
 encode_varint(I, Acc) ->

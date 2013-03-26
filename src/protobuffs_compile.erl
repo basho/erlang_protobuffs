@@ -132,11 +132,11 @@ parse_imports([Head | Tail], Path, Acc) ->
 output(Basename, MessagesRaw, RawEnums, Options) ->
     Messages = canonize_names(MessagesRaw),
     Enums = canonize_names(RawEnums),
-    case proplists:get_value(output_include_dir,Options) of
+    HeaderFile = case proplists:get_value(output_include_dir,Options) of
 	undefined ->
-	    HeaderFile = Basename ++ ".hrl";
+	    Basename ++ ".hrl";
 	HeaderPath ->
-	    HeaderFile = filename:join(HeaderPath,Basename) ++ ".hrl"
+	    filename:join(HeaderPath,Basename) ++ ".hrl"
     end,
 
     error_logger:info_msg("Writing header file to ~p~n",[HeaderFile]),
@@ -145,11 +145,11 @@ output(Basename, MessagesRaw, RawEnums, Options) ->
     {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(PokemonBeamFile, [abstract_code]),
     Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
     {ok, _, Bytes, _Warnings} = protobuffs_file:compile_forms(Forms1, proplists:get_value(compile_flags,Options,[])),
-    case proplists:get_value(output_ebin_dir,Options) of
+    BeamFile = case proplists:get_value(output_ebin_dir,Options) of
 	undefined ->
-	    BeamFile = Basename ++ ".beam";
+	    Basename ++ ".beam";
 	BeamPath ->
-	    BeamFile = filename:join(BeamPath,Basename) ++ ".beam"
+	    filename:join(BeamPath,Basename) ++ ".beam"
     end,
     error_logger:info_msg("Writing beam file to ~p~n",[BeamFile]),
     protobuffs_file:write_file(BeamFile, Bytes).
@@ -157,22 +157,22 @@ output(Basename, MessagesRaw, RawEnums, Options) ->
 %% @hidden
 output_source(Basename, MessagesRaw, Enums, Options) ->
     Messages = canonize_names(MessagesRaw),
-    case proplists:get_value(output_include_dir,Options) of
+    HeaderFile = case proplists:get_value(output_include_dir,Options) of
 	undefined ->
-	    HeaderFile = Basename ++ ".hrl";
+	    Basename ++ ".hrl";
 	HeaderPath ->
-	    HeaderFile = filename:join(HeaderPath,Basename) ++ ".hrl"
+	    filename:join(HeaderPath,Basename) ++ ".hrl"
     end,
     error_logger:info_msg("Writing header file to ~p~n",[HeaderFile]),
     ok = write_header_include_file(HeaderFile, Messages),
     PokemonBeamFile = filename:dirname(code:which(?MODULE)) ++ "/pokemon_pb.beam",
     {ok,{_,[{abstract_code,{_,Forms}}]}} = beam_lib:chunks(PokemonBeamFile, [abstract_code]),
     Forms1 = filter_forms(Messages, Enums, Forms, Basename, []),
-    case proplists:get_value(output_src_dir,Options) of
+    SrcFile = case proplists:get_value(output_src_dir,Options) of
 	undefined ->
-	    SrcFile = Basename ++ ".erl";
+	    Basename ++ ".erl";
 	SrcPath ->
-	    SrcFile = filename:join(SrcPath,Basename) ++ ".erl"
+	    filename:join(SrcPath,Basename) ++ ".erl"
     end,
     error_logger:info_msg("Writing src file to ~p~n",[SrcFile]),
     protobuffs_file:write_file(SrcFile, erl_prettypr:format(erl_syntax:form_list(Forms1))).

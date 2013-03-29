@@ -800,6 +800,10 @@ generate_field_definitions([{Name, _, Default} | Tail], Acc) ->
     generate_field_definitions(Tail, [Head | Acc]).
 
 %% @hidden
+atomize([String]) ->
+    atomize(String);
+atomize([String|[_Rest]]) ->
+    atomize(String);
 atomize(String) ->
     list_to_atom(string:to_lower(String)).
 

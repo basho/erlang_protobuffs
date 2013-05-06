@@ -800,9 +800,11 @@ generate_field_definitions([{Name, _, Default} | Tail], Acc) ->
     generate_field_definitions(Tail, [Head | Acc]).
 
 %% @hidden
-atomize([String]) ->
+% handle ["symbol"]
+atomize([String]) when is_list(String) ->
     atomize(String);
-atomize([String|[_Rest]]) ->
+% handle ["symbol", "package_symbol"]
+atomize([String|[_Rest]]) when is_list(String) ->
     atomize(String);
 atomize(String) ->
     list_to_atom(string:to_lower(String)).

@@ -100,7 +100,7 @@ decode(pikachu, Bytes) when is_binary(Bytes) ->
     Decoded = decode(Bytes, Types, Defaults),
     to_record(pikachu, Decoded).
 
-decode(<<>>, _, Acc) -> Acc;
+decode(<<>>, Types, Acc) -> reverse_repeated_fields(Acc, Types);
 decode(Bytes, Types, Acc) ->
     {ok, FNum} = protobuffs:next_field_num(Bytes),
     case lists:keyfind(FNum, 1, Types) of
@@ -125,12 +125,12 @@ decode(Bytes, Types, Acc) ->
                 true ->
                     case lists:keytake(FNum, 1, Acc) of
                         {value, {FNum, Name, List}, Acc1} ->
-                            decode(Rest1, Types, [{FNum, Name, lists:reverse([int_to_enum(Type,Value1)|lists:reverse(List)])}|Acc1]);
+                            decode(Rest1, Types, [{FNum, Name, [int_to_enum(Type,Value1)|List]}|Acc1]);
                         false ->
                             decode(Rest1, Types, [{FNum, Name, [int_to_enum(Type,Value1)]}|Acc])
                     end;
                 false ->
-		                decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
+                    decode(Rest1, Types, [{FNum, Name, int_to_enum(Type,Value1)}|Acc])
             end;
         false ->
             case lists:keyfind('$extensions', 2, Acc) of
@@ -146,6 +146,20 @@ decode(Bytes, Types, Acc) ->
                     decode(Skipped, Types, Acc)
             end
     end.
+
+reverse_repeated_fields(FieldList, Types) ->
+    [ begin
+          case lists:keyfind(FNum, 1, Types) of
+              {FNum, Name, _Type, Opts} ->
+                  case lists:member(repeated, Opts) of
+                      true ->
+                          {FNum, Name, lists:reverse(Value)};
+                      _ ->
+                          Field
+                  end;
+              _ -> Field
+          end
+      end || {FNum, Name, Value}=Field <- FieldList ].
 
 unpack_value(Binary, string) when is_binary(Binary) ->
     binary_to_list(Binary);

@@ -9,6 +9,7 @@ compile:
 	@$(REBAR) compile
 
 ct:
+	./scripts/generate_emakefile.escript
 	@$(REBAR) skip_deps=true ct
 
 eunit:

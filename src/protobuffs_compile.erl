@@ -211,11 +211,12 @@ filter_forms(Msgs, Enums, [{attribute,L,file,{_,_}}|Tail], Basename, Acc) ->
 filter_forms(Msgs, Enums, [{attribute,L,module,pokemon_pb}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [{attribute,L,module,list_to_atom(Basename)}|Acc]);
 
-filter_forms(Msgs, Enums, [{attribute,L,export,[{encode_pikachu,1},{decode_pikachu,1}]}|Tail], Basename, Acc) ->
+filter_forms(Msgs, Enums, [{attribute,L,export,[{encode_pikachu,1},{decode_pikachu,1},{deliminated_decode_pikachu,1}]}|Tail], Basename, Acc) ->
     Exports = lists:foldl(
 		fun({Name,_,_}, Acc1) ->
 			[{list_to_atom("encode_" ++ string:to_lower(Name)),1},
-			 {list_to_atom("decode_" ++ string:to_lower(Name)),1} | Acc1]
+			 {list_to_atom("decode_" ++ string:to_lower(Name)),1},
+             {list_to_atom("deliminated_decode_" ++ string:to_lower(Name)),1} | Acc1]
 		end, [], Msgs),
     filter_forms(Msgs, Enums, Tail, Basename, [{attribute,L,export,Exports}|Acc]);
 
@@ -231,14 +232,14 @@ filter_forms(Msgs, Enums, [{attribute,L,record,{pikachu,_}}|Tail], Basename, Acc
 	       end || {Name, Fields,Extends} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Records ++ Acc);
 
-filter_forms(Msgs, Enums, [{function,L,encode_pikachu,1,[Clause]}|Tail], Basename, Acc) ->
+filter_forms(Msgs, Enums, [{function,L,encode_pikachu,1,[ListClause, RecordClause]}|Tail], Basename, Acc) ->
     Functions = [begin
-		     {function,L,list_to_atom("encode_" ++ string:to_lower(Name)),1,[replace_atom(Clause, pikachu, atomize(Name))]}
+		     {function,L,list_to_atom("encode_" ++ string:to_lower(Name)),1,[replace_atom(ListClause, pikachu, atomize(Name)), replace_atom(RecordClause, pikachu, atomize(Name))]}
 		 end || {Name, _, _} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Functions ++ Acc);
 
-filter_forms(Msgs, Enums, [{function,L,encode,2,[Clause]}|Tail], Basename, Acc) ->
-    filter_forms(Msgs, Enums, Tail, Basename, [expand_encode_function(Msgs, L, Clause)|Acc]);
+filter_forms(Msgs, Enums, [{function,L,encode,2,[ListClause, RecordClause]}|Tail], Basename, Acc) ->
+    filter_forms(Msgs, Enums, Tail, Basename, [expand_encode_function(Msgs, L, ListClause, RecordClause)|Acc]);
 
 filter_forms(Msgs, Enums, [{function,L,encode_extensions,1,[EncodeClause,Catchall]}|Tail], Basename, Acc) ->
     NewEncodeClauses = [replace_atom(EncodeClause, pikachu, atomize(Name)) ||
@@ -259,6 +260,14 @@ filter_forms(Msgs, Enums, [{function,L,decode_pikachu,1,[Clause]}|Tail], Basenam
 		      [replace_atom(Clause, pikachu, atomize(Name))]}
 		 end || {Name, _, _} <- Msgs],
     filter_forms(Msgs, Enums, Tail, Basename, Functions ++ Acc);
+
+filter_forms(Msgs, Enums, [{function,L,deliminated_decode_pikachu,1,[Clause]} | Tail], Basename, Acc) ->
+    Acc2 = lists:foldl(fun({Name, _, _}, Acc1) ->
+        Clause2 = replace_atom(Clause, pikachu, atomize(Name)),
+        Function = {function,L,list_to_atom("deliminated_decode_" ++ string:to_lower(Name)),1,[Clause2]},
+        [Function | Acc1]
+    end, Acc, Msgs),
+    filter_forms(Msgs, Enums, Tail, Basename, Acc2);
 
 filter_forms(Msgs, Enums, [{function,L,decode,2,[Clause]}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [expand_decode_function(Msgs, L, Clause)|Acc]);
@@ -423,7 +432,11 @@ filter_extension_size([{MsgName,_,_}|Tail],Clause,Acc) ->
     filter_extension_size(Tail,Clause,NewAcc).
 
 %% @hidden
-filter_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,_Content}) ->
+filter_deliminated_encode_clause({MsgName, _Fields, _Extends}, {clause,L,[_PlaceholderName | Args],Guards,Content}) ->
+    {clause,L,[{atom,L,atomize(MsgName)}|Args], Guards, Content}.
+
+%% @hidden
+filter_record_encode_clause({MsgName, _Fields,_Extends}, {clause,L,_Args,Guards,_Content}) ->
     ToIolist = {cons, L,
                 {call,L, {atom,L,iolist}, [{atom,L,atomize(MsgName)},{var,L,'Record'}]},
                 {call,L, {atom,L,encode_extensions}, [{var,L,'Record'}]}
@@ -517,8 +530,13 @@ filter_decode_extensions_clause(Msgs,[{MsgName,_,Extends}|Tail],Clause,Acc) ->
     filter_decode_extensions_clause(Msgs,Tail,Clause,[NewClause|Acc]).
 
 %% @hidden
-expand_encode_function(Msgs, Line, Clause) ->
-    {function,Line,encode,2,[filter_encode_clause(Msg, Clause) || Msg <- Msgs]}.
+expand_encode_function(Msgs, Line, ListClause, RecordClause) ->
+    Clauses = lists:foldl(fun(Msg, Acc) ->
+        DelimClause = filter_deliminated_encode_clause(Msg, ListClause),
+        RecClause = filter_record_encode_clause(Msg, RecordClause),
+        Acc ++ [DelimClause, RecClause]
+    end, [], Msgs),
+    {function,Line,encode,2,Clauses}.
 
 %% @hidden
 decode_opts(Msgs, Tag, Type) ->

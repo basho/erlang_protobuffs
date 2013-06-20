@@ -23,20 +23,28 @@
 %% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(pokemon_pb).
--export([encode_pikachu/1, decode_pikachu/1]).
+-export([encode_pikachu/1, decode_pikachu/1, deliminated_decode_pikachu/1]).
 -export([has_extension/2, extension_size/1, get_extension/2,
          set_extension/3]).
 -export([decode_extensions/1]).
--export([encode/1, decode/2]).
+-export([encode/1, decode/2, deliminated_decode/2]).
 -record(pikachu, {abc, def, '$extensions' = dict:new()}).
 
 %% ENCODE
+encode([]) ->
+    [];
+encode(Records) when is_list(Records) ->
+    deliminated_encode(Records);
 encode(Record) ->
     encode(element(1, Record), Record).
 
+encode_pikachu(Records) when is_list(Records) ->
+    deliminated_encode(Records);
 encode_pikachu(Record) when is_record(Record, pikachu) ->
     encode(pikachu, Record).
 
+encode(pikachu, Records) when is_list(Records) ->
+    deliminated_encode(Records);
 encode(pikachu, Record) ->
     [iolist(pikachu, Record)|encode_extensions(Record)].
 
@@ -44,6 +52,13 @@ encode_extensions(#pikachu{'$extensions' = Extends}) ->
     [pack(Key, Optionalness, Data, Type, Accer) ||
         {Key, {Optionalness, Data, Type, Accer}} <- dict:to_list(Extends)];
 encode_extensions(_) -> [].
+
+deliminated_encode(Records) ->
+    lists:map(fun(Record) ->
+        IoRec = encode(Record),
+        Size = iolist_size(IoRec),
+        [Size, IoRec]
+    end, Records).
 
 iolist(pikachu, Record) ->
     [pack(1, required, with_default(Record#pikachu.abc, none), string, [])].
@@ -93,6 +108,28 @@ int_to_enum(_,Val) ->
 %% DECODE
 decode_pikachu(Bytes) when is_binary(Bytes) ->
     decode(pikachu, Bytes).
+
+deliminated_decode_pikachu(Bytes) ->
+    deliminated_decode(pikachu, Bytes).
+
+deliminated_decode(Type, Bytes) when is_binary(Bytes) ->
+    deliminated_decode(Type, Bytes, []).
+
+deliminated_decode(_Type, <<>>, Acc) ->
+    {lists:reverse(Acc), <<>>};
+deliminated_decode(Type, Bytes, Acc) ->
+    try protobuffs:decode_varint(Bytes) of
+        {Size, Rest} when size(Rest) < Size ->
+            {lists:reverse(Acc), Bytes};
+        {Size, Rest} ->
+            <<MessageBytes:Size/binary, Rest2/binary>> = Rest,
+            Message = decode(Type, MessageBytes),
+            deliminated_decode(Type, Rest2, [Message | Acc])
+    catch
+        % most likely cause is there isn't a complete varint in the buffer.
+        _What:_Why ->
+            {lists:reverse(Acc), Bytes}
+    end.
 
 decode(pikachu, Bytes) when is_binary(Bytes) ->
     Types = [{1, abc, int32, []}, {2, def, double, []}],

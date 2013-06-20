@@ -31,6 +31,7 @@
 
 %% Used by generated *_pb file. Not intended to used by User
 -export([next_field_num/1, skip_next_field/1]).
+-export([encode_varint/1, decode_varint/1]).
 
 %% Will be removed from export, only intended for internal usage
 -deprecated([{read_field_num_and_wire_type,1,next_version}]).

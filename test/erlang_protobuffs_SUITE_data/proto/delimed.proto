@@ -1,0 +1,4 @@
+message Delimed {
+    optional string name = 1;
+    optional int32 id = 2;
+}

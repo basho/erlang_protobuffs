@@ -561,10 +561,56 @@ proper_protobuffs_imports() ->
             end,
             compare_messages(Importer, Decoded)
         end).
+
 proper_protobuffs_camel_case() ->
     ?FORALL(Record,
     ({outer, oneof([utf8string(), undefined]), list({inner, oneof([utf8string(), undefined])})}),
     begin
         Decoded = camel_case_pb:decode_outer(iolist_to_binary(camel_case_pb:encode_outer(Record))),
         compare_messages(Record, Decoded)
+    end).
+
+chunk_up_binary(Binary, Size) ->
+    chunk_up_binary(Binary, Size, []).
+
+chunk_up_binary(<<>>, _Size, Acc) ->
+    lists:reverse(Acc);
+
+chunk_up_binary(Binary, Size, Acc) when size(Binary) =< Size ->
+    lists:reverse([Binary | Acc]);
+
+chunk_up_binary(Binary, Size, Acc) ->
+    <<Chunk:Size/binary, Rest/binary>> = Binary,
+    chunk_up_binary(Rest, Size, [Chunk | Acc]).
+
+proper_protobuffs_delimed() ->
+    ?FORALL({Records, ChunkSize}, {list({delimed, utf8string(), int()}), non_neg_integer()}, begin
+        Encoded = delimed_pb:encode(Records),
+        EncodedBin = iolist_to_binary(Encoded),
+        Binaries = chunk_up_binary(EncodedBin, ChunkSize + 1),
+        {Decoded, Rest} = lists:foldl(fun(Binary, {RecAcc, Buffer}) ->
+            {AppendRec, NewBuffer} = delimed_pb:deliminated_decode_delimed(<<Buffer/binary, Binary/binary>>),
+            {RecAcc ++ AppendRec, NewBuffer}
+        end, {[], <<>>}, Binaries),
+        if
+            length(Records) == length(Decoded) ->
+                lists:all(fun({Expected, Got}) ->
+                    Out = compare_messages(Expected, Got),
+                    case Out of
+                        false ->
+                            test_server:format("comparison failed:~n"
+                                "    Expected: ~p~n"
+                                "    Got: ~p", [Expected, Got]);
+                        true ->
+                            ok
+                    end,
+                    Out
+                end, lists:zip(Records, Decoded));
+            true ->
+                test_server:format("Different number of returned records: ~p vs ~p~n"
+                    "    Records: ~p~n"
+                    "    Decoded: ~p~n"
+                    "    Binary Left: ~p", [length(Records), length(Decoded), Records, Decoded, Rest]),
+                false
+        end
     end).

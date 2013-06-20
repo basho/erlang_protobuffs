@@ -134,7 +134,7 @@ proper_protobuffs_empty() ->
 	      default(undefined, {empty_emptymessage})}},
 	    begin
 	      Decoded =
-		  empty_pb:decode_empty(empty_pb:encode_empty(Empty)),
+		  empty_pb:decode_empty(iolist_to_binary(empty_pb:encode_empty(Empty))),
 	      compare_messages(Empty, Decoded)
 	    end).
 
@@ -171,7 +171,7 @@ proper_protobuffs_hasdefault() ->
 	      TestMsg = list_to_tuple(lists:map(FunGetTestMsg,
 						tuple_to_list(Withdefault))),
 	      Decoded =
-		  hasdefault_pb:decode_withdefault(hasdefault_pb:encode_withdefault(TestMsg)),
+		  hasdefault_pb:decode_withdefault(iolist_to_binary(hasdefault_pb:encode_withdefault(TestMsg))),
 	      compare_messages(Expected, Decoded)
 	    end).
 
@@ -185,7 +185,7 @@ proper_protobuffs_simple() ->
 	      sint32(), location()}},
 	    begin
 	      Decoded =
-		  simple_pb:decode_person(simple_pb:encode_person(Person)),
+		  simple_pb:decode_person(iolist_to_binary(simple_pb:encode_person(Person))),
 	      compare_messages(Person, Decoded)
 	    end).
 
@@ -203,7 +203,7 @@ proper_protobuffs_nested1() ->
 	     default(undefined, utf8string()), list(phone_number())},
 	    begin
 	      Decoded =
-		  nested1_pb:decode_person(nested1_pb:encode_person(Person)),
+		  nested1_pb:decode_person(iolist_to_binary(nested1_pb:encode_person(Person))),
 	      compare_messages(Person, Decoded)
 	    end).
 
@@ -229,7 +229,7 @@ proper_protobuffs_nested2() ->
 	      default(undefined, middleBB())}},
 	    begin
 	      Decoded =
-		  nested2_pb:decode_outer(nested2_pb:encode_outer(Middle)),
+		  nested2_pb:decode_outer(iolist_to_binary(nested2_pb:encode_outer(Middle))),
 	      compare_messages(Middle, Decoded)
 	    end).
 
@@ -248,7 +248,7 @@ proper_protobuffs_nested3() ->
 	    {default({outer, undefined}, {outer, middle()})},
 	    begin
 	      Decoded =
-		  nested3_pb:decode_outer(nested3_pb:encode_outer(Middle)),
+		  nested3_pb:decode_outer(iolist_to_binary(nested3_pb:encode_outer(Middle))),
 	      compare_messages(Middle, Decoded)
 	    end).
 
@@ -257,7 +257,7 @@ proper_protobuffs_nested4() ->
 	    {default({outer, undefined}, {outer, middle()})},
 	    begin
 	      Decoded =
-		  nested4_pb:decode_outer(nested4_pb:encode_outer(Middle)),
+		  nested4_pb:decode_outer(iolist_to_binary(nested4_pb:encode_outer(Middle))),
 	      compare_messages(Middle, Decoded)
 	    end).
 
@@ -273,11 +273,11 @@ proper_protobuffs_nested5() ->
 	      case element(1, Inner) of
 		first ->
 		    Decoded =
-			nested5_pb:decode_first(nested5_pb:encode_first(Inner)),
+			nested5_pb:decode_first(iolist_to_binary(nested5_pb:encode_first(Inner))),
 		    compare_messages(Inner, Decoded);
 		second ->
 		    Decoded =
-			nested5_pb:decode_second(nested5_pb:encode_second(Inner)),
+			nested5_pb:decode_second(iolist_to_binary(nested5_pb:encode_second(Inner))),
 		    compare_messages(Inner, Decoded)
 	      end
 	    end).
@@ -290,7 +290,7 @@ proper_protobuffs_enum() ->
 		     {enummsg, enum_value()})},
 	    begin
 	      Decoded =
-		  enum_pb:decode_enummsg(enum_pb:encode_enummsg(Middle)),
+		  enum_pb:decode_enummsg(iolist_to_binary(enum_pb:encode_enummsg(Middle))),
 	      compare_messages(Middle, Decoded)
 	    end).
 
@@ -302,7 +302,7 @@ proper_protobuffs_enum_outside() ->
 		     {enumuser, enum_outside_value()})},
 	    begin
 	      Decoded =
-		  enum_outside_pb:decode_enumuser(enum_outside_pb:encode_enumuser(Middle)),
+		  enum_outside_pb:decode_enumuser(iolist_to_binary(enum_outside_pb:encode_enumuser(Middle))),
 	      compare_messages(Middle, Decoded)
 	    end).
 
@@ -314,7 +314,7 @@ proper_protobuffs_extensions() ->
 	      DecodeFunc = list_to_atom("decode_" ++
 					  atom_to_list(element(1, Middle))),
 	      Decoded =
-		  extensions_pb:DecodeFunc(extensions_pb:encode(Middle)),
+		  extensions_pb:DecodeFunc(iolist_to_binary(extensions_pb:encode(Middle))),
 	      compare_messages(Middle, Decoded)
 	    end).
 
@@ -331,7 +331,7 @@ proper_protobuffs_addressbook() ->
     ?FORALL(Addressbook, {addressbook, list(person())},
 	    begin
 	      Decoded =
-		  addressbook_pb:decode_addressbook(addressbook_pb:encode_addressbook(Addressbook)),
+		  addressbook_pb:decode_addressbook(iolist_to_binary(addressbook_pb:encode_addressbook(Addressbook))),
 	      compare_messages(Addressbook, Decoded)
 	    end).
 
@@ -347,7 +347,7 @@ proper_protobuffs_repeater() ->
     ?FORALL(Repeater, (repeater_person()),
 	    begin
 	      Decoded =
-		  repeater_pb:decode_person(repeater_pb:encode_person(Repeater)),
+		  repeater_pb:decode_person(iolist_to_binary(repeater_pb:encode_person(Repeater))),
 	      compare_messages(Repeater, Decoded)
 	    end).
 
@@ -355,7 +355,7 @@ proper_protobuffs_packed_repeated() ->
     ?FORALL(Repeater, (repeater_person()),
 	    begin
 	      Decoded =
-		  packed_repeated_pb:decode_person(packed_repeated_pb:encode_person(Repeater)),
+		  packed_repeated_pb:decode_person(iolist_to_binary(packed_repeated_pb:encode_person(Repeater))),
 	      compare_messages(Repeater, Decoded)
 	    end).
 
@@ -373,7 +373,7 @@ proper_protobuffs_special_words() ->
     ?FORALL({SpecialWords}, {special_words()},
 	    begin
 	      Decoded =
-		  special_words_pb:decode_message(special_words_pb:encode_message(SpecialWords)),
+		  special_words_pb:decode_message(iolist_to_binary(special_words_pb:encode_message(SpecialWords))),
 	      compare_messages(SpecialWords, Decoded)
 	    end).
 
@@ -383,7 +383,7 @@ proper_protobuffs_import() ->
 		     {foo, undefined})},
 	    begin
 	      Decoded =
-		  import_pb:decode_foo(import_pb:encode(Imported)),
+		  import_pb:decode_foo(iolist_to_binary(import_pb:encode(Imported))),
 	      compare_messages(Imported, Decoded)
 	    end).
 
@@ -393,7 +393,7 @@ proper_protobuffs_single() ->
     ?FORALL(Single, (single()),
 	    begin
 	      Decoded =
-		  single_pb:decode_message(single_pb:encode_message(Single)),
+		  single_pb:decode_message(iolist_to_binary(single_pb:encode_message(Single))),
 	      compare_messages(Single, Decoded)
 	    end).
 
@@ -405,7 +405,7 @@ proper_protobuffs_extend() ->
 		     {extendable, dict:new()})),
 	    begin
 	      Decoded =
-		  extend_pb:decode_extendable(extend_pb:encode_extendable(Extend)),
+		  extend_pb:decode_extendable(iolist_to_binary(extend_pb:encode_extendable(Extend))),
 	      compare_messages(Extend, Decoded)
 	    end).
 
@@ -418,7 +418,7 @@ proper_protobuffs_extend_degraded() ->
 	    begin
 	      Encoded = extend_pb:encode_extendable(Extend),
 	      DegradedDecoded =
-		  extensions_pb:decode_extendable(Encoded),
+		  extensions_pb:decode_extendable(iolist_to_binary(Encoded)),
 	      Decoded = extend_pb:decode_extensions(DegradedDecoded),
 	      compare_messages(Extend, Decoded)
 	    end).
@@ -456,7 +456,7 @@ proper_protobuffs_extend_get() ->
 	      {ok, Middle} = extend_pb:set_extension(Input, bar,
 						     Extend),
 	      Decoded =
-		  extend_pb:decode_extendable(extend_pb:encode_extendable(Middle)),
+		  extend_pb:decode_extendable(iolist_to_binary(extend_pb:encode_extendable(Middle))),
 	      Output = extend_pb:get_extension(Decoded, bar),
 	      compare({ok, Extend}, Output)
 	    end).
@@ -468,7 +468,7 @@ proper_protobuffs_extend_has_enum() ->
 	      {ok, Encodable} = extend_pb:set_extension(Input, baz,
 							Extend),
 	      Decoded =
-		  extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
+		  extend_pb:decode_extendable(iolist_to_binary(extend_pb:encode_extendable(Encodable))),
 	      Out = extend_pb:get_extension(Decoded, baz),
 	      compare({ok, Extend}, Out)
 	    end).
@@ -485,7 +485,7 @@ proper_protobuffs_extend_has_message() ->
 	      {ok, Encodable} = extend_pb:set_extension(Input, bin,
 							Extend),
 	      Decoded =
-		  extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
+		  extend_pb:decode_extendable(iolist_to_binary(extend_pb:encode_extendable(Encodable))),
 	      Out = extend_pb:get_extension(Decoded, bin),
 	      compare({ok, Extend}, Out)
 	    end).
@@ -497,7 +497,7 @@ proper_protobuffs_extend_has_string() ->
 	      {ok, Encodable} = extend_pb:set_extension(Input,
 							stringy, Extend),
 	      Decoded =
-		  extend_pb:decode_extendable(extend_pb:encode_extendable(Encodable)),
+		  extend_pb:decode_extendable(iolist_to_binary(extend_pb:encode_extendable(Encodable))),
 	      Out = extend_pb:get_extension(Decoded, stringy),
 	      compare({ok, Extend}, Out)
 	    end).
@@ -512,11 +512,11 @@ proper_protobuffs_service() ->
 	      case element(1, Service) of
 		searchresponse ->
 		    Decoded =
-			service_pb:decode_searchresponse(service_pb:encode_searchresponse(Service)),
+			service_pb:decode_searchresponse(iolist_to_binary(service_pb:encode_searchresponse(Service))),
 		    compare_messages(Service, Decoded);
 		searchrequest ->
 		    Decoded =
-			service_pb:decode_searchrequest(service_pb:encode_searchrequest(Service)),
+			service_pb:decode_searchrequest(iolist_to_binary(service_pb:encode_searchrequest(Service))),
 		    compare_messages(Service, Decoded)
 	      end
 	    end).
@@ -529,10 +529,10 @@ proper_protobuffs_exports() ->
             Decoded = case element(1, Exporter) of
                 exporter ->
                     Encoded = exports_pb:encode_exporter(Exporter),
-                    exports_pb:decode_exporter(Encoded);
+                    exports_pb:decode_exporter(iolist_to_binary(Encoded));
                 export_this_message ->
                     Encoded = exports_pb:encode_export_this_message(Exporter),
-                    exports_pb:decode_export_this_message(Encoded)
+                    exports_pb:decode_export_this_message(iolist_to_binary(Encoded))
             end,
             compare_messages(Exporter, Decoded)
         end).
@@ -548,16 +548,16 @@ proper_protobuffs_imports() ->
             Decoded = case element(1, Importer) of
                 importer ->
                     Encoded = imports_pb:encode_importer(Importer),
-                    imports_pb:decode_importer(Encoded);
+                    imports_pb:decode_importer(iolist_to_binary(Encoded));
                 import_with_underscores ->
                     Encoded = imports_pb:encode_import_with_underscores(Importer),
-                    imports_pb:decode_import_with_underscores(Encoded);
+                    imports_pb:decode_import_with_underscores(iolist_to_binary(Encoded));
                 exporter ->
                     Encoded = imports_pb:encode_exporter(Importer),
-                    imports_pb:decode_exporter(Encoded);
+                    imports_pb:decode_exporter(iolist_to_binary(Encoded));
                 export_this_message ->
                     Encoded = imports_pb:encode_export_this_message(Importer),
-                    imports_pb:decode_export_this_message(Encoded)
+                    imports_pb:decode_export_this_message(iolist_to_binary(Encoded))
             end,
             compare_messages(Importer, Decoded)
         end).
@@ -565,6 +565,6 @@ proper_protobuffs_camel_case() ->
     ?FORALL(Record,
     ({outer, oneof([utf8string(), undefined]), list({inner, oneof([utf8string(), undefined])})}),
     begin
-        Decoded = camel_case_pb:decode_outer(camel_case_pb:encode_outer(Record)),
+        Decoded = camel_case_pb:decode_outer(iolist_to_binary(camel_case_pb:encode_outer(Record))),
         compare_messages(Record, Decoded)
     end).

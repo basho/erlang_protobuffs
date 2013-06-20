@@ -65,6 +65,41 @@ Person message into records.
 How cool is that? From .proto files, we create modules that export encode and
 decode functions for the messages defined.
 
+If you want to encode several messages with automatic delimination as the java
+version can, pass in a list of records.
+
+    1> protobuffs_compile:scan_file("simple.proto").
+    ok
+    2> simple_pb:encode([
+        {person, <<"Nick">>, <<"Mountain View">>, <<"+1 (000) 555-1234">>, 25, undefined},
+        {person, <<"Jill">>, <<"Denver">>, <<"+1 (000) 555-4321">>, 29, undefined}
+    ]).
+    [[42,
+      [[["\n",[4],<<"Nick">>],
+        [[18],"\r",<<"Mountain View">>],
+        [[26],[17],<<"+1 (000) 555-1234">>],
+        [" ",[25]],
+        []]]],
+     [35,
+      [[["\n",[4],<<"Jill">>],
+        [[18],[6],<<"Denver">>],
+        [[26],[17],<<"+1 (000) 555-4321">>],
+        [" ",[29]],
+        []]]]]
+
+If you have a stream of deliminated messages and they are all of the same type,
+you can automatically have them decoded as well.
+
+    1> simple_pb:deliminated_decode_person(<<42,10,4,78,105,99,107,18,13...>>).
+    {[{person,"Nick","Mountain View","+1 (000) 555-1234",25,
+              undefined},
+      {person,"Jill","Denver","+1 (000) 555-4321",29,undefined}],
+     <<>>}
+
+The return from the deliminated decode function is a tuple containing the list
+of records in the order they were found, and any remaing binary, allowing for
+easy maintainance of a buffer.
+
 ## Deep lists
 
 You might have noticed that the examples above produce deep lists

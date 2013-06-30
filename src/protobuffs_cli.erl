@@ -1,6 +1,6 @@
-#!/usr/bin/env escript
-%% -*- erlang -*-
-%%! -sasl errlog_type error -boot start_sasl -noshell
+-module(protobuffs_cli).
+
+-export([main/1]).
 
 main ([File]) ->
   protobuffs_compile:generate_source (File);

@@ -1,4 +1,4 @@
-%% Copyright (c) 2009
+%% Copyright (c) 2009-2013
 %% Nick Gerakines <nick@gerakines.net>
 %% Jacob Vorreuter <jacob.vorreuter@gmail.com>
 %%
@@ -471,7 +471,7 @@ filter_iolist_clause({MsgName, Fields0, _Extends0}, {clause,L,_Args,Guards,_Cont
                          {atom,L,atomize(SType)},
                          {nil,L}]},
               Acc}
-         end, {nil,L}, Fields),
+         end, {nil,L}, lists:reverse(lists:keysort(1, Fields))),
     {clause,L,[{atom,L,atomize(MsgName)},{var,L,'Record'}],Guards,[Cons]}.
 
 %% @hidden

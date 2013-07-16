@@ -13,6 +13,7 @@ g_protobuffs -> g_message g_protobuffs 				: ['$1'|'$2'].
 g_header -> g_var string ';'					: {'$1', unwrap('$2')}.
 g_header -> g_var g_var ';'					: {'$1', safe_string('$2')}.
 g_header -> g_var g_var '=' g_value ';'				: {'$1', '$2', '$4'}.
+g_header -> g_var '=' g_value ';'					: {'$1', '$3'}.
 
 g_message -> g_var g_var '{' g_elements '}'			: {'$1', safe_string('$2'), '$4'}.
 g_message -> g_var g_var '{' g_rpcs '}'				: {'$1', safe_string('$2'), '$4'}.

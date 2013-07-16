@@ -629,6 +629,8 @@ collect_full_messages([{enum, Name, Fields} | Tail], Collected) ->
 
     NewCollected = Collected#collected{enum=FieldsOut++Collected#collected.enum},
     collect_full_messages(Tail, NewCollected);
+collect_full_messages([{syntax,_} | Tail], Collected) ->
+    collect_full_messages(Tail, Collected);
 collect_full_messages([{package, PackageName} | Tail], Collected) ->
     collect_full_messages(Tail, Collected#collected{package = PackageName});
 collect_full_messages([{option,_,_} | Tail], Collected) ->

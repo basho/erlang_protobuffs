@@ -23,20 +23,28 @@
 %% FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(pokemon_pb).
--export([encode_pikachu/1, decode_pikachu/1]).
+-export([encode_pikachu/1, decode_pikachu/1, delimited_decode_pikachu/1]).
 -export([has_extension/2, extension_size/1, get_extension/2,
          set_extension/3]).
 -export([decode_extensions/1]).
--export([encode/1, decode/2]).
+-export([encode/1, decode/2, delimited_decode/2]).
 -record(pikachu, {abc, def, '$extensions' = dict:new()}).
 
 %% ENCODE
+encode([]) ->
+    [];
+encode(Records) when is_list(Records) ->
+    delimited_encode(Records);
 encode(Record) ->
     encode(element(1, Record), Record).
 
+encode_pikachu(Records) when is_list(Records) ->
+    delimited_encode(Records);
 encode_pikachu(Record) when is_record(Record, pikachu) ->
     encode(pikachu, Record).
 
+encode(pikachu, Records) when is_list(Records) ->
+    delimited_encode(Records);
 encode(pikachu, Record) ->
     [iolist(pikachu, Record)|encode_extensions(Record)].
 
@@ -44,6 +52,13 @@ encode_extensions(#pikachu{'$extensions' = Extends}) ->
     [pack(Key, Optionalness, Data, Type, Accer) ||
         {Key, {Optionalness, Data, Type, Accer}} <- dict:to_list(Extends)];
 encode_extensions(_) -> [].
+
+delimited_encode(Records) ->
+    lists:map(fun(Record) ->
+        IoRec = encode(Record),
+        Size = iolist_size(IoRec),
+        [protobuffs:encode_varint(Size), IoRec]
+    end, Records).
 
 iolist(pikachu, Record) ->
     [pack(1, required, with_default(Record#pikachu.abc, none), string, [])].
@@ -75,10 +90,10 @@ pack(FNum, _, Data, _, _) when is_tuple(Data) ->
     protobuffs:encode(FNum, encode(RecName, Data), bytes);
 
 pack(FNum, _, Data, Type, _) when Type=:=bool;Type=:=int32;Type=:=uint32;
-				  Type=:=int64;Type=:=uint64;Type=:=sint32;
-				  Type=:=sint64;Type=:=fixed32;Type=:=sfixed32;
-				  Type=:=fixed64;Type=:=sfixed64;Type=:=string;
-				  Type=:=bytes;Type=:=float;Type=:=double ->
+                  Type=:=int64;Type=:=uint64;Type=:=sint32;
+                  Type=:=sint64;Type=:=fixed32;Type=:=sfixed32;
+                  Type=:=fixed64;Type=:=sfixed64;Type=:=string;
+                  Type=:=bytes;Type=:=float;Type=:=double ->
     protobuffs:encode(FNum, Data, Type);
 
 pack(FNum, _, Data, Type, _) when is_atom(Data) ->
@@ -93,6 +108,28 @@ int_to_enum(_,Val) ->
 %% DECODE
 decode_pikachu(Bytes) when is_binary(Bytes) ->
     decode(pikachu, Bytes).
+
+delimited_decode_pikachu(Bytes) ->
+    delimited_decode(pikachu, Bytes).
+
+delimited_decode(Type, Bytes) when is_binary(Bytes) ->
+    delimited_decode(Type, Bytes, []).
+
+delimited_decode(_Type, <<>>, Acc) ->
+    {lists:reverse(Acc), <<>>};
+delimited_decode(Type, Bytes, Acc) ->
+    try protobuffs:decode_varint(Bytes) of
+        {Size, Rest} when size(Rest) < Size ->
+            {lists:reverse(Acc), Bytes};
+        {Size, Rest} ->
+            <<MessageBytes:Size/binary, Rest2/binary>> = Rest,
+            Message = decode(Type, MessageBytes),
+            delimited_decode(Type, Rest2, [Message | Acc])
+    catch
+        % most likely cause is there isn't a complete varint in the buffer.
+        _What:_Why ->
+            {lists:reverse(Acc), Bytes}
+    end.
 
 decode(pikachu, Bytes) when is_binary(Bytes) ->
     Types = [{1, abc, int32, []}, {2, def, double, []}],
@@ -217,10 +254,10 @@ decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
     decode_extensions(Types, Tail, NewAcc).
 
 set_record_field(Fields, Record, '$extensions', Value) ->
-		Decodable = [],
+        Decodable = [],
     NewValue = decode_extensions(element(1, Record), Decodable, dict:to_list(Value)),
-		Index = list_index('$extensions', Fields),
-		erlang:setelement(Index+1,Record,NewValue);
+        Index = list_index('$extensions', Fields),
+        erlang:setelement(Index+1,Record,NewValue);
 set_record_field(Fields, Record, Field, Value) ->
     Index = list_index(Field, Fields),
     erlang:setelement(Index+1, Record, Value).

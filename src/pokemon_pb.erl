@@ -57,7 +57,7 @@ delimited_encode(Records) ->
     lists:map(fun(Record) ->
         IoRec = encode(Record),
         Size = iolist_size(IoRec),
-        [Size, IoRec]
+        [protobuffs:encode_varint(Size), IoRec]
     end, Records).
 
 iolist(pikachu, Record) ->

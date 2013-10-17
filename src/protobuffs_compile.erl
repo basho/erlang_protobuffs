@@ -276,11 +276,7 @@ filter_forms(Msgs, Enums, [{function,L,to_record,2,[Clause]}|Tail], Basename, Ac
     filter_forms(Msgs, Enums, Tail, Basename, [expand_to_record_function(Msgs, L, Clause)|Acc]);
 
 filter_forms(Msgs, Enums, [{function,L,enum_to_int,2,[Clause]}|Tail], Basename, Acc) ->
-    Acc2 = case any_message_has_fields(Msgs) orelse any_message_has_extentions(Msgs) of
-        true -> [expand_enum_to_int_function(Enums,L,Clause)|Acc];
-        false -> Acc
-    end,
-    filter_forms(Msgs, Enums, Tail, Basename, Acc2);
+    filter_forms(Msgs, Enums, Tail, Basename, [expand_enum_to_int_function(Enums, L, Clause)|Acc]);
 
 filter_forms(Msgs, Enums, [{function,L,int_to_enum,2,[Clause]}|Tail], Basename, Acc) ->
     filter_forms(Msgs, Enums, Tail, Basename, [expand_int_to_enum_function(Enums, L, Clause)|Acc]);

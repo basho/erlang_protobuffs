@@ -28,6 +28,7 @@
          set_extension/3]).
 -export([decode_extensions/1]).
 -export([encode/1, decode/2, delimited_decode/2]).
+-export([int_to_enum/2, enum_to_int/2]).
 -record(pikachu, {abc, def, '$extensions' = dict:new()}).
 
 %% ENCODE

@@ -142,7 +142,8 @@ encode_internal(FieldID, String, string) when is_list(String) ->
 encode_internal(FieldID, String, string) when is_binary(String) ->
     encode_internal(FieldID, String, bytes);
 encode_internal(FieldID, Bytes, bytes) when is_binary(Bytes); is_list(Bytes) ->
-    [encode_field_tag(FieldID, ?TYPE_STRING), encode_varint(iolist_size(Bytes)), Bytes];
+    Bytes1 = unicode:characters_to_binary(Bytes, utf8),
+    [encode_field_tag(FieldID, ?TYPE_STRING), encode_varint(iolist_size(Bytes1)), Bytes1];
 encode_internal(FieldID, Float, float) when is_integer(Float) ->
     encode_internal(FieldID, Float + 0.0, float);
 encode_internal(FieldID, Float, float) when is_float(Float) ->

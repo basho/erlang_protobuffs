@@ -8,14 +8,17 @@ get-deps:
 compile:
 	@$(REBAR) compile
 
+test-deps:
+	@$(REBAR) -C rebar.test.config get-deps compile
+
 ct:
 	./scripts/generate_emakefile.escript
-	@$(REBAR) skip_deps=true ct
+	@$(REBAR) -C rebar.test.config skip_deps=true ct
 
 eunit:
-	@$(REBAR) skip_deps=true eunit
+	@$(REBAR) -C rebar.test.config skip_deps=true eunit
 
-test: eunit ct
+test: test-deps eunit ct
 
 clean:
 	@$(REBAR) clean

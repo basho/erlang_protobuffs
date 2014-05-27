@@ -166,7 +166,7 @@ test_proto_files(Config) ->
 				  test_server:format("Test ~p: ok~n~n~n",
 						     [Message]),
 				  Acc andalso true;
-			      F ->
+			      _ ->
 				  test_server:format("Test ~p: Failed with ~p~n~n~n",
 						     [Message, Result]),
 				  false
@@ -180,15 +180,15 @@ test_proto_files(Config) ->
 test_extendable_messages(Config) ->
     DataDir = (?config(data_dir, Config)),
     NumTests = (?config(num_tests, Config)),
-    ProtoFiles = [begin
-		    Filename = filename:join([DataDir, "proto", X]),
-		    Path = filename:absname(Filename),
-		    Options = [{imports_dir,
-				[filename:join([DataDir, "proto"]),
-				 filename:join([DataDir, "proto", "import"])]}],
-		    protobuffs_compile:scan_file(Path, Options)
-		  end
-		  || X <- ["extend.proto", "extensions.proto"]],
+    [begin
+         Filename = filename:join([DataDir, "proto", X]),
+         Path = filename:absname(Filename),
+         Options = [{imports_dir,
+                     [filename:join([DataDir, "proto"]),
+                      filename:join([DataDir, "proto", "import"])]}],
+         protobuffs_compile:scan_file(Path, Options)
+     end
+     || X <- ["extend.proto", "extensions.proto"]],
     Tests = [proper_protobuffs_extend_degraded,
 	     proper_protobuffs_extend_assign,
 	     proper_protobuffs_extend_get,

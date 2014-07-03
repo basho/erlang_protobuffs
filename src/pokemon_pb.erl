@@ -24,6 +24,7 @@
 %% OTHER DEALINGS IN THE SOFTWARE.
 -module(pokemon_pb).
 -export([encode_pikachu/1, decode_pikachu/1, delimited_decode_pikachu/1]).
+-export([rpc_pikachu_info/0]).
 -export([has_extension/2, extension_size/1, get_extension/2,
          set_extension/3]).
 -export([decode_extensions/1]).
@@ -42,6 +43,9 @@ encode_pikachu(Records) when is_list(Records) ->
     delimited_encode(Records);
 encode_pikachu(Record) when is_record(Record, pikachu) ->
     encode(pikachu, Record).
+
+rpc_pikachu_info() ->
+  {pikachu_input, pikachu_output}.
 
 encode(pikachu, Records) when is_list(Records) ->
     delimited_encode(Records);

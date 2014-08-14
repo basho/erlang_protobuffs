@@ -115,7 +115,7 @@ parse_imports([{import, File} = Head | Tail], Path, Acc) ->
         {ok,String} = parse_file(Fullname),
         {ok,FirstParsed} = parse_string(String),
         Parsed = lists:append(FirstParsed, [file_boundary | Tail]),
-        parse_imports(Parsed, Path, [Head | Acc]);
+        parse_imports(Parsed, Path, append_if_not_exist(Head, Acc, file_boundary));
     {error, Error} ->
         error_logger:error_report([
                        "Could not do import",
@@ -123,10 +123,18 @@ parse_imports([{import, File} = Head | Tail], Path, Acc) ->
                        {error, Error},
                        {path, Path}
                       ]),
-        parse_imports(Tail, Path, [Head | Acc])
+        parse_imports(Tail, Path, append_if_not_exist(Head, Acc, file_boundary))
     end;
 parse_imports([Head | Tail], Path, Acc) ->
-    parse_imports(Tail, Path, [Head | Acc]).
+    parse_imports(Tail, Path, append_if_not_exist(Head, Acc, file_boundary)).
+
+append_if_not_exist(Element, List, IgnoreElement) ->
+  case lists:member(Element, List) of
+    true when Element =/= IgnoreElement ->
+      List;
+    _ ->
+      [Element | List]
+  end.
 
 %% @hidden
 output(Basename, MessagesRaw, RawEnums, Options) ->

@@ -805,14 +805,14 @@ generate_field_definitions(Fields) ->
 %% @hidden
 generate_field_definitions([], Acc) ->
     lists:reverse(Acc);
+generate_field_definitions([{Name, _, Default} | Tail], Acc) when Default =/= none ->
+    Head = lists:flatten(io_lib:format("~s = ~p", [Name, Default])),
+    generate_field_definitions(Tail, [Head | Acc]);
 generate_field_definitions([{Name, required, _} | Tail], Acc) ->
     Head = lists:flatten(io_lib:format("~s = erlang:error({required, ~s})", [Name, Name])),
     generate_field_definitions(Tail, [Head | Acc]);
 generate_field_definitions([{Name, _, none} | Tail], Acc) ->
     Head = lists:flatten(io_lib:format("~s", [Name])),
-    generate_field_definitions(Tail, [Head | Acc]);
-generate_field_definitions([{Name, _, Default} | Tail], Acc) ->
-    Head = lists:flatten(io_lib:format("~s = ~p", [Name, Default])),
     generate_field_definitions(Tail, [Head | Acc]).
 
 %% @hidden

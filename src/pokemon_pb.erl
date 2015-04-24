@@ -87,7 +87,7 @@ pack(FNum, repeated_packed, Data, Type, _) ->
     protobuffs:encode_packed(FNum, Data, Type);
 
 pack(FNum, _, Data, _, _) when is_tuple(Data) ->
-    [RecName|_] = tuple_to_list(Data),
+    RecName = erlang:element(1, Data),
     protobuffs:encode(FNum, encode(RecName, Data), bytes);
 
 pack(FNum, _, Data, Type, _) when Type=:=bool;Type=:=int32;Type=:=uint32;

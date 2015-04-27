@@ -107,13 +107,13 @@ int_to_enum(_,Val) ->
     Val.
 
 %% DECODE
-decode_pikachu(Bytes) when is_binary(Bytes) ->
+decode_pikachu(<<Bytes/binary>>) ->
     decode(pikachu, Bytes).
 
 delimited_decode_pikachu(Bytes) ->
     delimited_decode(pikachu, Bytes).
 
-delimited_decode(Type, Bytes) when is_binary(Bytes) ->
+delimited_decode(Type, <<Bytes/binary>>) ->
     delimited_decode(Type, Bytes, []).
 
 delimited_decode(_Type, <<>>, Acc) ->
@@ -132,7 +132,7 @@ delimited_decode(Type, Bytes, Acc) ->
             {lists:reverse(Acc), Bytes}
     end.
 
-decode(pikachu, Bytes) when is_binary(Bytes) ->
+decode(pikachu, <<Bytes/binary>>) ->
     Types = [{1, abc, int32, []}, {2, def, double, []}],
     Defaults = [],
     Decoded = decode(Bytes, Types, Defaults),

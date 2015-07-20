@@ -225,26 +225,26 @@ decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
             {Value1, Rest1} =
                 case lists:member(is_record, Opts) of
                     true ->
-                        {{FNum, V}, R} = protobuffs:decode(Bytes, bytes),
+                        {{Fnum, V}, R} = protobuffs:decode(Bytes, bytes),
                         RecVal = decode(Type, V),
                         {RecVal, R};
                     false ->
                         case lists:member(repeated_packed, Opts) of
                             true ->
-                                {{FNum, V}, R} = protobuffs:decode_packed(Bytes, Type),
+                                {{Fnum, V}, R} = protobuffs:decode_packed(Bytes, Type),
                                 {V, R};
                             false ->
-                                {{FNum, V}, R} = protobuffs:decode(Bytes, Type),
+                                {{Fnum, V}, R} = protobuffs:decode(Bytes, Type),
                                 {unpack_value(V, Type), R}
                         end
                 end,
             case lists:member(repeated, Opts) of
                 true ->
-                    case lists:keytake(FNum, 1, Acc) of
-                        {value, {FNum, Name, List}, Acc1} ->
-                            decode(Rest1, Types, [{FNum, Name, lists:reverse([int_to_enum(Type,Value1)|lists:reverse(List)])}|Acc1]);
+                    case lists:keytake(Fnum, 1, Acc) of
+                        {value, {Fnum, Name, List}, Acc1} ->
+                            decode(Rest1, Types, [{Fnum, Name, lists:reverse([int_to_enum(Type,Value1)|lists:reverse(List)])}|Acc1]);
                         false ->
-                            decode(Rest1, Types, [{FNum, Name, [int_to_enum(Type,Value1)]}|Acc])
+                            decode(Rest1, Types, [{Fnum, Name, [int_to_enum(Type,Value1)]}|Acc])
                     end;
                 false ->
                     [{Fnum, {optional, int_to_enum(Type,Value1), Type, Opts}} | Acc]

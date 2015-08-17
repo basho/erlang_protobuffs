@@ -1,12 +1,13 @@
 REBAR=`which rebar || printf ./rebar`
 REPO=protobuffs
-all: get-deps compile
+all: compile
 
-get-deps:
-	@$(REBAR) get-deps
+#get-deps:
+#	@$(REBAR) get-deps
 
 compile:
-	@$(REBAR) compile
+	#@$(REBAR) compile
+	./rebar3 compile
 
 ct:
 	./scripts/generate_emakefile.escript

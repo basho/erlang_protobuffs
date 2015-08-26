@@ -222,20 +222,21 @@ decode_extensions(_Types, [], Acc) ->
 decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
     NewAcc = case lists:keyfind(Fnum, 1, Types) of
         {Fnum, Name, Type, Opts} ->
-            {Value1, Rest1} =
+            {FNum, Value1, Rest1} =
                 case lists:member(is_record, Opts) of
                     true ->
-                        {{FNum, V}, R} = protobuffs:decode(Bytes, bytes),
+                        {{FNUM, V}, R} = protobuffs:decode(Bytes, bytes),
                         RecVal = decode(Type, V),
-                        {RecVal, R};
+                        {FNUM, RecVal, R};
                     false ->
                         case lists:member(repeated_packed, Opts) of
                             true ->
-                                {{FNum, V}, R} = protobuffs:decode_packed(Bytes, Type),
-                                {V, R};
+                                {{FNUM, V}, R} =
+                                    protobuffs:decode_packed(Bytes, Type),
+                                {FNUM, V, R};
                             false ->
-                                {{FNum, V}, R} = protobuffs:decode(Bytes, Type),
-                                {unpack_value(V, Type), R}
+                                {{FNUM, V}, R} = protobuffs:decode(Bytes, Type),
+                                {FNUM, unpack_value(V, Type), R}
                         end
                 end,
             case lists:member(repeated, Opts) of

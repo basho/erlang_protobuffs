@@ -2,6 +2,7 @@ ebin
 *.beam
 *.gz
 *~
+*.coverdata
 doc
 logs
 deps

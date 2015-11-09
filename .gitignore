@@ -2,11 +2,13 @@ ebin
 *.beam
 *.gz
 *~
+*.coverdata
 doc
 logs
 deps
 .eunit
 .directory
+.rebar
 src/protobuffs_parser.erl
 src/protobuffs_scanner.erl
 erl_crash.dump

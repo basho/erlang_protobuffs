@@ -3,11 +3,11 @@
 [![Build Status](https://secure.travis-ci.org/basho/erlang_protobuffs.png?branch=master)](http://travis-ci.org/basho/erlang_protobuffs)
 
 This module is a composite of other open source modules and original code to
-make interfacing with the Protocol Buffers protocol easy.
+facilitate interfacing with Protocol Buffers.
 
 ## Encode / Decode
 
-Encoding is simple.
+Encoding:
 
     1> protobuffs:encode(1, 1, uint32).
     ["\b",[1]]
@@ -17,7 +17,7 @@ Encoding is simple.
     ]).
     <<10,4,78,105,99,107,16,25>>
 
-Decoding is simple too.
+Decoding:
 
     1> protobuffs:decode(<<8, 1>>, uint32).
     {{1, 1}, <<>>}
@@ -26,10 +26,7 @@ Decoding is simple too.
     3> protobuffs:decode(<<16,25>>, bytes).
     {{2, 25}, <<>>}
 
-## Using .proto Files
-
-The main objective of this module is to allow developers to use .proto files
-easily. This module provides very basic functionality to do so.
+## Using `.proto` Files
 
 Consider the `test/erlang_protobuffs_SUITE_data/proto/simple.proto` file.
 
@@ -48,7 +45,7 @@ Consider the `test/erlang_protobuffs_SUITE_data/proto/simple.proto` file.
     }
 
 From that file we can create an Erlang module that can encode and decode the
-Person message into records.
+`Person` message into records.
 
     1> protobuffs_compile:scan_file("simple.proto").
     ok
@@ -102,42 +99,50 @@ easy maintainance of a buffer.
 
 ## Deep lists
 
-You might have noticed that the examples above produce deep lists
-(also known as iolists), not binaries, when encoding messages. Since
-we assume most messages will be sent to another computer over the
-network or written to disk, we can delay flattening the encoding until
-the last instant, i.e. writing to the port that will send the message.
-All ports accept deep lists, so there's no reason to flatten them in
-our encoding or application code. If you absolutely must have a
-binary, use the `iolist_to_binary/1` BIF on the encoded message.
+You might have noticed that the examples above produce deep lists (also known as
+iolists), not binaries, when encoding messages. Since we assume most messages
+will be sent to another computer over the network or written to disk, we can
+delay flattening the encoding until the last instant, i.e. writing to the port
+that will send the message.  All ports accept deep lists, so there's no reason
+to flatten them in our encoding or application code. If you absolutely must have
+a binary, use the `iolist_to_binary/1` BIF on the encoded message.
 
 Ref:
 [Erlang Efficiency Guide](http://www.erlang.org/doc/efficiency_guide/listHandling.html#id64578)
 
-## no_debug_info
+## `no_debug_info`
 
-The protobuffs_compile module relies on the pokemon_pb module being compiled
-with debug info. This is because pokemon_pb serves as a template for generated
-_pb modules. Running protobuffs_compile:scan_file/1 reads the erlang forms from
-the pokemon_pb.beam file and expands and alters those forms to create the generated
-module.
+The `protobuffs_compile` module relies on the `pokemon_pb` module being compiled
+with debug info. This is because `pokemon_pb` serves as a template for generated
+`_pb` modules. Running `protobuffs_compile:scan_file/1` reads the erlang forms
+from the `pokemon_pb.beam` file and expands and alters those forms to create the
+generated module.
 
-## Building with rebar
-To compile
-    %>./rebar compile
+## Building
 
-To run all tests
-    %>./rebar eunit
-    %>./rebar ct
+*NB:* If `rebar` is not in your `PATH` the local `rebar` will be used.
 
-Se rebar doc for more information.
+To compile:
 
-## CREDITS
+```
+make
+```
 
-Some of the protobuffs.erl module came from code written by Brian Buchanan.
+To run all tests:
 
-Some of the protobuffs\_compile.erl module came from code written by Tim
-Fletcher.
+```
+make test
+```
 
-The rest of it and it's test suite was written by Nick Gerakines. Major
-contributions have been made by Jacob Vorreuter.
+## License and Authors
+
+**`erlang_protobuffs`** is Open Source software released under the Apache 2.0 License. Please see the [LICENSE](LICENSE) file for full license details.
+
+## Authors / Contributors
+
+* [Luke Bakken](https://github.com/lukebakken)
+* [David Åberg](https://github.com/freke) ([copyright info](https://github.com/basho/erlang_protobuffs/issues/35))
+* [Brian Buchanan](https://github.com/bwbuchanan) `protobuffs.erl`
+* Tim Fletcher `protobuffs\_compile.erl`
+* [Nick Gerakines](https://github.com/ngerakines)
+* [Jacob Vorreuter](https://github.com/jkvor)

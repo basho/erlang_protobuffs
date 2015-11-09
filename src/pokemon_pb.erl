@@ -28,6 +28,7 @@
          set_extension/3]).
 -export([decode_extensions/1]).
 -export([encode/1, decode/2, delimited_decode/2]).
+-export([int_to_enum/2, enum_to_int/2]).
 -record(pikachu, {abc, def, '$extensions' = dict:new()}).
 
 %% ENCODE
@@ -218,9 +219,9 @@ decode_extensions(Record) ->
 
 decode_extensions(_Types, [], Acc) ->
     dict:from_list(Acc);
-decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
-    NewAcc = case lists:keyfind(Fnum, 1, Types) of
-        {Fnum, Name, Type, Opts} ->
+decode_extensions(Types, [{FNum, Bytes} | Tail], Acc) ->
+    NewAcc = case lists:keyfind(FNum, 1, Types) of
+        {FNum, Name, Type, Opts} ->
             {Value1, Rest1} =
                 case lists:member(is_record, Opts) of
                     true ->
@@ -246,10 +247,10 @@ decode_extensions(Types, [{Fnum, Bytes} | Tail], Acc) ->
                             decode(Rest1, Types, [{FNum, Name, [int_to_enum(Type,Value1)]}|Acc])
                     end;
                 false ->
-                    [{Fnum, {optional, int_to_enum(Type,Value1), Type, Opts}} | Acc]
+                    [{FNum, {optional, int_to_enum(Type,Value1), Type, Opts}} | Acc]
             end;
         false ->
-            [{Fnum, Bytes} | Acc]
+            [{FNum, Bytes} | Acc]
     end,
     decode_extensions(Types, Tail, NewAcc).
 

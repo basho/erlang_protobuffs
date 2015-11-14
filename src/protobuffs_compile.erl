@@ -565,11 +565,22 @@ filter_to_record_clause({MsgName, _, Extends}, {clause,L,[_Param1,Param2],Guards
 expand_enum_to_int_function([], Line, Clause) ->
     {function,Line,enum_to_int,2,[Clause]};
 expand_enum_to_int_function(Enums, Line, Clause) ->
-    {function,Line,enum_to_int,2,[filter_enum_to_int_clause(Enum, Clause) || Enum <- Enums]}.
+    {function,Line,enum_to_int,2,filter_enum_to_int_clauses(Enums, Clause)}.
+
+%% @hidden
+filter_enum_to_int_clauses([], _Clause) ->
+    [];
+filter_enum_to_int_clauses([Enum | RestEnums], Clause) ->
+    [filter_enum_to_int_clause(Enum, Clause),
+     filter_enum_int_to_int_clause(Enum, Clause) | filter_enum_to_int_clauses(RestEnums, Clause)].
 
 %% @hidden
 filter_enum_to_int_clause({enum,EnumTypeName,IntValue,EnumValue}, {clause,L,_Args,Guards,_}) ->
     {clause,L,[{atom,L,atomize(EnumTypeName)},{atom,L,EnumValue}],Guards,[{integer,L,IntValue}]}.
+
+%% @hidden
+filter_enum_int_to_int_clause({enum,EnumTypeName,IntValue,_EnumValue}, {clause,L,_Args,Guards,_}) ->
+    {clause,L,[{atom,L,atomize(EnumTypeName)},{integer,L,IntValue}],Guards,[{integer,L,IntValue}]}.
 
 %% @hidden
 expand_int_to_enum_function([], Line, Clause) ->

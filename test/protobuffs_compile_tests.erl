@@ -83,4 +83,5 @@ parse_enum_test() ->
      [?_assertMatch(ok,
         (protobuffs_compile:scan_string("message Dummy { enum Type { A = 10}}", "dummy", [{compile_flags, [warnings_as_errors]}]))),
       ?_assertMatch(10, dummy_pb:enum_to_int(dummy_type, 'A')),
+      ?_assertMatch(10, dummy_pb:enum_to_int(dummy_type, 10)),
       ?_assertMatch('A', dummy_pb:int_to_enum(dummy_type, 10))]}.

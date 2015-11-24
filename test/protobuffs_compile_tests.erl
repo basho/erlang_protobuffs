@@ -63,6 +63,17 @@ parse_imports_test_() ->
 		    (protobuffs_compile:parse_imports([{import,
 							dummy_import_file}],
 						      "dummy_path"))),
+       %% test duplicated imports
+      ?_assertMatch(
+        [{import, dummy_import_file_a}, file_boundary,
+          {import, dummy_import_file_b}, file_boundary,
+          {import, dummy_import_file_c}, file_boundary, file_boundary],
+        (protobuffs_compile:parse_imports(
+          [{import, dummy_import_file_a},
+            {import, dummy_import_file_b},
+            {import, dummy_import_file_c},
+            {import, dummy_import_file_b}],
+           "dummy_path"))),
       ?_assertMatch([what_ever],
 		    (protobuffs_compile:parse_imports([what_ever],
 						      dummy_path)))]}.

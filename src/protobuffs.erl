@@ -27,7 +27,7 @@
 -module(protobuffs).
 
 %% Public
--export([encode/3, encode_packed/3, decode/2, decode_packed/2]).
+-export([main/1, encode/3, encode_packed/3, decode/2, decode_packed/2]).
 
 %% Used by generated *_pb file. Not intended to used by User
 -export([next_field_num/1, skip_next_field/1]).
@@ -50,9 +50,17 @@
 	?TYPE_START_GROUP | ?TYPE_END_GROUP | ?TYPE_32BIT.
 
 -type field_type() :: bool | enum | int32 | uint32 | int64 |
-		      unit64 | sint32 | sint64 | fixed32 |
+		      uint64 | sint32 | sint64 | fixed32 |
 		      sfixed32 | fixed64 | sfixed64 | string |
 		      bytes | float | double.
+
+%%--------------------------------------------------------------------
+%% @doc Runs command line utility
+%% @end
+%%--------------------------------------------------------------------
+
+main(Args) ->
+    protobuffs_cli:main(Args).
 
 %%--------------------------------------------------------------------
 %% @doc Encode an Erlang data structure into a Protocol Buffers value.

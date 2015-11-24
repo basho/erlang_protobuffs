@@ -1,12 +1,15 @@
 REBAR=`which rebar || printf ./rebar`
 REPO=protobuffs
-all: get-deps compile
+all: get-deps compile build
 
 get-deps:
 	@$(REBAR) get-deps
 
 compile:
 	@$(REBAR) compile
+
+build: compile
+	@$(REBAR) escriptize
 
 ct:
 	./scripts/generate_emakefile.escript
@@ -15,7 +18,7 @@ ct:
 eunit:
 	@$(REBAR) skip_deps=true eunit
 
-test: eunit ct
+test: compile eunit ct
 
 clean:
 	@$(REBAR) clean

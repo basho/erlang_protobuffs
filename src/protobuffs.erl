@@ -201,7 +201,7 @@ read_field_num_and_wire_type(<<_:8,_/binary>> = Bytes) ->
 	?TYPE_32BIT ->
 	    {{FieldID, ?TYPE_32BIT}, Rest};
 	_Else ->
-	    erlang:throw({error, "Error decodeing type"})
+	    erlang:throw({error, "Error decoding type"})
     end;
 read_field_num_and_wire_type(Bytes) ->
     erlang:error(badarg,[Bytes]).

@@ -22,63 +22,24 @@ else
   HIPE_ERLC_OPTS =
 endif
 
-ifdef NIFS
-  nif_opt = -nif
-  tmp/msg.beam: tmp/msg.nif.so
-  tmp/d.beam: tmp/d.nif.so
-  PROTOBUF_CFLAGS ?= $(shell pkg-config --cflags protobuf)
-  PROTOBUF_LDFLAGS ?= $(shell pkg-config --libs protobuf)
-  PROTOC ?= $(shell which protoc)
-ifdef PROTOHOME
-  PROTOBUF_CFLAGS := "-I$(PROTOHOME)/src"
-  PROTOBUF_LDFLAGS := "-L$(PROTOHOME)/src/.libs"
-  PROTOC ?= "$(PROTOHOME)/src/protoc"
-else
-  PROTOBUF_CFLAGS ?= "-I/usr/local/src/protobuf/src"
-  PROTOBUF_LDFLAGS ?= "-L/usr/local/src/protobuf/src/.libs -lprotobuf -pthread -lpthread"
-endif
-else
-  nif_opt =
-  undefine PROTOBUF_CFLAGS
-  undefine PROTOBUF_LDFLAGS
-  undefine PROTOC
-endif
-
-ifdef MAPS
-  maps_opt = -maps
-else
-  maps_opt =
-endif
-
 all: benchmarks-code
 
-benchmarks-code: tmp/msg.beam tmp/d.beam
+benchmarks-code: msg_pb.beam d_pb.beam
 
-tmp/msg.erl: msg.proto
-tmp/d.erl: d.proto
+msg_pb.erl: msg.proto
+d_pb.erl: d.proto
 
-tmp/msg.beam: tmp/msg.erl
-tmp/d.beam:   tmp/d.erl
+msg_pb.beam: msg_pb.erl
+d_pb.beam: d_pb.erl
 
-tmp/%.erl: %.proto
-	[ -d tmp ] || mkdir tmp
-	$(erl) -boot start_clean -pa ../ebin -noshell -noinput +B \
-		-v never -c false -I`pwd` -o tmp $(nif_opt) $(maps_opt) \
-		-s gpb_compile c $<
+%_pb.erl: %.proto
+	../protobuffs $<
 
-tmp/%.beam: tmp/%.erl
-	cd tmp; $(erlc) -Wall $(HIPE_ERLC_OPTS) -I../../include +debug_info \
-		$(patsubst tmp/%,%,$<)
+%_pb.beam: %_pb.erl
+	$(erlc) -Wall $(HIPE_ERLC_OPTS) +debug_info $(patsubst %,%,$<)
 
-tmp/%.nif.so: %.proto
-	$(PROTOC) --cpp_out=tmp/ $*.proto
-	$(CXX) -g -fPIC -O3 $(PROTOBUF_CFLAGS) $(CXXFLAGS) -o tmp/$*.pb.o -c tmp/$*.pb.cc
-	$(CXX) -g -fPIC -Wall -O3 $(PROTOBUF_CFLAGS) $(CXXFLAGS) \
-	  -o tmp/$*.nif.o -c tmp/$*.nif.cc
-	$(CXX) -g -fPIC -shared -O3 -Wall $(PROTOBUF_CFLAGS) $(CXXFLAGS) -o $@ \
-	  tmp/$*.nif.o tmp/$*.pb.o $(PROTOBUF_LDFLAGS)
 clean:
-	$(RM) -r tmp
+	$(RM) -f *_pb.erl *_pb.hrl *_pb.beam
 
 benchmarks: benchmarks-code
 	@echo CPU info

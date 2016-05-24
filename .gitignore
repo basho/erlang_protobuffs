@@ -20,3 +20,5 @@ protobuffs
 # ignore generated erl and hrl files if protobuffs is run in current dir
 /*.erl
 /*.hrl
+benchmarks/*.erl
+benchmarks/*.hrl

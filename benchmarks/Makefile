@@ -24,13 +24,11 @@ endif
 
 all: benchmarks-code
 
-benchmarks-code: msg_pb.beam d_pb.beam
+benchmarks-code: msg_pb.beam
 
 msg_pb.erl: msg.proto
-d_pb.erl: d.proto
 
 msg_pb.beam: msg_pb.erl
-d_pb.beam: d_pb.erl
 
 %_pb.erl: %.proto
 	../protobuffs $<
@@ -50,9 +48,5 @@ benchmarks: benchmarks-code
 	@echo
 	$(erl) +V
 	@echo
-	./proto-bench \
-          msg Message1 google_message1.dat \
-          msg Message2 google_message2.dat \
-	  d dm1 --multi d-msgs/d-msg-n*.dat --end-multi \
-	  d dm1 d-msgs/d-all-concatenated.dat
-
+	./proto-bench msg_pb encode_message1 decode_message1 google_message1.dat
+	./proto-bench msg_pb encode_message2 decode_message2 google_message2.dat

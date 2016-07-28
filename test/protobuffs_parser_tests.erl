@@ -23,10 +23,15 @@ import_test_() ->
     parse_test(String, Expected).
 
 message_test_() ->
-    String = "message Test { required string name "
-	     "= 1; }",
+    String = "message Test { required string name = 1; }",
     Expected = [{message, "Test",
 		 [{1, required, "string", "name", none}]}],
+    parse_test(String, Expected).
+
+message_reserved_word_test_() ->
+    String = "message Test { required string case = 1; }",
+    Expected = [{message, "Test",
+		 [{1, required, "string", "'case'", none}]}],
     parse_test(String, Expected).
 
 message_default_test_() ->

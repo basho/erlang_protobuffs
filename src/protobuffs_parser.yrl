@@ -45,12 +45,10 @@ g_default -> '$empty' : none.
 g_default -> '[' g_var '=' g_value ']' 				: {'$2', '$4'}.
 
 Erlang code.
-safe_string(A) -> make_safe(atom_to_list(A)).
-
-make_safe(String) ->
-  case erl_scan:reserved_word(list_to_atom(String)) of 
-    true -> "pb_"++String;
-    false -> String
+safe_string(Atom) ->
+  case erl_scan:reserved_word(Atom) of
+    true -> "'" ++ atom_to_list(Atom) ++ "'";
+    false -> atom_to_list(Atom)
   end.
 
 unwrap({_,_,V}) -> V;

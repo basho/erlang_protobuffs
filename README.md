@@ -49,7 +49,7 @@ From that file we can create an Erlang module that can encode and decode the
 
     1> protobuffs_compile:scan_file("simple.proto").
     ok
-    2> simple_pb:decode_person(<<10,4,78,105,99,107,18,13,77,111,...>>).
+    2> simple_pb:decode_person(<<10,4,78,105,99,107,18,13,77,111,117,110,116,97,105,110,32,86,105,101,119,26,17,43,49,32,40,48,48,48,41,32,53,53,53,45,49,50,51,52,32,25>>).
     {person,<<"Nick">>,<<"Mountain View">>, <<"+1 (000) 555-1234">>,25,undefined}
     3> simple_pb:encode_person({person, <<"Nick">>, <<"Mountain View">>,
         <<"+1 (000) 555-1234">>,25, undefined}).
@@ -87,7 +87,7 @@ version can, pass in a list of records.
 If you have a stream of delimited messages and they are all of the same type,
 you can automatically have them decoded as well.
 
-    1> simple_pb:delimited_decode_person(<<42,10,4,78,105,99,107,18,13...>>).
+    1> simple_pb:delimited_decode_person(<<42,10,4,78,105,99,107,18,13,77,111,117,110,116,97,105,110,32,86,105,101,119,26,17,43,49,32,40,48,48,48,41,32,53,53,53,45,49,50,51,52,32,25,35,10,4,74,105,108,108,18,6,68,101,110,118,101,114,26,17,43,49,32,40,48,48,48,41,32,53,53,53,45,52,51,50,49,32,29>>).
     {[{person,"Nick","Mountain View","+1 (000) 555-1234",25,
               undefined},
       {person,"Jill","Denver","+1 (000) 555-4321",29,undefined}],

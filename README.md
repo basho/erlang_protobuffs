@@ -1,4 +1,6 @@
-# README
+# NOTICE
+
+This project, `erlang_protobuffs`, is no longer actively maintained. Please use [`gpb`](https://github.com/tomas-abrahamsson/gpb) instead. `gpb` has `erlang_protobuffs` compatibility and is actively maintained by @tomas-abrahamsson
 
 [![Build Status](https://secure.travis-ci.org/basho/erlang_protobuffs.png?branch=master)](http://travis-ci.org/basho/erlang_protobuffs)
 

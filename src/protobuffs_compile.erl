@@ -95,7 +95,7 @@ generate_source(ProtoFile,Options) when is_list(ProtoFile) ->
     Basename = filename:basename(ProtoFile, ".proto") ++ "_pb",
     {ok,String} = parse_file(ProtoFile),
     {ok,FirstParsed} = parse_string(String),
-    ImportPaths = ["./", "src/" | proplists:get_value(imports_dir, Options, [])],
+    ImportPaths = ["./", "src/" | [proplists:get_value(imports_dir, Options, [])]],
     Parsed = parse_imports(FirstParsed, ImportPaths),
     Collected = collect_full_messages(Parsed),
     Messages = resolve_types(Collected#collected.msg,Collected#collected.enum),

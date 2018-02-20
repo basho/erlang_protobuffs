@@ -12,7 +12,7 @@ non_neg_integer() ->
 float() ->
     real().
 union(List) ->
-    elements(List).
+    oneof(List).
 boolean() ->
     elements([false, true]).
 quickcheck(Prop, _) ->

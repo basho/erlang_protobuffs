@@ -31,6 +31,8 @@
 -export([int_to_enum/2, enum_to_int/2]).
 -record(pikachu, {abc, def, '$extensions' = dict:new()}).
 
+-dialyzer(no_match).
+
 %% ENCODE
 encode([]) ->
     [];

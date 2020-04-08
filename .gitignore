@@ -13,6 +13,10 @@ src/protobuffs_parser.erl
 src/protobuffs_scanner.erl
 erl_crash.dump
 test/Emakefile
+_build/
+TEST-protobuffs_proper.xml
+TEST-erlang_protobuffs_SUITE.xml
+TEST-file_protobuffs.app.xml
 
 # ignore output of 'rebar escriptize'
 protobuffs
